@@ -46,6 +46,7 @@ char plg_JobCheckUsingThread();
 
 void plg_JobPrintStatus(void* pJobHandle);
 void plg_JobPrintDetails(void* pJobHandle);
+void plg_JobPrintOrder(void* pvJobHandle);
 
 //Operating system interface
 void* job_Handle();

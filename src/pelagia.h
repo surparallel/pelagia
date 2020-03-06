@@ -49,6 +49,7 @@ PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
 PELAGIA_API void plg_MngPrintAllJobStatus(void* pManage);
 PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage);
 PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage);
+PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage);
 
 /*
 fro ptrProcess of plg_MngAddOrder;

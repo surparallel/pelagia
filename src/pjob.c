@@ -789,6 +789,21 @@ void plg_JobPrintDetails(void* pvJobHandle) {
 	printf("<pJobHandle->order_equeue\n");
 }
 
+void plg_JobPrintOrder(void* pvJobHandle) {
+
+	PJobHandle pJobHandle = pvJobHandle;
+	printf("pJobHandle:%p %p\n", pJobHandle, pJobHandle->eQueue);
+
+	dictIterator* dictIter = plg_dictGetSafeIterator(pJobHandle->order_equeue);
+	dictEntry* dictNode;
+	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
+		if (dictGetVal(dictNode) == pJobHandle->eQueue) {
+			printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
+		}
+	}
+	plg_dictReleaseIterator(dictIter);
+}
+
 
 /*
 要先查本次运行缓存

@@ -1004,6 +1004,19 @@ void plg_MngPrintAllJobDetails(void* pvManage) {
 	plg_listReleaseIterator(jobIter);
 }
 
+void plg_MngPrintAllJobOrder(void* pvManage) {
+
+	PManage pManage = pvManage;
+	printf("job size: %d\n", listLength(pManage->listJob));
+	//listjob
+	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
+	listNode* jobNode;
+	while ((jobNode = plg_listNext(jobIter)) != NULL) {
+		plg_JobPrintOrder(listNodeValue(jobNode));
+	}
+	plg_listReleaseIterator(jobIter);
+}
+
 void plg_MngPrintAllStatus(void* pvManage) {
 
 	PManage pManage = pvManage;
@@ -1115,14 +1128,17 @@ void plg_MngPrintPossibleAlloc(void* pvManage) {
 			*key2 = *key;
 
 			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
-			dictEntry* tableLoopNode;
-			while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
-				plg_DictSetAdd(pDictTableName, key, dictGetKey(tableLoopNode));
-			}
-			plg_dictReleaseIterator(tableLoopIter);
+			if (table) {
+				dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
+				dictEntry* tableLoopNode;
+				while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
+					plg_DictSetAdd(pDictTableName, key, dictGetKey(tableLoopNode));
+				}
+				plg_dictReleaseIterator(tableLoopIter);
 
-			plg_DictSetAdd(pDictOrder, key2, dictGetKey(EventProcessEntry));
+				plg_DictSetAdd(pDictOrder, key2, dictGetKey(EventProcessEntry));
+			}
+
 		} while (0);
 	}
 	plg_listReleaseIterator(eventIter);
