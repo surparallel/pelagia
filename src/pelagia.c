@@ -36,10 +36,10 @@
 static void* pManage = 0;
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"5"
+#define VERSION_MINOR	"6"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	5
+#define VERSION_NUMMINOR	6
 
 unsigned int plg_NVersion() {
 	return VERSION_NUMMINOR;
@@ -342,7 +342,7 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 			strcmp(argv[i], "-e") == 0)
 		{
 			if (checkArg(argv[i + 1])) {
-				plg_B64Encode(argv[i + 1], strlen(argv[i + 1]));
+				plg_B64Encode((unsigned char*)(argv[i + 1]), strlen(argv[i + 1]));
 			} else {
 				printf("Not enough parameters found!\n");
 			}

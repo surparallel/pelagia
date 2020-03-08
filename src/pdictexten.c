@@ -115,12 +115,12 @@ int ValueCmpFun(void* v1, void* v2) {
 	return memcmp(pDictExtenHead1->key + pDictExtenHead1->keyLen, pDictExtenHead2->key + pDictExtenHead1->keyLen, pDictExtenHead1->valueLen);
 }
 
-static void DictExtenSortWithKey(void* vpDictExten) {
+void plg_DictExtenSortWithKey(void* vpDictExten) {
 	PDictExten pDictExten = vpDictExten;
 	plg_SortList(pDictExten->pList, KeyCmpFun);
 }
 
-static void DictExtenSortWithValue(void* vpDictExten) {
+void plg_DictExtenSortWithValue(void* vpDictExten) {
 	PDictExten pDictExten = vpDictExten;
 	plg_SortList(pDictExten->pList, ValueCmpFun);
 }

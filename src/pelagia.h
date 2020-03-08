@@ -121,6 +121,8 @@ PELAGIA_API int plg_DictExtenAdd(void* pDictExten, void* key, unsigned int keyLe
 PELAGIA_API void plg_DictExtenDel(void* pDictExten, void* key, unsigned int keyLen);
 PELAGIA_API void* plg_DictExtenSub(void* entry);
 PELAGIA_API int plg_DictExtenSize(void* pDictExten);
+PELAGIA_API void plg_DictExtenSortWithKey(void* vpDictExten);
+PELAGIA_API void plg_DictExtenSortWithValue(void* vpDictExten);
 
 //create iterator
 PELAGIA_API void* plg_DictExtenGetIterator(void* pDictExten);

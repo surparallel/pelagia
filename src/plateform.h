@@ -200,4 +200,4 @@ __inline int c99_snprintf(char *outBuf, unsigned int size, const char *format, .
 #define MB (unsigned int)(1 << 20)
 #define GB (unsigned int)(1 << 30)
 
-#define NOTUSED(t) do{if(1){}else{char a=t?0:0;a+=1;}}while(0)
+#define NOTUSED(t) do{long long u = (long long)t;u = u;}while(0)

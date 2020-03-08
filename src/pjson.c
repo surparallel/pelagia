@@ -39,7 +39,8 @@ const char *pJson_GetErrorPtr(void) {return ep;}
 
 static int pJson_strcasecmp(const char *s1,const char *s2)
 {
-	if (!s1) return (s1==s2)?0:1;if (!s2) return 1;
+	if (!s1) return (s1==s2)?0:1;
+	if (!s2) return 1;
 	for(; tolower(*s1) == tolower(*s2); ++s1, ++s2)	if(*s1 == 0)	return 0;
 	return tolower(*(const unsigned char *)s1) - tolower(*(const unsigned char *)s2);
 }
@@ -230,10 +231,10 @@ static const char *parse_string(pJSON *item,const char *str)
 					len=4;if (uc<0x80) len=1;else if (uc<0x800) len=2;else if (uc<0x10000) len=3; ptr2+=len;
 					
 					switch (len) {
-						case 4: *--ptr2 =((uc | 0x80) & 0xBF); uc >>= 6;
-						case 3: *--ptr2 =((uc | 0x80) & 0xBF); uc >>= 6;
-						case 2: *--ptr2 =((uc | 0x80) & 0xBF); uc >>= 6;
-						case 1: *--ptr2 =(uc | firstByteMark[len]);
+					case 4: {*--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6; break;}
+					case 3: {*--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6; break;}
+					case 2: {*--ptr2 = ((uc | 0x80) & 0xBF); uc >>= 6; break;}
+					case 1: {*--ptr2 = (uc | firstByteMark[len]); break;}
 					}
 					ptr2+=len;
 					break;
@@ -597,7 +598,8 @@ static char *print_object(pJSON *item,int depth,int fmt,printbuffer *p)
 			len=(fmt?1:0)+(child->next?1:0);
 			ptr=ensure(p,len+1); if (!ptr) return 0;
 			if (child->next) *ptr++=',';
-			if (fmt) *ptr++='\n';*ptr=0;
+			if (fmt) *ptr++='\n';
+			*ptr=0;
 			p->offset+=len;
 			child=child->next;
 		}
@@ -647,7 +649,8 @@ static char *print_object(pJSON *item,int depth,int fmt,printbuffer *p)
 			*ptr++=':';if (fmt) *ptr++='\t';
 			strcpy(ptr,entries[i]);ptr+=strlen(entries[i]);
 			if (i!=numentries-1) *ptr++=',';
-			if (fmt) *ptr++='\n';*ptr=0;
+			if (fmt) *ptr++='\n';
+			*ptr=0;
 			pJson_free(names[i]);pJson_free(entries[i]);
 		}
 		
@@ -676,7 +679,11 @@ void	pJson_AddItemReferenceToArray(pJSON *array, pJSON *item)						{pJson_AddIte
 void	pJson_AddItemReferenceToObject(pJSON *object,const char *string,pJSON *item)	{pJson_AddItemToObject(object,string,create_reference(item));}
 
 pJSON *pJson_DetachItemFromArray(pJSON *array,int which)			{pJSON *c=array->child;while (c && which>0) c=c->next,which--;if (!c) return 0;
-	if (c->prev) c->prev->next=c->next;if (c->next) c->next->prev=c->prev;if (c==array->child) array->child=c->next;c->prev=c->next=0;return c;}
+	if (c->prev) c->prev->next=c->next;
+	if (c->next) c->next->prev=c->prev;
+	if (c==array->child) array->child=c->next;
+	c->prev=c->next=0;
+	return c;}
 void   pJson_DeleteItemFromArray(pJSON *array,int which)			{pJson_Delete(pJson_DetachItemFromArray(array,which));}
 pJSON *pJson_DetachItemFromObject(pJSON *object,const char *string) {int i=0;pJSON *c=object->child;while (c && pJson_strcasecmp(c->string,string)) i++,c=c->next;if (c) return pJson_DetachItemFromArray(object,i);return 0;}
 void   pJson_DeleteItemFromObject(pJSON *object,const char *string) {pJson_Delete(pJson_DetachItemFromObject(object,string));}

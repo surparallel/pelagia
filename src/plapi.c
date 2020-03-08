@@ -1871,8 +1871,7 @@ static int LEventSend(lua_State* L)
 	const char* v = pluaL_checklstring(L, 2, &vLen);
 
 	unsigned int decsize;
-	char* p = 0;
-	p = plg_B64DecodeEx(h, hLen, &decsize);
+	unsigned char* p = plg_B64DecodeEx(h, hLen, &decsize);
 
 	plg_EventSend(p , v, vLen);
 	return 0;
