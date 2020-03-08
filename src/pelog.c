@@ -220,7 +220,7 @@ void plg_LogSetErrCallBack(ErrFun errFun) {
 }
 
 void plg_LogInit() {
-	mutexHandle = plg_MutexCreateHandle(4);
+	mutexHandle = plg_MutexCreateHandle(LockLevel_4);
 }
 
 void plg_LogDestroy() {

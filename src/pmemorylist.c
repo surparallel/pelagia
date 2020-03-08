@@ -58,7 +58,7 @@ void* plg_MemListCreate(unsigned int sec, unsigned int size, unsigned char isLoc
 	pMemoryListHandle->dictPop = plg_dictCreate(plg_DefaultPtrDictPtr(), NULL, DICT_MIDDLE);
 	pMemoryListHandle->length = 0;
 	if (pMemoryListHandle->isLock) {
-		pMemoryListHandle->mutexLock = plg_MutexCreateHandle(4);
+		pMemoryListHandle->mutexLock = plg_MutexCreateHandle(LockLevel_4);
 	}
 	pMemoryListHandle->objName = plg_sdsNew("MemoryList");
 	return pMemoryListHandle;

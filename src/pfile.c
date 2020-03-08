@@ -119,7 +119,7 @@ void* plg_FileCreateHandle(char* fullPath, void* pManageEqueue, unsigned int ful
 	pFileHandle->fileHandle = outputFile;
 
 	pFileHandle->fileName = plg_sdsNew(FileName(fullPath));
-	pFileHandle->mutexHandle = plg_MutexCreateHandle(3);
+	pFileHandle->mutexHandle = plg_MutexCreateHandle(LockLevel_3);
 	pFileHandle->pJobHandle = plg_JobCreateHandle(pManageEqueue, TT_FILE, NULL, NULL, NULL);
 	pFileHandle->objName = plg_sdsNew("file");
 	pFileHandle->fullPageSize = fullPageSize;

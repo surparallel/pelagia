@@ -24,6 +24,13 @@
 
 #define Log_Switch 1
 
+enum _LockLevel
+{
+	LockLevel_1 = 1,
+	LockLevel_2,
+	LockLevel_3,
+	LockLevel_4
+};
 void plg_LocksCreate();
 void plg_LocksDestroy();
 char plg_LocksEntry(void* pSafeMutex);

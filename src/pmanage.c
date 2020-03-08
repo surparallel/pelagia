@@ -880,7 +880,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	CheckUsingThread(0);
 
 	PManage pManage = malloc(sizeof(Manage));
-	pManage->mutexHandle = plg_MutexCreateHandle(1);
+	pManage->mutexHandle = plg_MutexCreateHandle(LockLevel_1);
 
 	pManage->listDisk = plg_listCreate(LIST_MIDDLE);
 	listSetFreeMethod(pManage->listDisk, listFileFree);

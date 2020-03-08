@@ -81,7 +81,6 @@ typedef struct _CacheHandle
 	//transaction
 	ListDict* transaction_listDictPageCache;
 	ListDict* transaction_listDictTableInFile;
-	dict* transaction_createPage;
 	dict* transaction_delPage;
 
 	void* memoryListPage;
@@ -337,13 +336,21 @@ static unsigned int cache_CreatePage(void* pvCacheHandle,
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
 	unsigned int pageAddr = 0;
-	plg_DiskAllocPage(pCacheHandle->pDiskHandle, &pageAddr);
-	if (pageAddr == 0) {
-		return 0;
+	if (dictSize(pCacheHandle->transaction_delPage)) {
+
+		dictEntry* entry = plg_dictGetRandomKey(pCacheHandle->transaction_delPage);
+		if (entry) {
+			pageAddr = *(unsigned int*)dictGetKey(entry);
+			plg_dictDelete(pCacheHandle->transaction_delPage, dictGetKey(entry));
+		}
+	} else {
+		plg_DiskAllocPage(pCacheHandle->pDiskHandle, &pageAddr);
+		if (pageAddr == 0) {
+			return 0;
+		}
+
+		elog(log_fun, "cache_CreatePage.plg_DiskAllocPage:%i", pageAddr);
 	}
-
-	elog(log_fun, "cache_CreatePage.plg_DiskAllocPage:%i", pageAddr);
-
 	//calloc memory
 	*retPage = plg_MemListPop(pCacheHandle->memoryListPage);
 	memset(*retPage, 0, FULLSIZE(pCacheHandle->pageSize));
@@ -355,7 +362,7 @@ static unsigned int cache_CreatePage(void* pvCacheHandle,
 	pDiskPageHead->hitStamp = plg_GetCurrentSec();
 
 	//add to chache
-	plg_ListDictAdd(pCacheHandle->listPageCache, &pDiskPageHead->addr, *retPage);
+	plg_ListDictAdd(pCacheHandle->transaction_listDictPageCache, &pDiskPageHead->addr, *retPage);
 	return 1;
 }
 
@@ -367,8 +374,10 @@ static unsigned int cache_DelPage(void* pvCacheHandle, unsigned int pageAddr) {
 	PCacheHandle pCacheHandle = pvCacheHandle;
 	elog(log_fun, "cache_DelPage %i", pageAddr);
 	//add to transaction
-	dictAddWithUint(pCacheHandle->transaction_delPage, pageAddr, NULL);
 	plg_ListDictDel(pCacheHandle->transaction_listDictPageCache, &pageAddr);
+
+	//Temporary recycle pageAddr
+	dictAddWithUint(pCacheHandle->transaction_delPage, pageAddr, NULL);
 	return 1;
 }
 
@@ -468,12 +477,11 @@ void* plg_CacheCreateHandle(void* pDiskHandle) {
 	pCacheHandle->dictTableHandleDirty = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pCacheHandle->delPage = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
 
-	pCacheHandle->mutexHandle = plg_MutexCreateHandle(1);
+	pCacheHandle->mutexHandle = plg_MutexCreateHandle(LockLevel_1);
 	pCacheHandle->objectName = plg_sdsNew("cache");
 
 	pCacheHandle->transaction_listDictPageCache = plg_ListDictCreateHandle(&pageDictType, DICT_MIDDLE, LIST_MIDDLE, NULL, pCacheHandle);
 	pCacheHandle->transaction_listDictTableInFile = plg_ListDictCreateHandle(&tableHeadDictType, DICT_MIDDLE, LIST_MIDDLE, NULL, pCacheHandle);
-	pCacheHandle->transaction_createPage = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
 	pCacheHandle->transaction_delPage = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
 	pCacheHandle->memoryListPage = plg_MemListCreate(60, FULLSIZE(pCacheHandle->pageSize), 0);
 	pCacheHandle->memoryListTable = plg_MemListCreate(60, sizeof(TableInFile), 0);
@@ -492,7 +500,6 @@ void plg_CacheDestroyHandle(void* pvCacheHandle) {
 	plg_dictRelease(pCacheHandle->delPage);
 
 	plg_ListDictDestroyHandle(pCacheHandle->transaction_listDictPageCache);
-	plg_dictRelease(pCacheHandle->transaction_createPage);
 	plg_ListDictDestroyHandle(pCacheHandle->transaction_listDictTableInFile);
 	plg_dictRelease(pCacheHandle->transaction_delPage);
 
@@ -1095,15 +1102,24 @@ int plg_CacheCommit(void* pvCacheHandle) {
 	dictEntry* nodet_listDictPageCache;
 	while ((nodet_listDictPageCache = plg_dictNext(itert_listDictPageCache)) != NULL) {
 
+		//merge page
 		dictEntry* pcEntry = plg_dictFind(plg_ListDictDict(pCacheHandle->listPageCache), dictGetKey(nodet_listDictPageCache));
-		if (pcEntry != 0) {
-			elog(log_details, "plg_CacheCommit.tranPageId: %i", *(unsigned int*)dictGetKey(nodet_listDictPageCache));
+		void* page = 0;
+		if (pcEntry == 0) {
+			//calloc memory
+			page = plg_MemListPop(pCacheHandle->memoryListPage);
+			memcpy(page, plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
 
-			memcpy(plg_ListDictGetVal(pcEntry), plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
-			dictAddWithUint(pCacheHandle->pageDirty, *(unsigned int*)dictGetKey(nodet_listDictPageCache), NULL);
+			//add to chache
+			PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
+			plg_ListDictAdd(pCacheHandle->listPageCache, &pDiskPageHead->addr, page);
 		} else {
-			elog(log_error, "plg_CacheCommit.tranPageId: %i", *(unsigned int*)dictGetKey(nodet_listDictPageCache));
+			page = plg_ListDictGetVal(pcEntry);
+			memcpy(page, plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
 		}
+
+		elog(log_details, "plg_CacheCommit.tranPageId: %i", *(unsigned int*)dictGetKey(nodet_listDictPageCache));
+		dictAddWithUint(pCacheHandle->pageDirty, *(unsigned int*)dictGetKey(nodet_listDictPageCache), NULL);
 	}
 	plg_dictReleaseIterator(itert_listDictPageCache);
 	plg_ListDictEmpty(pCacheHandle->transaction_listDictPageCache);
@@ -1124,9 +1140,6 @@ int plg_CacheCommit(void* pvCacheHandle) {
 	}
 	plg_dictReleaseIterator(itert_listDictTableInFile);
 	plg_ListDictEmpty(pCacheHandle->transaction_listDictTableInFile);
-
-	//createpage
-	plg_dictEmpty(pCacheHandle->transaction_createPage, NULL);
 
 	//delpage
 	dictIterator* itert_delpage = plg_dictGetSafeIterator(pCacheHandle->transaction_delPage);
@@ -1158,17 +1171,6 @@ int plg_CacheRollBack(void* pvCacheHandle) {
 	plg_ListDictEmpty(pCacheHandle->transaction_listDictPageCache);
 	plg_ListDictEmpty(pCacheHandle->transaction_listDictTableInFile);
 	plg_dictEmpty(pCacheHandle->transaction_delPage, NULL);
-
-	//createpage
-	dictIterator* itert_createPage = plg_dictGetSafeIterator(pCacheHandle->transaction_createPage);
-	dictEntry* nodet_createPage;
-	while ((nodet_createPage = plg_dictNext(itert_createPage)) != NULL) {
-
-		plg_ListDictDel(pCacheHandle->listPageCache, dictGetKey(nodet_createPage));
-		plg_DiskFreePage(pCacheHandle->pDiskHandle, *(unsigned int*)dictGetKey(nodet_createPage));
-	}
-	plg_dictReleaseIterator(itert_createPage);
-	plg_dictEmpty(pCacheHandle->transaction_createPage, NULL);
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 
 	return 1;
@@ -1277,9 +1279,9 @@ void plg_CacheFlush(void* pvCacheHandle) {
 	dictIterator* iter_delPage = plg_dictGetSafeIterator(pCacheHandle->delPage);
 	dictEntry* node_delPage;
 	while ((node_delPage = plg_dictNext(iter_delPage)) != NULL) {
-
 		plg_ListDictDel(pCacheHandle->listPageCache, dictGetKey(node_delPage));
 		plg_dictDelete(pCacheHandle->pageDirty, dictGetKey(node_delPage));
+
 		plg_DiskFreePage(pCacheHandle->pDiskHandle, *(unsigned int*)dictGetKey(node_delPage));
 	}
 	plg_dictReleaseIterator(iter_delPage);

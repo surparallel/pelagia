@@ -42,7 +42,7 @@ typedef struct _EventQueue
 
 void* plg_eqCreate() {
 	PEventQueue pEventQueue = malloc(sizeof(EventQueue));
-	pEventQueue->mutexHandle = plg_MutexCreateHandle(4);
+	pEventQueue->mutexHandle = plg_MutexCreateHandle(LockLevel_4);
 
 	if (sem_init(&pEventQueue->semaphore, PTHREAD_PROCESS_PRIVATE, 0) != 0) {
 		free(pEventQueue);

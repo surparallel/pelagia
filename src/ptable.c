@@ -1749,8 +1749,9 @@ static unsigned int table_InsideIsKeyExist(void* pvTableHandle, sds key, ARRAY_S
 
 /*
 If you delete and modify at most 6, at least 1
+noSet:Prevent nesting caused by deleting collections
 */
-static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned short keySize, ARRAY_SKIPLISTPOINT* pSkipListPoint) {
+static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned short keySize, ARRAY_SKIPLISTPOINT* pSkipListPoint, unsigned int noSet) {
 
 	//init for loop
 	PTableHandle pTableHandle = pvTableHandle;
@@ -1830,7 +1831,7 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		if (pDiskTableKey->valueType == VALUE_BIGVALUE) {
 			PDiskKeyBigValue pDiskKeyBigValue = (PDiskKeyBigValue)vluePtr;
 			table_DelBigValue(pTableHandle, pDiskKeyBigValue);
-		} else if (pDiskTableKey->valueType == VALUE_SETHEAD) {
+		} else if (!noSet && pDiskTableKey->valueType == VALUE_SETHEAD) {
 			PTableInFile pTableInFile = (PTableInFile)vluePtr;
 			PTableInFile pRecTableInFile = pTableHandle->pTableInFile;
 			pTableHandle->pTableInFile = pTableInFile;
@@ -1981,6 +1982,25 @@ unsigned int plg_TableAdd(void* pvTableHandle, sds sdsKey, void* value, unsigned
 注意这里只是table的删除，不包括cache的删除。
 没有删除cahce就删除table将导致cache无法删除
 */
+unsigned int plg_TableDelForSet(void* pvTableHandle, sds sdsKey) {
+
+	//find skip list point
+	PTableHandle pTableHandle = pvTableHandle;
+	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = { { 0 } };
+	if (plg_TableFindWithName(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint, plg_TablePrevFindCmpFun) == 0) {
+		return 0;
+	}
+
+	if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint, 1) == 0) {
+		return 0;
+	}
+	return 1;
+}
+
+/*
+注意这里只是table的删除，不包括cache的删除。
+没有删除cahce就删除table将导致cache无法删除
+*/
 unsigned int plg_TableDel(void* pvTableHandle, sds sdsKey) {
 
 	//find skip list point
@@ -1990,7 +2010,7 @@ unsigned int plg_TableDel(void* pvTableHandle, sds sdsKey) {
 		return 0;
 	}
 
-	if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint) == 0) {
+	if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint, 0) == 0) {
 		return 0;
 	}
 	return 1;
@@ -2005,7 +2025,7 @@ static unsigned int table_DelWithLen(void* pvTableHandle, char* key, unsigned sh
 		return 0;
 	}
 
-	if (table_InsideDel(pTableHandle, key, keyLen, &skipListPoint) == 0) {
+	if (table_InsideDel(pTableHandle, key, keyLen, &skipListPoint, 0) == 0) {
 		return 0;
 	}
 	return 1;
@@ -2167,7 +2187,7 @@ unsigned int plg_TableAddWithAlter(void* pvTableHandle, sds sdsKey, char valueTy
 	}
 
 	//del
-	if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint) == 0) {
+	if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint, 0) == 0) {
 		return 0;
 	}
 
@@ -2190,7 +2210,7 @@ unsigned int table_InsideAddWithAlter(void* pvTableHandle, char* Key, unsigned s
 	}
 
 	//del
-	if (table_InsideDel(pTableHandle, Key, keyLen, &skipListPoint) == 0) {
+	if (table_InsideDel(pTableHandle, Key, keyLen, &skipListPoint, 0) == 0) {
 		return 0;
 	}
 
@@ -2281,7 +2301,7 @@ unsigned int plg_TableRename(void* pvTableHandle, sds sdsKey, sds sdsNewKey) {
 			}
 
 			//del
-			if (table_InsideDel(pTableHandle, sdsNewKey, plg_sdsLen(sdsNewKey), &skipListPointAlter) == 0) {
+			if (table_InsideDel(pTableHandle, sdsNewKey, plg_sdsLen(sdsNewKey), &skipListPointAlter, 0) == 0) {
 				return 0;
 			}
 
@@ -2290,7 +2310,7 @@ unsigned int plg_TableRename(void* pvTableHandle, sds sdsKey, sds sdsNewKey) {
 		} while (0);
 
 		//del
-		if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint) == 0) {
+		if (table_InsideDel(pTableHandle, sdsKey, plg_sdsLen(sdsKey), &skipListPoint, 0) == 0) {
 			return 0;
 		}
 
@@ -3086,6 +3106,7 @@ unsigned int plg_TableSetRand(void* pvTableHandle, sds sdsKey, void* pInDictExte
 	return r;
 }
 
+//for set Multiple
 void plg_TableSetDel(void* pvTableHandle, sds sdsKey, void* pValueDictExten) {
 
 	PTableHandle pTableHandle = pvTableHandle;
@@ -3115,7 +3136,7 @@ void plg_TableSetDel(void* pvTableHandle, sds sdsKey, void* pValueDictExten) {
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, sdsKey)) {
+						if (0 == plg_TableDelForSet(pTableHandle, sdsKey)) {
 							assert(0);
 						}
 					}
@@ -3128,6 +3149,7 @@ void plg_TableSetDel(void* pvTableHandle, sds sdsKey, void* pValueDictExten) {
 	pTableHandle->pTableInFile = pTableInFile;	
 }
 
+//for set move
 static void table_InsideSetDel(void* pvTableHandle, sds sdsKey, sds sdsValue) {
 
 	PTableHandle pTableHandle = pvTableHandle;
@@ -3157,7 +3179,7 @@ static void table_InsideSetDel(void* pvTableHandle, sds sdsKey, sds sdsValue) {
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, sdsKey)) {
+						if (0 == plg_TableDelForSet(pTableHandle, sdsKey)) {
 							assert(0);
 						}
 					}
@@ -3200,7 +3222,7 @@ unsigned int plg_TableSetPop(void* pvTableHandle, sds sdsKey, void* pInDictExten
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, sdsKey)) {
+						if (0 == plg_TableDelForSet(pTableHandle, sdsKey)) {
 							assert(0);
 						}
 					}

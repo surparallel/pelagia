@@ -844,7 +844,7 @@ static void plg_DiskHandleInit(void* pvDiskHandle, char* filePath, void* pManage
 	PDiskHandle pDiskHandle = pvDiskHandle;
 	pDiskHandle->pageDisk = plg_dictCreate(plg_DefaultNoneDictPtr(), NULL, DICT_MIDDLE);
 	pDiskHandle->pageDirty = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
-	pDiskHandle->mutexHandle = plg_MutexCreateHandle(2);
+	pDiskHandle->mutexHandle = plg_MutexCreateHandle(LockLevel_2);
 	pDiskHandle->objName = plg_sdsNew("disk");
 	pDiskHandle->allWeight = 0;
 	pDiskHandle->tableHandle = plg_TableCreateHandle(&pDiskHandle->diskHeadBody->tableInFile, pDiskHandle, pDiskHandle->diskHead->pageSize, NULL, &tableHandleCallBack);

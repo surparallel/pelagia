@@ -36,10 +36,10 @@
 static void* pManage = 0;
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"3"
+#define VERSION_MINOR	"5"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	3
+#define VERSION_NUMMINOR	5
 
 unsigned int plg_NVersion() {
 	return VERSION_NUMMINOR;
