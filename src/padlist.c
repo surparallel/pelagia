@@ -170,15 +170,19 @@ listNode *plg_listInsertNode(list *list, listNode *old_node, void *value, int af
  * This function can't fail. */
 void plg_listDelNode(list *list, listNode *node)
 {
-    if (node->prev)
-        node->prev->next = node->next;
-    else
-        list->head = node->next;
-    if (node->next)
-        node->next->prev = node->prev;
-    else
-        list->tail = node->prev;
-	if (list->lfree) list->lfree(node->value);
+	if (node->prev){
+		node->prev->next = node->next;
+	} else {
+		list->head = node->next;
+	}
+        
+	if (node->next){
+		node->next->prev = node->prev;
+	} else {
+		list->tail = node->prev;
+	}
+        
+	if (list->lfree) { list->lfree(node->value); }
 	plg_MemPoolFree(list->memoryPool, node);//free(node);
     list->len--;
 }
