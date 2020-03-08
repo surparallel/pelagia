@@ -1,4 +1,4 @@
-# pelagia ![C/C++ CI](https://github.com/surparallel/pelagia/workflows/C/C++%20CI/badge.svg)
+# pelagia ![C Ubuntu](https://github.com/surparallel/pelagia/workflows/C%20Ubuntu/badge.svg) ![C Macos](https://github.com/surparallel/pelagia/workflows/C%20Macos/badge.svg)
 
 ## Introduce
 

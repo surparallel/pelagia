@@ -42,7 +42,7 @@ unsigned int plg_DiskInsideTableAdd(void* pDiskHandle, void* tableName, void* va
 unsigned int plg_DiskInsideTableDel(void* pDiskHandle, void* tableName);
 int plg_DiskInsideTableFind(void* pDiskHandle, void* tableName, void* pDictExten);
 
-unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCallBack);
+extern unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCallBack);
 void plg_DiskPrintTableName(void* pDiskHandle);
 void plg_DiskAddTableWeight(void* pDiskHandle, unsigned int weight);
 unsigned int plg_DiskGetTableAllWeight(void* pDiskHandle);

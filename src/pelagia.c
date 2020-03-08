@@ -245,7 +245,6 @@ static int IssueCommand(int argc, char **argv) {
 		PRFESA();
 	}
 
-	NOTUSED(plg_DiskFlushDirtyToFile);
 	return 1;
 }
 
