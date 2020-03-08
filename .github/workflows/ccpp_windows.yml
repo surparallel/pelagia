@@ -14,4 +14,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: "cd msvcs && msbuild pelagia.sln"
+      run: "cd msvcs & msbuild pelagia.sln"
