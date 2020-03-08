@@ -1,4 +1,4 @@
-name: C Macos
+name: C Windows
 
 on:
   push:
@@ -9,9 +9,9 @@ on:
 jobs:
   build:
 
-    runs-on: macos-latest
+    runs-on: windows-latest
     
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: "cd src && make macosx"
+      run: 'cd msvcs && msbuild pelagia.sln'
