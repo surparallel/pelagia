@@ -858,9 +858,13 @@ static void CallBackDestroyFile(void* value) {
 			pManageDestroyForFile.fun = CompleteDestroyFile;
 			pManageDestroyForFile.ptr = pManageDestroy;
 			pManageDestroyForFile.pManage = pManageDestroy->pManage;
-			pManageDestroyForFile.type = 2;
-			void* eQueueHandle = plg_JobEqueueHandle(plg_FileJobHandle(plg_DiskFileHandle(listNodeValue(diskNode))));
-			plg_JobSendOrder(eQueueHandle, "destroy", (char*)&pManageDestroyForFile, sizeof(ManageDestroy));
+			pManageDestroyForFile.type = 2;		
+			if (plg_DiskFileHandle(listNodeValue(diskNode))) {
+				void* eQueueHandle = plg_JobEqueueHandle(plg_FileJobHandle(plg_DiskFileHandle(listNodeValue(diskNode))));
+				plg_JobSendOrder(eQueueHandle, "destroy", (char*)&pManageDestroyForFile, sizeof(ManageDestroy));
+			} else {
+				plg_JobSendOrder(plg_JobEqueueHandle(pManageDestroy->pManage->pJobHandle), "destroycount", (char*)&pManageDestroyForFile, sizeof(ManageDestroy));
+			}
 		}
 		plg_listReleaseIterator(diskIter);
 	}

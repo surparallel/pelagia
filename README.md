@@ -25,7 +25,6 @@ Linux&Mac installation is very simple, just download the source package and deco
     tar zxf ...
     cd pelagia/src
     make linux
-    make install
     
 ##  Install on Mac OS X
 
@@ -33,7 +32,6 @@ Linux&Mac installation is very simple, just download the source package and deco
     tar zxf ...
     cd pelagia/src
     make macosx
-    make install
     
 ## Install on window system
 

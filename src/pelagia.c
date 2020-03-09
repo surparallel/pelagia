@@ -36,10 +36,10 @@
 static void* pManage = 0;
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"7"
+#define VERSION_MINOR	"8"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	7
+#define VERSION_NUMMINOR	8
 
 unsigned int plg_NVersion() {
 	return VERSION_NUMMINOR;
@@ -364,9 +364,6 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 int PMIAN(int argc, char **argv) {
 	plg_LogInit();
 	printf("Welcome to pelgia!\n");
-
-	plg_LogSetErrFile();
-	plg_LogSetMaxLevel(log_all);
 
 	elog(log_warn, "--------Welcome to pelgia!--------");
 	
