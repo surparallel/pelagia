@@ -59,6 +59,8 @@ PELAGIA_API void* plg_JobCreateFunPtr(RoutingFun funPtr);
 PELAGIA_API void* plg_JobCreateLua(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
+PELAGIA_API void plg_JobSetDonotFlush(short value);
+PELAGIA_API void plg_JobSetDonotCommit(short value);
 
 //remotecall
 PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen);

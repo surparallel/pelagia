@@ -36,10 +36,10 @@
 static void* pManage = 0;
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"8"
+#define VERSION_MINOR	"9"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	8
+#define VERSION_NUMMINOR	9
 
 unsigned int plg_NVersion() {
 	return VERSION_NUMMINOR;
@@ -241,7 +241,7 @@ static int IssueCommand(int argc, char **argv) {
 	else if (!strcasecmp(command, "simple")) {
 		plg_simple();
 	}
-	else if (!strcasecmp(command, "fe")) {
+	else if (!strcasecmp(command, "pfs")) {
 		PRFESA();
 	}
 

@@ -17,8 +17,8 @@
 * along with this program.If not, see < https://www.gnu.org/licenses/>.
 */
 
-#ifndef __TEST_PRFESA_H
-#define __TEST_PRFESA_H
+#ifndef __PRFESA_H
+#define __PRFESA_H
 
 void PRFESA(void);
 

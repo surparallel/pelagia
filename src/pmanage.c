@@ -835,7 +835,7 @@ static void CompleteDestroyFile(void* value) {
 	pManageDestroy->pManage->runStatus = 0;
 	manage_InternalDestoryHandle(pManageDestroy->pManage, pManageDestroy->fun, pManageDestroy->ptr, pManageDestroy->pEvent);
 	free(value);
-	plg_JobSExitThread(2);
+	plg_JobSetExitThread(2);
 }
 
 //to Destroy file

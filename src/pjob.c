@@ -125,7 +125,9 @@ typedef struct _JobHandle
 	unsigned int allWeight;
 	list* userEvent;
 	list* userProcess;
-	char exitThread;
+	short exitThread;
+	short donotFlush;
+	short donotCommit;
 
 	list* tranCache;
 	list* tranFlush;
@@ -230,11 +232,25 @@ void* job_ManageEqueue() {
 	return pJobHandle->pManageEqueue;
 }
 
-void plg_JobSExitThread(char value) {
+void plg_JobSetExitThread(char value) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	pJobHandle->exitThread = value;
+}
+
+void plg_JobSetDonotFlush(short value) {
+
+	CheckUsingThread(NORET);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	pJobHandle->donotFlush = value;
+}
+
+void plg_JobSetDonotCommit(short value) {
+
+	CheckUsingThread(NORET);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	pJobHandle->donotCommit = value;
 }
 
 void job_Flush(void* pvJobHandle) {
@@ -278,7 +294,7 @@ void job_Rollback(void* pvJobHandle) {
 static int OrderDestroy(char* value, short valueLen) {
 	elog(log_fun, "job.OrderDestroy");
 	plg_JobSendOrder(job_ManageEqueue(), "destroycount", value, valueLen);
-	plg_JobSExitThread(1);
+	plg_JobSetExitThread(1);
 	return 1;
 }
 
@@ -286,7 +302,7 @@ static int OrderDestroyJob(char* value, short valueLen) {
 	NOTUSED(value);
 	NOTUSED(valueLen);
 	elog(log_fun, "job.OrderDestroyJob");
-	plg_JobSExitThread(1);
+	plg_JobSetExitThread(1);
 	return 1;
 }
 
@@ -294,15 +310,22 @@ static int OrderJobFinish(char* value, short valueLen) {
 	NOTUSED(value);
 	NOTUSED(valueLen);
 	PJobHandle pJobHandle = job_Handle();
-	job_Commit(pJobHandle);
 
-	unsigned long long stamp = plg_GetCurrentSec();
-	if (pJobHandle->flush_count > pJobHandle->flush_lastCount++) {
-		pJobHandle->flush_lastCount = 0;
-		job_Flush(pJobHandle);
-	} else if (pJobHandle->flush_lastStamp - stamp > pJobHandle->flush_interval) {
-		pJobHandle->flush_lastStamp = stamp;
-		job_Flush(pJobHandle);
+	if (!pJobHandle->donotCommit) {
+		job_Commit(pJobHandle);
+		pJobHandle->donotCommit = 0;
+	}
+	
+	if (!pJobHandle->donotFlush) {
+		unsigned long long stamp = plg_GetCurrentSec();
+		if (pJobHandle->flush_count > pJobHandle->flush_lastCount++) {
+			pJobHandle->flush_lastCount = 0;
+			job_Flush(pJobHandle);
+		} else if (pJobHandle->flush_lastStamp - stamp > pJobHandle->flush_interval) {
+			pJobHandle->flush_lastStamp = stamp;
+			job_Flush(pJobHandle);
+		}
+		pJobHandle->donotFlush = 0;
 	}
 	return 1;
 }
@@ -350,6 +373,8 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->pManageEqueue = pManageEqueue;
 	pJobHandle->allWeight = 0;
 	pJobHandle->exitThread = 0;
+	pJobHandle->donotFlush = 0;
+	pJobHandle->donotCommit = 0;
 
 	pJobHandle->flush_lastStamp = plg_GetCurrentSec();
 	pJobHandle->flush_interval = 5*60;

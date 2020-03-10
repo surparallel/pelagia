@@ -50,7 +50,7 @@ void plg_JobPrintOrder(void* pvJobHandle);
 
 //Operating system interface
 void* job_Handle();
-void plg_JobSExitThread(char value);
+void plg_JobSetExitThread(char value);
 void* job_ManageEqueue();
 void plg_JobSPrivate(void* pJobHandle, void* privateData);
 void* plg_JobGetPrivate();

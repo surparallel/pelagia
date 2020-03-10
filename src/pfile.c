@@ -51,7 +51,7 @@ void* plg_FileJobHandle(void* pvFileHandle) {
 static int OrderDestroy(char* value, short valueLen) {
 	elog(log_fun, "file.OrderDestroy");
 	plg_JobSendOrder(job_ManageEqueue(), "destroycount", value, valueLen);
-	plg_JobSExitThread(1);
+	plg_JobSetExitThread(1);
 	return 1;
 }
 
