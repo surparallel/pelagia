@@ -19,6 +19,6 @@
 #ifndef __FILESYS_H
 #define __FILESYS_H
 
-unsigned char plg_SysFileExits(char* filePath);
-unsigned char plg_SysSetFileLength(void* file, unsigned long long len);
+short plg_SysFileExits(char* filePath);
+short plg_SysSetFileLength(void* file, unsigned long long len);
 #endif

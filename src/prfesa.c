@@ -203,7 +203,7 @@ void PRFESA(void) {
 	}
 
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 
 	printf("\n-----------------manage destroy!-%f----------------\n", (double)(plg_GetCurrentMilli() - time) / 1000);
 }

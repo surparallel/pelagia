@@ -76,12 +76,19 @@ unsigned int plg_FileInsideFlushPage(void* pvFileHandle, unsigned int* pageAddr,
 		unsigned long long fileLength = ftell_t(pFileHandle->fileHandle);
 		unsigned long long newFileLength = pageAddr[l] * pFileHandle->fullPageSize + pFileHandle->fullPageSize;
 		if (fileLength < newFileLength) {
-			plg_SysSetFileLength(pFileHandle->fileHandle, newFileLength);
+			if (0 == plg_SysSetFileLength(pFileHandle->fileHandle, newFileLength)) {
+				elog(log_error, "plg_FileInsideFlushPage.plg_SysSetFileLength!");
+				return 0;
+			}
 		}
 
 		//write to file ftruncate
 		fseek_t(pFileHandle->fileHandle, pageAddr[l] * pFileHandle->fullPageSize, SEEK_SET);
-		fwrite(pageArrary[l], 1, pFileHandle->fullPageSize, pFileHandle->fileHandle);
+		unsigned long long retWrite = fwrite(pageArrary[l], 1, pFileHandle->fullPageSize, pFileHandle->fileHandle);
+		if (retWrite != pFileHandle->fullPageSize) {
+			elog(log_error, "plg_FileInsideFlushPage.fwrite!");
+			return 0;
+		}
 	}
 
 	//close file
@@ -124,7 +131,7 @@ void* plg_FileCreateHandle(char* fullPath, void* pManageEqueue, unsigned int ful
 	pFileHandle->objName = plg_sdsNew("file");
 	pFileHandle->fullPageSize = fullPageSize;
 	pFileHandle->memoryList = plg_MemListCreate(60, fullPageSize, 1);
-	plg_JobSPrivate(pFileHandle->pJobHandle, pFileHandle);
+	plg_JobSetPrivate(pFileHandle->pJobHandle, pFileHandle);
 	//order process
 	plg_JobAddAdmOrderProcess(pFileHandle->pJobHandle, "destroy", plg_JobCreateFunPtr(OrderDestroy));
 	plg_JobAddAdmOrderProcess(pFileHandle->pJobHandle, "flush", plg_JobCreateFunPtr(OrderFlushPage));
@@ -173,7 +180,6 @@ unsigned int file_InsideLoadPageFromFile(void* pvFileHandle, unsigned int pageSi
 		elog(log_error, "file_InsideLoadPageFromFile.fread!");
 		return 0;
 	}
-	fflush(pFileHandle->fileHandle);
 	return 1;
 }
 

@@ -32,15 +32,18 @@ typedef struct _SafeMutex
 
 static pthread_key_t exclusionZone;
 static pthread_key_t environmental;
+static pthread_key_t logfile;
 
 void plg_LocksCreate() {
 	pthread_key_create(&exclusionZone, NULL);
 	pthread_key_create(&environmental, NULL);
+	pthread_key_create(&logfile, NULL);
 }
 
 void plg_LocksDestroy() {
 	pthread_key_delete(exclusionZone);
 	pthread_key_delete(environmental);
+	pthread_key_delete(logfile);
 }
 
 char plg_LocksEntry(void* pvSafeMutex) {
@@ -110,6 +113,14 @@ void plg_LocksSetSpecific(void* ptr) {
 
 void* plg_LocksGetSpecific() {
 	return pthread_getspecific(environmental);
+}
+
+void plg_LocksSetLogFile(void* ptr) {
+	pthread_setspecific(logfile, ptr);
+}
+
+void* plg_LocksGetLogFile() {
+	return pthread_getspecific(logfile);
 }
 
 void* plg_MutexCreateHandle(unsigned int rank) {

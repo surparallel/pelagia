@@ -22,6 +22,7 @@
 #include "psds.h"
 #include "plocks.h"
 #include "ptimesys.h"
+#include "padlist.h"
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line);
 static ErrFun _errFun = plg_LogErrFunPrintf;
@@ -30,10 +31,17 @@ static short _setMinlevel = log_error;
 
 static char* _outDir = "./";
 static char* _outFile = " log";
-static unsigned long long fileSec;
 
 static void* mutexHandle = NULL;
-static FILE *outputFile;
+static list* listHandle;
+
+typedef struct _LogFileHandle
+{
+	unsigned long long fileSec;
+	FILE *outputFile;
+	unsigned long long threadFlag;
+}*PLogFileHandle, LogFileHandle;
+
 
 const char* GetLevelName(int level) {
 	if (level == log_error) {
@@ -181,14 +189,49 @@ void plg_LogSetOutFile(char* outFile) {
 	_outFile = outFile;
 }
 
+static void CreateLogFile(PLogFileHandle pLogFileHandle) {
+	if (pLogFileHandle->outputFile) {
+		fclose(pLogFileHandle->outputFile);
+	}
+
+	sds day = plg_sdsCatFmt(plg_sdsEmpty(), "%U", plg_GetCurrentSec());
+	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%i_%U", _outDir, _outFile, day, pLogFileHandle->threadFlag);
+	pLogFileHandle->outputFile = fopen_t(fielPath, "ab");
+
+	if (!pLogFileHandle->outputFile) {
+		pLogFileHandle->outputFile = NULL;
+		plg_LogSetErrCallBack(NULL);
+		return;
+	}
+
+	plg_sdsFree(fielPath);
+	plg_sdsFree(day);
+	pLogFileHandle->fileSec = plg_GetCurrentSec();
+}
+
 static void plg_LogErrFunFile(int level, const char* describe, const char* time, const char* fileName, int line) {
 
-	unsigned long long csec = plg_GetCurrentSec();
-	if (csec - fileSec > 60 * 60 * 24) {
-		plg_LogSetErrFile();
+	PLogFileHandle pLogFileHandle = plg_LocksGetLogFile();
+	if (pLogFileHandle == 0) {
+		pLogFileHandle = malloc(sizeof(LogFileHandle));
+		memset(pLogFileHandle, 0, sizeof(LogFileHandle));
+
+		plg_MutexLock(mutexHandle);
+		plg_listAddNodeHead(listHandle, pLogFileHandle);
+		plg_MutexUnlock(mutexHandle);
+
+		pLogFileHandle->threadFlag = (unsigned long long)pLogFileHandle;
+		CreateLogFile(pLogFileHandle);
+
+		plg_LocksSetLogFile(pLogFileHandle);
 	}
-	fprintf(outputFile, "%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
-	fflush(outputFile);
+
+	unsigned long long csec = plg_GetCurrentSec();
+	if (csec - pLogFileHandle->fileSec > 60 * 60 * 24) {
+		CreateLogFile(pLogFileHandle);
+	}
+	fprintf(pLogFileHandle->outputFile, "%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
+	fflush(pLogFileHandle->outputFile);
 }
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line) {
@@ -219,49 +262,40 @@ void plg_LogSetErrCallBack(ErrFun errFun) {
 	
 }
 
-void plg_LogInit() {
-	mutexHandle = plg_MutexCreateHandle(LockLevel_4);
-}
-
-void plg_LogDestroy() {
-	plg_MutexDestroyHandle(mutexHandle);
-}
-
 void plg_LogSetError(int level, char* describe, const char* fileName, int line) {
 
-	plg_MutexLock(mutexHandle);
 	if (_errFun != NULL) {
-		char* time = plg_LogGetTimForm();
+		sds time = plg_sdsCatFmt(plg_sdsEmpty(), "%U", plg_GetCurrentSec());
 		_errFun(level, describe, time, fileName, line);
 		plg_sdsFree(time);
 	}
-	plg_MutexUnlock(mutexHandle);
 }
 
 void plg_LogSetErrFile() {
-
-	if (outputFile) {
-		fclose(outputFile);
-	}
-
-	sds day = plg_LogGetTimFormDay();
-	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s%s", _outDir, _outFile, day);
-	outputFile = fopen_t(fielPath, "a");
-
-	if (!outputFile) {
-		outputFile = NULL;
-		plg_LogSetErrCallBack(NULL);
-		return;
-	}
-
-	plg_sdsFree(fielPath);
-	plg_sdsFree(day);
-	fileSec = plg_GetCurrentSec();
-
 	plg_LogSetErrCallBack(plg_LogErrFunFile);
 }
 
 void plg_LogSetErrPrint() {
 
 	plg_LogSetErrCallBack(plg_LogErrFunPrintf);
+}
+
+void plg_LogInit() {
+	listHandle = plg_listCreate(LIST_MIDDLE);
+	mutexHandle = plg_MutexCreateHandle(LockLevel_4);
+}
+
+void plg_LogDestroy() {
+
+	listIter* iter = plg_listGetIterator(listHandle, AL_START_HEAD);
+	listNode* node;
+	while ((node = plg_listNext(iter)) != NULL) {
+		PLogFileHandle pLogFileHandle = listNodeValue(node);
+		fclose(pLogFileHandle->outputFile);
+		free(pLogFileHandle);
+	}
+	plg_listReleaseIterator(iter);
+	plg_listRelease(listHandle);
+
+	plg_MutexDestroyHandle(mutexHandle);
 }

@@ -23,6 +23,7 @@
 
 
 //Internal API
+typedef void(*AfterDestroyFun)(void* value);
 char* plg_MngGetDBPath(void* pManage);
 void plg_MngAddUserEvent(void* pManage, char* nevent, short neventLen, void* equeue);
 void* plg_MngJobHandle(void* pManage);
@@ -33,4 +34,5 @@ int plg_MngInterAllocJob(void* pManage, unsigned int core, char* fileName);
 
 void plg_MngOutJson(char* fileName, char* outJson);
 void plg_MngFromJson(char* fromJson);
+void plg_MngSendExit(void* pvManage);
 #endif

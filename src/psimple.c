@@ -90,7 +90,7 @@ void plg_simple() {
 
 	//Finish
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 	printf("\n-----------------manage destroy!-----------------\n");
 
 }
@@ -191,7 +191,7 @@ void plg_simple2() {
 
 	//Finish
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 	printf("\n-----------------manage destroy!-----------------\n");
 
 }

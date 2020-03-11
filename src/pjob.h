@@ -52,7 +52,7 @@ void plg_JobPrintOrder(void* pvJobHandle);
 void* job_Handle();
 void plg_JobSetExitThread(char value);
 void* job_ManageEqueue();
-void plg_JobSPrivate(void* pJobHandle, void* privateData);
+void plg_JobSetPrivate(void* pJobHandle, void* privateData);
 void* plg_JobGetPrivate();
 
 void plg_JobTableMembersWithJson(void* table, unsigned short tableLen, void* jsonRoot);

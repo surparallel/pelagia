@@ -36,10 +36,10 @@
 static void* pManage = 0;
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"9"
+#define VERSION_MINOR	"11"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	9
+#define VERSION_NUMMINOR	11
 
 unsigned int plg_NVersion() {
 	return VERSION_NUMMINOR;
@@ -105,7 +105,7 @@ static int IssueCommand(int argc, char **argv) {
 	}
 	else if (!strcasecmp(command, "destory")) {
 		if (pManage != 0) {
-			plg_MngDestoryHandle(pManage, 0, 0);
+			plg_MngDestoryHandle(pManage);
 		}
 	}
 	else if (!strcasecmp(command, "star")) {
@@ -364,8 +364,6 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 int PMIAN(int argc, char **argv) {
 	plg_LogInit();
 	printf("Welcome to pelgia!\n");
-
-	elog(log_warn, "--------Welcome to pelgia!--------");
 	
 	if (plg_ReadArgFromParam(argc, argv))
 		return plg_Interactive(IssueCommand);

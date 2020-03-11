@@ -35,7 +35,7 @@
 
 /* 
 Glob-style pattern matching. 
-nocase: 不区分大小写
+nocase: Case insensitive
 */
 int plg_StringMatchLen(const char *pattern, int patternLen,
 	const char *string, int stringLen, int nocase)

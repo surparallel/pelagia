@@ -22,10 +22,8 @@
 #include "papidefine.h"
 
 //user manage API
-typedef void(*AfterDestroyFun)(void* value);
-
 PELAGIA_API void* plg_MngCreateHandle(char* dbPath, short dbPahtLen);
-PELAGIA_API void plg_MngDestoryHandle(void* pManage, AfterDestroyFun fun, void* ptr);
+PELAGIA_API void plg_MngDestoryHandle(void* pManage);
 PELAGIA_API int plg_MngStarJob(void* pManage);
 PELAGIA_API void plg_MngStopJob(void* pManage);
 PELAGIA_API int plg_MngAddOrder(void* pManage, char* nameOrder, short nameOrderLen, void* ptrProcess);
@@ -64,7 +62,7 @@ PELAGIA_API void plg_JobSetDonotCommit(short value);
 
 //remotecall
 PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen);
-PELAGIA_API char* plg_JobCurrentOrder();
+PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);
 PELAGIA_API void plg_JobAddTimer(unsigned int timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen);
 
 //namorl db

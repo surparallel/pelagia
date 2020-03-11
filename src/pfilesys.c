@@ -21,7 +21,7 @@
 #include "pfilesys.h"
 #include "pelog.h"
 
-unsigned char plg_SysSetFileLength(void* vfile, unsigned long long len)
+short plg_SysSetFileLength(void* vfile, unsigned long long len)
 {
 	elog(log_fun, "plg_SysSetFileLength");
 	FILE* file = vfile;
@@ -36,7 +36,7 @@ unsigned char plg_SysSetFileLength(void* vfile, unsigned long long len)
 #endif
 }
 
-unsigned char plg_SysFileExits(char* filePath) {
+short plg_SysFileExits(char* filePath) {
 	FILE *outputFile;
 	outputFile = fopen_t(filePath, "rb");
 	if (!outputFile) {

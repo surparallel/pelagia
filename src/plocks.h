@@ -42,6 +42,7 @@ int plg_MutexLock(void* pSafeMutex);
 int plg_MutexUnlock(void* pSafeMutex);
 void plg_MutexThreadDestroy();
 
+
 #define MutexLock(lockObj, lockName) do {\
 if(0==plg_LocksEntry(lockObj)){\
 		assert(0);sds x = plg_sdsCatPrintf(plg_sdsEmpty(),"entry mutex %p %s!", lockObj, lockName);\
@@ -60,4 +61,6 @@ plg_MutexUnlock(lockObj);}\
 
 void plg_LocksSetSpecific(void* ptr);
 void* plg_LocksGetSpecific();
+void plg_LocksSetLogFile(void* ptr);
+void* plg_LocksGetLogFile();
 #endif

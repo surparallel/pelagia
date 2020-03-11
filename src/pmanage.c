@@ -100,6 +100,9 @@ typedef struct _Manage
 	sds luaDllPath;
 	sds luaPath;
 	sds dllPath;
+
+	//event for exit;
+	void* pEvent;
 } *PManage, Manage;
 
 static void listSdsFree(void *ptr) {
@@ -160,7 +163,6 @@ typedef struct _ManageDestroy
 	AfterDestroyFun fun;
 	void* ptr;
 	char type;
-	void* pEvent;
 }*PManageDestroy, ManageDestroy;
 
 char* plg_MngGetDBPath(void* pvManage) {
@@ -795,7 +797,7 @@ static int OrderDestroyCount(char* value, short valueLen) {
 	return 1;
 }
 
-static void manage_InternalDestoryHandle(void* pvManage, AfterDestroyFun fun, void* ptr, void* pEvent) {
+static void manage_InternalDestoryHandle(void* pvManage) {
 
 	PManage pManage = pvManage;
 	plg_MutexDestroyHandle(pManage->mutexHandle);
@@ -815,15 +817,8 @@ static void manage_InternalDestoryHandle(void* pvManage, AfterDestroyFun fun, vo
 	plg_sdsFree(pManage->luaDllPath);
 	plg_sdsFree(pManage->luaPath);
 	plg_sdsFree(pManage->dllPath);
+	
 	free(pManage);
-	//user callback;
-	if (fun) {
-		fun(ptr);
-	}
-
-	if (pEvent) {
-		plg_EventSend(pEvent, NULL, 0);
-	}
 }
 
 /*
@@ -832,8 +827,7 @@ static void manage_InternalDestoryHandle(void* pvManage, AfterDestroyFun fun, vo
 static void CompleteDestroyFile(void* value) {
 
 	PManageDestroy pManageDestroy = (PManageDestroy)value;
-	pManageDestroy->pManage->runStatus = 0;
-	manage_InternalDestoryHandle(pManageDestroy->pManage, pManageDestroy->fun, pManageDestroy->ptr, pManageDestroy->pEvent);
+	pManageDestroy->pManage->runStatus = 0; 
 	free(value);
 	plg_JobSetExitThread(2);
 }
@@ -883,6 +877,10 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 
 	CheckUsingThread(0);
 
+	plg_LocksCreate();
+	plg_LogInit();
+	elog(log_warn, "--------Welcome to pelgia!--------");
+
 	PManage pManage = malloc(sizeof(Manage));
 	pManage->mutexHandle = plg_MutexCreateHandle(LockLevel_1);
 
@@ -891,13 +889,13 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	
 	pManage->listJob = plg_listCreate(LIST_MIDDLE);
 	listSetFreeMethod(pManage->listJob, listJobFree);
-	
+
 	pManage->listOrder = plg_listCreate(LIST_MIDDLE);
 	listSetFreeMethod(pManage->listOrder, listSdsFree);
-	
+
 	pManage->listProcess = plg_listCreate(LIST_MIDDLE);
 	listSetFreeMethod(pManage->listProcess, listProcessFree);
-	
+
 	pManage->dictTableName = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 
 	pManage->order_tableName = plg_DictSetCreate(plg_DefaultSdsDictPtr(), DICT_MIDDLE, plg_DefaultSdsDictPtr(), DICT_MIDDLE);
@@ -907,6 +905,8 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->dbPath = plg_sdsNewLen(dbPath, dbPahtLen);
 	pManage->objName = plg_sdsNew("manage");
 	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, 0, 0, 0);
+	plg_JobSetPrivate(pManage->pJobHandle, pManage);
+
 	pManage->fileCount = 0;
 	pManage->jobDestroyCount = 0;
 	pManage->fileDestroyCount = 0;
@@ -915,7 +915,6 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->luaDllPath = plg_sdsEmpty();
 	pManage->luaPath = plg_sdsEmpty();
 	pManage->dllPath = plg_sdsEmpty();
-	plg_LocksCreate();
 
 	//event process
 	plg_JobAddAdmOrderProcess(pManage->pJobHandle, "destroycount", plg_JobCreateFunPtr(OrderDestroyCount));
@@ -940,34 +939,36 @@ void plg_MngSetLuaPath(void* pvManage, char* newLuaPath) {
 	pManage->luaPath = plg_sdsNew(newLuaPath);
 }
 
+void plg_MngSendExit(void* pvManage){
+	PManage pManage = pvManage;
+	plg_EventSend(pManage->pEvent, NULL, 0);
+}
+
 /*
 实际要停止所有线程在多线程安全下执行
 */
-void plg_MngDestoryHandle(void* pvManage, AfterDestroyFun fun, void* ptr) {
+void plg_MngDestoryHandle(void* pvManage) {
 	
 	CheckUsingThread(NORET);
 	PManage pManage = pvManage;
 	if (pManage->runStatus == 0) {
 		plg_JobDestoryHandle(pManage->pJobHandle);
-		plg_LocksDestroy();
-		manage_InternalDestoryHandle(pManage, fun, ptr, 0);
 	} else {
 		void* pEvent = plg_EventCreateHandle();
-
+		pManage->pEvent = pEvent;
 		MutexLock(pManage->mutexHandle, pManage->objName);
 		PManageDestroy pManageDestroy = malloc(sizeof(ManageDestroy));
-		pManageDestroy->fun = fun;
-		pManageDestroy->ptr = ptr;
 		pManageDestroy->pManage = pManage;
 		pManageDestroy->type = 3;
-		pManageDestroy->pEvent = pEvent;
 		manage_DestroyJob(pManage, CallBackDestroyFile, pManageDestroy);
 		MutexUnlock(pManage->mutexHandle, pManage->objName);
 
 		plg_EventWait(pEvent);
 		plg_EventDestroyHandle(pEvent);
 	}
-
+	manage_InternalDestoryHandle(pManage);
+	plg_LogDestroy();
+	plg_LocksDestroy();
 }
 
 char plg_MngCheckUsingThread() {
@@ -1262,7 +1263,7 @@ void plg_MngOutJson(char* fileName, char* outJson) {
 	plg_EventFreePtr(ptr);
 
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 	sleep(2);
 }
 
@@ -1362,7 +1363,7 @@ void plg_MngFromJson(char* fromJson) {
 	plg_EventFreePtr(ptr);
 
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 }
 
 int plg_MngConfigFromJsonFile(void* pManage, char* jsonPath) {

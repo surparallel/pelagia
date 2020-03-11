@@ -669,7 +669,7 @@ void plg_BaseAll() {
 	plg_EventFreePtr(ptr);
 
 	plg_EventDestroyHandle(pEvent);
-	plg_MngDestoryHandle(pManage, 0, 0);
+	plg_MngDestoryHandle(pManage);
 	printf("\n-----------------manage destroy!-----------------\n");
 }
 

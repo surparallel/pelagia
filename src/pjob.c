@@ -37,13 +37,13 @@
 #include "pelagia.h"
 
 /*
-线程模型可以分为异步和同步两种方式.
-在多个线程间也是这样的.
-对于读操作因为需要维护用户虚拟单线程环境所以使用同步方式.
-对于写操作,不同硬件环境之间为了效率使用异步的队列模式.
-disk写入并不拥挤所以没有实现线程队列和线程.
-manage因为要管理多个模块所以有单独的线程.
-file为了向慢速的硬盘写入所以有单独的线程.
+Thread model can be divided into two ways: asynchronous and synchronous
+This is also true between multiple threads
+For read operations, synchronization is used because the user virtual single thread environment needs to be maintained
+For write operations, asynchronous queue mode is used for efficiency between different hardware environments
+Disk writes are not crowded, so thread queues and threads are not implemented
+Manage has separate threads because it manages multiple modules
+File has a separate thread to write to a slow hard disk
 */
 #define NORET
 #define CheckUsingThread(r) if (plg_JobCheckUsingThread()) {elog(log_error, "Cannot run job interface in non job environment"); return r;}
@@ -92,25 +92,25 @@ static dictType PtrDictType = {
 };
 
 /*
-threadType：当前线程的类型
-pManageEqueue：管理线程的事件句柄
-privateData：当前线程的私有数据，为filehandle
-eQueue:当前线程的消息槽.
-order_equeue:全部事件对应的消息槽.
-dictCache:job的全部cache用于释放和创建和检查tableName是否属于可写状态.
-order_process:当前线程事件的处理process.
-tableName_cacheHandle:当前所有tablename对应的cacheHandle为了查找数据和写入数据.
-allWeight:所有process的权重合.
-userEvent:非远程调用的事件.
-userProcess:非远程调用事件的处理.
-exitThread:退出标志
-tranCache:当前事务使用过的cache
-tranFlush:多个cache准备flush
-事务提交相关的标志
-flush_lastStamp: 最后提交的时间
-flush_interval: 提交的间隔
-flush_lastCount: 提交的次数
-flush_count: 总次数
+Threadtype: the type of the current thread
+Pmanagequeue: event handle for management thread
+Privatedata: the private data of the current thread, which is filehandle
+EQueue: the message slot of the current thread
+Order Ou queue: message slot corresponding to all events
+Dictcache: all the caches of a job are used to release, create and check whether the tablename is writable
+Order_Process: the processing process of the current thread event
+Tablename? Cachehandle: Currently, all cachehandles corresponding to tablename are used to find and write data
+Allweight: all processes have the same weight
+Userevent: event not called remotely
+Userprocess: handling of non remote call events
+ExitThread: exit flag
+Trancache: cache used by the current transaction
+Tranflush: multiple caches preparing for flush
+Transaction commit related flags
+Flush_laststamp: time of last submission
+Flush_interval: commit interval
+Flush_Lastcount: number of submissions
+Flush Ou count: total number of times
 */
 typedef struct _JobHandle
 {
@@ -339,7 +339,7 @@ static void InitProcessCommend(void* pvJobHandle) {
 	plg_JobAddAdmOrderProcess(pJobHandle, "finish", plg_JobCreateFunPtr(OrderJobFinish));
 }
 
-void plg_JobSPrivate(void* pvJobHandle, void* privateData) {
+void plg_JobSetPrivate(void* pvJobHandle, void* privateData) {
 	PJobHandle pJobHandle = pvJobHandle;
 	pJobHandle->privateData = privateData;
 }
@@ -465,7 +465,7 @@ void plg_JobAddEventProcess(void* pvJobHandle, sds nevent, void* pvProcess) {
 }
 
 /*
-这里面要触发cache获得disk相关的句柄或则再查询为空时执行table初始化
+In this case, the cache should be triggered to obtain the disk related handle or perform table initialization when the re query is empty
 */
 void* plg_JobNewTableCache(void* pvJobHandle, char* table, void* pDiskHandle) {
 
@@ -505,7 +505,7 @@ unsigned int  plg_JobIsEmpty(void* pvJobHandle) {
 }
 
 /*
-用户 vm使用
+User VM use
 */
 int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen) {
 
@@ -576,7 +576,7 @@ static long long plg_JogActIntervalometer(void* pvJobHandle) {
 
 	if (listLength(pJobHandle->pListIntervalometer)) {
 		PIntervalometer pPIntervalometer = (PIntervalometer)listNodeValue(listFirst(pJobHandle->pListIntervalometer));
-		return pPIntervalometer->tim - sec;
+		return pPIntervalometer->tim;
 	} else {
 		return 0;
 	}
@@ -617,20 +617,14 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 		pFinishPorcess = (PEventPorcess)dictGetVal(entry);
 	}
 	plg_sdsFree(sdsKey);
-	unsigned long long timer = 0;
+	long long timer = 0;
 
 	do {
 		if (timer == 0) {
 			plg_eqWait(pJobHandle->eQueue);
 		} else {
 			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, timer, 0)) {
-				timer = plg_GetCurrentSec();
-				unsigned long long sec = plg_JogActIntervalometer(pJobHandle);
-				if (0 == sec) {
-					timer = 0;
-				} else {
-					timer += sec;
-				}
+				timer = plg_JogActIntervalometer(pJobHandle);
 				continue;
 			}
 		}
@@ -686,22 +680,19 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 			}
 		} while (1);
 
-		long long sec = plg_JogActIntervalometer(pJobHandle);
-		if (0 == sec) {
-			timer = 0;
-		} else {
-			timer += sec;
-		}
+		timer = plg_JogActIntervalometer(pJobHandle);
 
 		if (pJobHandle->exitThread == 1) {
 			elog(log_details, "ThreadType:%i.plg_JobThreadRouting.exitThread:%i", pJobHandle->threadType, pJobHandle->exitThread);
 			break;
 		} else if (pJobHandle->exitThread == 2) {
+
 			elog(log_details, "ThreadType:%i.plg_JobThreadRouting.exitThread:%i", pJobHandle->threadType, pJobHandle->exitThread);
-			plg_MutexThreadDestroy();
+			void* pManage = pJobHandle->privateData;
 			plg_JobDestoryHandle(pJobHandle);
-			plg_LocksDestroy();
 			pthread_detach(pthread_self());
+			plg_MngSendExit(pManage);
+			plg_MutexThreadDestroy();
 			return 0;
 		}
 	} while (1);
@@ -719,7 +710,7 @@ int plg_jobStartRouting(void* pvJobHandle) {
 }
 
 /*
-manage和file的内部消息管道使用
+Internal message pipeline usage of manage and file
 */
 void plg_JobSendOrder(void* eQueue, char* order, char* value, short valueLen) {
 
@@ -748,8 +739,8 @@ void plg_JobAddAdmOrderProcess(void* pvJobHandle, char* nameOrder, void* pvProce
 }
 
 /*
-对当前运行线程类型进行检查防止用户
-在不恰当的线程环境错误使用API
+Check the current running thread type to prevent users
+Improper use of API in improper thread environment
 */
 char plg_JobCheckIsType(enum ThreadType threadType) {
 
@@ -831,7 +822,7 @@ void plg_JobPrintOrder(void* pvJobHandle) {
 
 
 /*
-要先查本次运行缓存
+First check the running cache
 */
 unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
 
@@ -861,7 +852,7 @@ unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigne
 }
 
 /*
-获取set类型将失败
+Get set type will fail
 */
 void* plg_JobGet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen) {
 
@@ -1086,7 +1077,7 @@ void plg_JobPattern(void* table, unsigned short tableLen, void* beginKey, unsign
 }
 
 /*
-要先查本次运行缓存
+First check the running cache
 */
 unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictExten) {
 
@@ -1577,9 +1568,11 @@ void plg_JobTableMembersWithJson(void* table, unsigned short tableLen, void* jso
 	plg_sdsFree(sdsTable);
 }
 
-char* plg_JobCurrentOrder() {
+char* plg_JobCurrentOrder(short* orderLen) {
 	CheckUsingThread(0);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+
+	*orderLen = plg_sdsLen(pJobHandle->pOrderName);
 	return pJobHandle->pOrderName;
 }
 
