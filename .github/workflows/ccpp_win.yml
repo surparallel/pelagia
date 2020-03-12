@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: dir
-      run: "cd c:\\rogram Files (x86)\\"
+      run: "cd C:\\rogram Files\\"
     - name: dir2
       run: "dir"
     - name: Boot environment
