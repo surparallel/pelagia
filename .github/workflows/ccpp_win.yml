@@ -13,10 +13,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    - name: cd
-      run: "cd C:\\Program Files\\"
-    - name: dir
-      run: "dir"
     - name: Boot environment
       run: "\"c:\\Program Files\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat\" amd64"
     - name: build
