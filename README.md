@@ -21,15 +21,13 @@ You can find the relevant sample code in psimple.c, profesa.c under the source c
 
 Linux&Mac installation is very simple, just download the source package and decompress and compile it on the terminal. This article uses version 0.1 for installation:
 
-    curl -R -O http://www...
-    tar zxf ...
+    git clone https://github.com/surparallel/pelagia.git
     cd pelagia/src
     make linux
     
 ##  Install on Mac OS X
 
-    curl -R -O http://www...
-    tar zxf ...
+    git clone https://github.com/surparallel/pelagia.git
     cd pelagia/src
     make macosx
     
