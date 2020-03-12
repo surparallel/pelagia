@@ -312,7 +312,8 @@ static int OrderJobFinish(char* value, short valueLen) {
 	PJobHandle pJobHandle = job_Handle();
 
 	if (!pJobHandle->donotCommit) {
-		job_Commit(pJobHandle);
+		job_Commit(pJobHandle);		
+	} else {
 		pJobHandle->donotCommit = 0;
 	}
 	
@@ -324,7 +325,8 @@ static int OrderJobFinish(char* value, short valueLen) {
 		} else if (pJobHandle->flush_lastStamp - stamp > pJobHandle->flush_interval) {
 			pJobHandle->flush_lastStamp = stamp;
 			job_Flush(pJobHandle);
-		}
+		}	
+	} else {
 		pJobHandle->donotFlush = 0;
 	}
 	return 1;

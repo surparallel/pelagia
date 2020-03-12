@@ -362,9 +362,8 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 }
 
 int PMIAN(int argc, char **argv) {
-	plg_LogInit();
-	printf("Welcome to pelgia!\n");
-	
+
+	printf("Welcome to pelgia!\n");	
 	if (plg_ReadArgFromParam(argc, argv))
 		return plg_Interactive(IssueCommand);
 	else

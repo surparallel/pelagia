@@ -19,6 +19,12 @@
 #ifndef __FILESYS_H
 #define __FILESYS_H
 
-short plg_SysFileExits(char* filePath);
+#ifdef _WIN32
+#define access_t  _access
+#else
+#define access_t access
+#endif
+
+void plg_MkDirs(char *muldir);
 short plg_SysSetFileLength(void* file, unsigned long long len);
 #endif

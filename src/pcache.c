@@ -1156,7 +1156,7 @@ int plg_CacheCommit(void* pvCacheHandle) {
 	plg_dictEmpty(pCacheHandle->transaction_delPage, NULL);
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 
-	elog(log_details, "plg_CacheCommit.table:%i delPage:%i", tableHead, delPage);
+	elog(log_details, "plg_CacheCommit.tableHead:%i delPage:%i", tableHead, delPage);
 	return 1;
 }
 

@@ -182,7 +182,7 @@ static void manage_InitLoadFile(void* pvManage) {
 		sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%sp%i", pManage->dbPath, loop++);
 		void* pDiskHandle;
 
-		if (!plg_SysFileExits(fullPath)){
+		if (access_t(fullPath, 0) != 0){
 			plg_sdsFree(fullPath);
 			break;
 		}
@@ -297,7 +297,7 @@ static void manage_CreateDiskWithFileName(void* pvManage,char* FileName) {
 	sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s%s", pManage->dbPath, FileName);
 	void* pDiskHandle;
 
-	if (!plg_SysFileExits(fullPath)){
+	if (access_t(fullPath, 0) != 0){
 		elog(log_error, "manage_CreateDiskWithFileName.plg_SysFileExits:%s no exit!", fullPath);
 		plg_sdsFree(fullPath);
 		return;

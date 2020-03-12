@@ -21,6 +21,24 @@
 #include "pfilesys.h"
 #include "pelog.h"
 
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
+static void mkdir_t(const char *_Path) {
+
+#ifdef _WIN32
+	mkdir(_Path);
+#else
+	mkdir(_Path, 0777);
+#endif
+
+}
+
 short plg_SysSetFileLength(void* vfile, unsigned long long len)
 {
 	elog(log_fun, "plg_SysSetFileLength");
@@ -36,13 +54,25 @@ short plg_SysSetFileLength(void* vfile, unsigned long long len)
 #endif
 }
 
-short plg_SysFileExits(char* filePath) {
-	FILE *outputFile;
-	outputFile = fopen_t(filePath, "rb");
-	if (!outputFile) {
-		return 0;
-	} else {
-		fclose(outputFile);
-		return 1;
+
+void plg_MkDirs(char *muldir)
+{
+	int i, len;
+	char str[512];
+	strncpy(str, muldir, 512);
+	len = strlen(str);
+	for (i = 0; i < len; i++) {
+
+		if (str[i] == '/') {
+			str[i] = '\0';
+			if (access_t(str, 0) != 0) {
+				mkdir_t(str);
+			}
+			str[i] = '/';
+		}
 	}
+	if (len > 0 && access_t(str, 0) != 0) {
+		mkdir_t(str);
+	}
+	return;
 }

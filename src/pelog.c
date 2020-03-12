@@ -23,14 +23,15 @@
 #include "plocks.h"
 #include "ptimesys.h"
 #include "padlist.h"
+#include "pfilesys.h"
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line);
 static ErrFun _errFun = plg_LogErrFunPrintf;
 static short _setMaxlevel = log_warn;
 static short _setMinlevel = log_error;
 
-static char* _outDir = "./";
-static char* _outFile = " log";
+static char* _outDir = "./pelagia_log";
+static char* _outFile = "pelagia_log";
 
 static void* mutexHandle = NULL;
 static list* listHandle;
@@ -194,8 +195,7 @@ static void CreateLogFile(PLogFileHandle pLogFileHandle) {
 		fclose(pLogFileHandle->outputFile);
 	}
 
-	sds day = plg_sdsCatFmt(plg_sdsEmpty(), "%U", plg_GetCurrentSec());
-	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%i_%U", _outDir, _outFile, day, pLogFileHandle->threadFlag);
+	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%U_%U_%U", _outDir, _outFile, mutexHandle, plg_GetCurrentSec(), pLogFileHandle->threadFlag);
 	pLogFileHandle->outputFile = fopen_t(fielPath, "ab");
 
 	if (!pLogFileHandle->outputFile) {
@@ -205,7 +205,6 @@ static void CreateLogFile(PLogFileHandle pLogFileHandle) {
 	}
 
 	plg_sdsFree(fielPath);
-	plg_sdsFree(day);
 	pLogFileHandle->fileSec = plg_GetCurrentSec();
 }
 
@@ -281,6 +280,8 @@ void plg_LogSetErrPrint() {
 }
 
 void plg_LogInit() {
+
+	plg_MkDirs(_outDir);
 	listHandle = plg_listCreate(LIST_MIDDLE);
 	mutexHandle = plg_MutexCreateHandle(LockLevel_4);
 }
