@@ -13,8 +13,12 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    - name: Boot environment
-      run: "ls env"
+    - name: ls environment
+      run: "ls"
+    - name: cd environment
+      run: "c:\\"
+    - name: cd environment
+      run: "ls"
     - name: Boot environment
       run: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat amd64"
     - name: build
