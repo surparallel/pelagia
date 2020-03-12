@@ -14,6 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Boot environment
-      run: "\"%VCINSTALLDIR%\\Auxiliary\\Build\\vcvarsall.bat\" amd64"
+      run: "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat\" amd64"
     - name: build
       run: "msbuild msvc/pelagia.sln"
