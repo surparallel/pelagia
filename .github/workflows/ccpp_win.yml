@@ -1,0 +1,19 @@
+name: C Windows
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: windows-2019
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Boot environment
+      run: "c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat amd64"
+    - name: build
+      run: "msbuild msvc/pelagia.sln"
