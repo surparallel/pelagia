@@ -14,10 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: dir
-      run: "cd C:\\rogram Files\\"
+      run: "cd C:\\Program Files (x86)\\"
     - name: dir2
       run: "dir"
     - name: Boot environment
-      run: "\"c:\\rogram Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat\" amd64"
+      run: "\"c:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat\" amd64"
     - name: build
       run: "msbuild msvc/pelagia.sln"
