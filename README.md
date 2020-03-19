@@ -35,3 +35,5 @@ Linux&Mac installation is very simple, just download the source package and deco
 
 After decompression, enter the msvcs directory and open pelagia.sln for compilation.
 
+## Using Pelagia as a control and Dao framework on the client
+<a href="https://surparallel.org"><img src="https://github.com/surparallel/pelagia_websit/blob/master/img/view_control_dao.jpg"></a>
