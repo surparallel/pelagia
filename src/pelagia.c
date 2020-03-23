@@ -35,20 +35,6 @@
 
 static void* _pManage = 0;
 
-#define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"12"
-
-#define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	12
-
-unsigned int plg_NVersion() {
-	return VERSION_NUMMINOR;
-}
-
-unsigned int plg_MVersion() {
-	return VERSION_NUMMAJOR;
-}
-
 void plg_Version() {
 	printf("pelgia version \"" VERSION_MAJOR "." VERSION_MINOR "\"\n");
 	printf("Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>\n");

@@ -174,3 +174,11 @@ void* plg_MngCreateHandleWithJson(const char* jsonFile) {
 	fclose(cFile);
 	return plg_StartFromJson(dstBuf);
 }
+
+unsigned int plg_NVersion() {
+	return VERSION_NUMMINOR;
+}
+
+unsigned int plg_MVersion() {
+	return VERSION_NUMMAJOR;
+}
