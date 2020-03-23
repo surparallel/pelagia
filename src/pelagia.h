@@ -23,6 +23,7 @@
 
 //user manage API
 PELAGIA_API void* plg_MngCreateHandle(char* dbPath, short dbPahtLen);
+PELAGIA_API void* plg_MngCreateHandleWithJson(const char* jsonFile);
 PELAGIA_API void plg_MngDestoryHandle(void* pManage);
 PELAGIA_API int plg_MngStarJob(void* pManage);
 PELAGIA_API void plg_MngStopJob(void* pManage);
@@ -36,11 +37,12 @@ PELAGIA_API int plg_MngSetNoSave(void* pManage, char* nameTable, short nameTable
 PELAGIA_API void plg_MngSetLuaPath(void* pManage, char* newLuaPath);
 PELAGIA_API void plg_MngSetLuaDllPath(void* pManage, char* newLuaDllPath);
 PELAGIA_API void plg_MngSetDllPath(void* pManage, char* newDllPath);
-PELAGIA_API int plg_MngConfigFromJsonFile(void* pManage, char* jsonPath);
+
 
 PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);
 PELAGIA_API int plg_MngRemoteCall(void* pManage, char* order, short orderLen, char* value, short valueLen);
+PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv);
 
 //manage check API
 PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
@@ -49,27 +51,25 @@ PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage);
 PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage);
 PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage);
 
-/*
-fro ptrProcess of plg_MngAddOrder;
-*/
+//for ptrProcess of plg_MngAddOrder;
 typedef int(*RoutingFun)(char* value, short valueLen);
 PELAGIA_API void* plg_JobCreateFunPtr(RoutingFun funPtr);
 PELAGIA_API void* plg_JobCreateLua(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
-PELAGIA_API void plg_JobSetDonotFlush(short value);
-PELAGIA_API void plg_JobSetDonotCommit(short value);
+PELAGIA_API void plg_JobSetDonotFlush();
+PELAGIA_API void plg_JobSetDonotCommit();
 
 //remotecall
 PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);
-PELAGIA_API void plg_JobAddTimer(unsigned int timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen);
+PELAGIA_API void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen);
 
 //namorl db
 PELAGIA_API unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
 PELAGIA_API unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictExten);
 PELAGIA_API unsigned int plg_JobDel(void* table, unsigned short tableLen, void* key, unsigned short keyLen);
-PELAGIA_API unsigned int plg_JobSIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
+PELAGIA_API unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
 PELAGIA_API void plg_JobTableClear(void* table, unsigned short tableLen);
 PELAGIA_API unsigned int plg_JobRename(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* newKey, unsigned short newKeyLen);
 
@@ -161,10 +161,5 @@ PELAGIA_API void plg_LogSetOutFile(char* outFile);
 PELAGIA_API unsigned int plg_NVersion();
 PELAGIA_API unsigned int plg_MVersion();
 PELAGIA_API void plg_Version();
-
-//base64
-PELAGIA_API unsigned char * plg_B64Decode(const char *src, unsigned int len);
-PELAGIA_API unsigned char * plg_B64DecodeEx(const char *src, unsigned int len, unsigned int *decsize);
-PELAGIA_API char * plg_B64Encode(const unsigned char *src, unsigned int len);
 
 #endif

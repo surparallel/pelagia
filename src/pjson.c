@@ -59,6 +59,16 @@ static char* pJson_strdup(const char* str)
       return copy;
 }
 
+static char* pJson_strdupwithlen(const char* str, size_t len)
+{
+	char* copy;
+	if (!(copy = (char*)pJson_malloc(len + 1))) return 0;
+	copy[len] = '\0';
+	memcpy(copy, str, len);
+	
+	return copy;
+}
+
 void pJson_InitHooks(pJson_Hooks* hooks)
 {
     if (!hooks) { /* Reset hooks */
@@ -674,6 +684,7 @@ static pJSON *create_reference(pJSON *item) {pJSON *ref=pJson_New_Item();if (!re
 /* Add item to array/object. */
 void   pJson_AddItemToArray(pJSON *array, pJSON *item)						{pJSON *c=array->child;if (!item) return; if (!c) {array->child=item;} else {while (c && c->next) c=c->next; suffix_object(c,item);}}
 void   pJson_AddItemToObject(pJSON *object,const char *string,pJSON *item)	{if (!item) return; if (item->string) pJson_free(item->string);item->string=pJson_strdup(string);pJson_AddItemToArray(object,item);}
+void   pJson_AddItemToObjectWithLen(pJSON *object, const char *string, size_t len, pJSON *item)	{ if (!item) return; if (item->string) pJson_free(item->string); item->string = pJson_strdupwithlen(string, len); pJson_AddItemToArray(object, item); }
 void   pJson_AddItemToObjectCS(pJSON *object,const char *string,pJSON *item)	{if (!item) return; if (!(item->type&pJson_StringIsConst) && item->string) pJson_free(item->string);item->string=(char*)string;item->type|=pJson_StringIsConst;pJson_AddItemToArray(object,item);}
 void	pJson_AddItemReferenceToArray(pJSON *array, pJSON *item)						{pJson_AddItemToArray(array,create_reference(item));}
 void	pJson_AddItemReferenceToObject(pJSON *object,const char *string,pJSON *item)	{pJson_AddItemToObject(object,string,create_reference(item));}
@@ -703,6 +714,7 @@ pJSON *pJson_CreateFalse(void)					{pJSON *item=pJson_New_Item();if(item)item->t
 pJSON *pJson_CreateBool(int b)					{pJSON *item=pJson_New_Item();if(item)item->type=b?pJson_True:pJson_False;return item;}
 pJSON *pJson_CreateNumber(double num)			{pJSON *item=pJson_New_Item();if(item){item->type=pJson_Number;item->valuedouble=num;item->valueint=(int)num;}return item;}
 pJSON *pJson_CreateString(const char *string)	{pJSON *item=pJson_New_Item();if(item){item->type=pJson_String;item->valuestring=pJson_strdup(string);}return item;}
+pJSON *pJson_CreateStringWihtLen(const char *string, size_t len)	{ pJSON *item = pJson_New_Item(); if (item){ item->type = pJson_String; item->valuestring = pJson_strdupwithlen(string, len); }return item; }
 pJSON *pJson_CreateArray(void)					{pJSON *item=pJson_New_Item();if(item)item->type=pJson_Array;return item;}
 pJSON *pJson_CreateObject(void)					{pJSON *item=pJson_New_Item();if(item)item->type=pJson_Object;return item;}
 

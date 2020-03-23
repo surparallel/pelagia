@@ -759,6 +759,29 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 	return r;
 }
 
+int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv) {
+
+	int ret = 0;
+	pJSON* root = pJson_CreateObject();
+	
+	pJson_AddNumberToObject(root, "argc", argc);
+	char* bEventHandle = plg_B64Encode((unsigned char*)&eventHandle, sizeof(void*));
+	pJson_AddStringToObject(root, "event", bEventHandle);
+
+	if (argc) {
+		pJSON* argvJson = pJson_CreateStringArray(argv, argc);
+		pJson_AddItemToObject(root, "argv", argvJson);
+	}
+
+	char* cValue = pJson_Print(root);
+	ret = plg_MngRemoteCall(pvManage, order, orderLen, cValue, strlen(cValue));
+
+	free(bEventHandle);
+	pJson_Delete(root);
+
+	return ret;
+}
+
 void* plg_MngJobHandle(void* pvManage) {
 	PManage pManage = pvManage;
 	return pManage->pJobHandle;
@@ -1300,7 +1323,7 @@ void plg_MngFromJson(char* fromJson) {
 	plg_MngFreeJob(pManage);
 
 	char order[10] = { 0 };
-	sprintf(order, "order");
+	strcpy(order, "order");
 	plg_MngAddOrder(pManage, order, strlen(order), plg_JobCreateFunPtr(FromJsonRouting));
 
 	//open file
@@ -1354,6 +1377,7 @@ void plg_MngFromJson(char* fromJson) {
 		}
 	}
 
+	
 	//Because it is not a thread created by ptw32, ptw32 new cannot release memory leak
 	plg_EventWait(pEvent);
 	sleep(0);
@@ -1362,12 +1386,10 @@ void plg_MngFromJson(char* fromJson) {
 	void * ptr = plg_EventRecvAlloc(pEvent, &eventLen);
 	plg_EventFreePtr(ptr);
 
+	pJson_Delete(root);
 	plg_EventDestroyHandle(pEvent);
 	plg_MngDestoryHandle(pManage);
 }
 
-int plg_MngConfigFromJsonFile(void* pManage, char* jsonPath) {
-	return plg_ConfigFromJsonFile(pManage, jsonPath);
-}
 #undef NORET
 #undef CheckUsingThread

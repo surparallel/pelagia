@@ -18,5 +18,5 @@
 */
 #ifndef __LAPI_H
 #define __LAPI_H
-int plg_lualapilib(void* L);
+int plg_lualapilib(void* plVMHandle);
 #endif

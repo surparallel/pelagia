@@ -20,7 +20,6 @@
 #define __START_H
 
 //return pManage
-void* plg_StartFromJsonFile(char* path);
-int plg_ConfigFromJsonFile(void* pManage, char* jsonPath);
+//void* plg_StartFromJsonFile(char* jsonFile);
 
 #endif

@@ -263,7 +263,7 @@ void plg_LogSetErrCallBack(ErrFun errFun) {
 
 void plg_LogSetError(int level, char* describe, const char* fileName, int line) {
 
-	if (_errFun != NULL) {
+	if (_errFun != NULL && listHandle) {
 		sds time = plg_sdsCatFmt(plg_sdsEmpty(), "%U", plg_GetCurrentSec());
 		_errFun(level, describe, time, fileName, line);
 		plg_sdsFree(time);

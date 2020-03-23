@@ -21,6 +21,7 @@
 #include "pelog.h"
 #include "pjson.h"
 #include "pelagia.h"
+#include "psds.h"
 
 static void EnumTableJson(pJSON * root, void* pManage, char* order)
 {
@@ -115,40 +116,11 @@ static void EnumJson(pJSON * root, void* pManage)
 	}
 }
 
-int plg_ConfigFromJsonFile(void* pManage, char* jsonPath) {
-
-	FILE *cFile;
-	cFile = fopen_t(jsonPath, "rb");
-	if (!cFile) {
-		elog(log_warn, "plg_ConfigFromJsonFile.fopen_t.rb!");
-		return 0;
-	}
-
-	fseek_t(cFile, 0, SEEK_END);
-	long long fileLength = ftell_t(cFile);
-	void* dstBuf = malloc(fileLength);
-	fseek_t(cFile, 0, SEEK_SET);
-	long long retRead = fread(dstBuf, 1, fileLength, cFile);
-	if (retRead != fileLength) {
-		elog(log_warn, "plg_ConfigFromJsonFile.fread.rb!");
-		return 0;
-	}
-
-	pJSON * root = pJson_Parse(dstBuf);
-	if (!root) {
-		elog(log_error, "plg_ConfigFromJsonFile:json Error before: [%s]\n", pJson_GetErrorPtr());
-		return 0;
-	}
-
-	EnumJson(root, pManage);
-	return 1;
-}
-
-static void* plg_StartFromJson(char* jsonStr) {
+static void* plg_StartFromJson(const char* jsonStr) {
 
 	pJSON * root = pJson_Parse(jsonStr);
 	if (!root) {
-		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
+		printf("json Error before: [%s]\n", pJson_GetErrorPtr());
 		return 0;
 	}
 
@@ -170,17 +142,23 @@ static void* plg_StartFromJson(char* jsonStr) {
 
 	plg_MngAllocJob(pManage, iCore);
 	plg_MngStarJob(pManage);
+	pJson_Delete(root);
 
 	return pManage;
 }
 
-void* plg_StartFromJsonFile(char* path) {
+void* plg_MngCreateHandleWithJson(const char* jsonFile) {
 
 	FILE *cFile;
-	cFile = fopen_t(path, "rb");
+	cFile = fopen_t(jsonFile, "rb");
 	if (!cFile) {
-		elog(log_warn, "plg_StartFromJsonFile.fopen_t.rb!");
-		return 0;
+		sds filePath = plg_sdsCatFmt(plg_sdsEmpty(), "./%s", jsonFile);
+		cFile = fopen_t(filePath, "rb");
+		plg_sdsFree(filePath);
+		if (!cFile) {
+			elog(log_warn, "plg_MngCreateHandleWithJson.fopen_t.rb!");
+			return 0;
+		}
 	}
 
 	fseek_t(cFile, 0, SEEK_END);
@@ -189,9 +167,10 @@ void* plg_StartFromJsonFile(char* path) {
 	fseek_t(cFile, 0, SEEK_SET);
 	long long retRead = fread(dstBuf, 1, fileLength, cFile);
 	if (retRead != fileLength) {
-		elog(log_warn, "plg_StartFromJsonFile.fread.rb!");
+		elog(log_warn, "plg_MngCreateHandleWithJson.fread.rb!");
 		return 0;
 	}
 
+	fclose(cFile);
 	return plg_StartFromJson(dstBuf);
 }

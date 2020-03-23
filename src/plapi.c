@@ -28,66 +28,71 @@
 #include "psds.h"
 #include "pbase64.h"
 
-#define NORET
-
 //As long as there is no problem of not loading multiple Lua modules, loading multiple modules may result in one of them not being used
-static void* instance = 0;
+static void* _plVMHandle = 0;
 
-static int L_NVersion(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	plua_pushnumber(L, plg_NVersion());
+static int L_NVersion(lua_State* L) {
+
+	NOTUSED(L);
+	plg_Lvmpushnumber(_plVMHandle, plg_NVersion());
 	return 1;
 }
 
-static int L_MVersion(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	plua_pushnumber(L, plg_MVersion());
+static int L_MVersion(lua_State* L) {
+
+	NOTUSED(L);
+	plg_Lvmpushnumber(_plVMHandle, plg_MVersion());
 	return 1;
 }
 
-static int LRemoteCall(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LRemoteCall(lua_State* L) {
 
+	NOTUSED(L);
 	size_t oLen, vLen;
-	const char* o = pluaL_checklstring(L, 1, &oLen);
-	const char* v = pluaL_checklstring(L, 2, &vLen);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, 1, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobRemoteCall((void*)o, oLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRemoteCall((void*)o, oLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LSet(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LTimer(lua_State* L) {
 
+	NOTUSED(L);
+	size_t oLen, vLen;
+	double timer = plg_Lvmchecknumber(_plVMHandle, 1);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, 2, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+
+	plg_JobAddTimer(timer, (void*)o, oLen, (void*)v, vLen);
+	return 0;
+}
+
+
+static int LSet(lua_State* L) {
+
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LMultiSet(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LMultiSet(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	lua_Number r = 0;
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
 		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
-		plua_pushnumber(L, r);
+		plg_Lvmpushnumber(_plVMHandle, r);
 		return 1;
 	}
 
@@ -103,115 +108,103 @@ static int LMultiSet(lua_State* L)
 	r = plg_JobMultiSet((void*)t, tLen, pDictExten);
 	plg_DictExtenDestroy(pDictExten);
 
-	plua_pushnumber(L, r);
+	pJson_Delete(root);
+	plg_Lvmpushnumber(_plVMHandle, r);
 	return 1;
 }
 
-static int LDel(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LDel(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LSetIfNoExit(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetIfNoExit(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LTableClear(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LTableClear(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
 	plg_JobTableClear((void*)t, tLen);
 	return 0;
 }
 
-static int LRename(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LRename(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, nkLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* nk = pluaL_checklstring(L, 3, &nkLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* nk = plg_Lvmchecklstring(_plVMHandle, 3, &nkLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
 	return 1;
 }
 
-static int LGet(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LGet(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 
-	plua_pushlstring(L, p, pLen);
+	if (p != 0) {
+		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+	} else {
+		plg_Lvmpushnil(_plVMHandle);
+	}	
 	return 1;
 }
 
-static int LLength(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LLength(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobLength((void*)t, tLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobLength((void*)t, tLen));
 	return 1;
 }
 
-static int LIsKeyExist(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LIsKeyExist(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LLimite(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LLimite(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	lua_Integer l = pluaL_checkinteger(L, 3);
-	lua_Integer r = pluaL_checkinteger(L, 4);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 4);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -221,8 +214,11 @@ static int LLimite(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;		
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen = 0, valueLen = 0;
+		char* pk = plg_DictExtenKey(dictNode, &keyLen);
+		char* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -230,22 +226,19 @@ static int LLimite(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 	
 	return 1;
 }
 
-static int LOrder(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LOrder(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	lua_Integer o = pluaL_checkinteger(L, 2);
-	lua_Integer l = pluaL_checkinteger(L, 3);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, 2);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -255,8 +248,11 @@ static int LOrder(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -264,22 +260,19 @@ static int LOrder(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LRang(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LRang(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* ke = pluaL_checklstring(L, 3, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -289,8 +282,11 @@ static int LRang(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -298,23 +294,20 @@ static int LRang(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LPattern(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LPattern(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen, pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* ke = pluaL_checklstring(L, 3, &keLen);
-	const char* p = pluaL_checklstring(L, 4, &pLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
+	const char* p = plg_Lvmchecklstring(_plVMHandle, 4, &pLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -324,8 +317,11 @@ static int LPattern(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -333,21 +329,18 @@ static int LPattern(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LMultiGet(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LMultiGet(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -360,7 +353,7 @@ static int LMultiGet(lua_State* L)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictKeyExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
@@ -374,8 +367,11 @@ static int LMultiGet(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -384,81 +380,79 @@ static int LMultiGet(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LRand(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LRand(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
 	const char* p = plg_JobRand((void*)t, tLen, &pLen);
 
-	plua_pushlstring(L, p, pLen);
+	if (p != 0) {
+		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+	} else {
+		plg_Lvmpushnil(_plVMHandle);
+	}
 	return 1;
 }
 
-static int LSetAdd(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetAdd(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LSetMove(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetMove(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, dkLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* dk = pluaL_checklstring(L, 2, &dkLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* dk = plg_Lvmchecklstring(_plVMHandle, 3, &dkLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 4, &vLen);
 
 	plg_JobSMove((void*)t, tLen, (void*)k, kLen, (void*)dk, dkLen, (void*)v, vLen);
 	return 0;
 }
 
-static int LSetPop(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetPop(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
 
-	plua_pushlstring(L, p, pLen);
+	if (p != 0) {
+		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+	} else {
+		plg_Lvmpushnil(_plVMHandle);
+	}
 	return 1;
 }
 
-static int LSetDel(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetDel(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -471,7 +465,7 @@ static int LSetDel(lua_State* L)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictKeyExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
@@ -481,15 +475,13 @@ static int LSetDel(lua_State* L)
 	return 0;
 }
 
-static int LSetUionStore(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetUionStore(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 	
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -502,7 +494,7 @@ static int LSetUionStore(lua_State* L)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictKeyExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
@@ -512,15 +504,13 @@ static int LSetUionStore(lua_State* L)
 	return 0;
 }
 
-static int LSetInterStore(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetInterStore(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -533,7 +523,7 @@ static int LSetInterStore(lua_State* L)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictKeyExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
@@ -543,15 +533,13 @@ static int LSetInterStore(lua_State* L)
 	return 0;
 }
 
-static int LSetDiffStore(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetDiffStore(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -564,7 +552,7 @@ static int LSetDiffStore(lua_State* L)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictKeyExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
@@ -574,17 +562,14 @@ static int LSetDiffStore(lua_State* L)
 	return 0;
 }
 
-static int LSetRang(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetRang(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, kbLen, keLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* kb = pluaL_checklstring(L, 3, &kbLen);
-	const char* ke = pluaL_checklstring(L, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -594,8 +579,11 @@ static int LSetRang(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -603,24 +591,21 @@ static int LSetRang(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetLimite(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetLimite(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
-	lua_Integer l = pluaL_checkinteger(L, 4);
-	lua_Integer r = pluaL_checkinteger(L, 5);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 4);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 5);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -630,8 +615,11 @@ static int LSetLimite(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -639,48 +627,41 @@ static int LSetLimite(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetLength(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetLength(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LSetIsKeyExist(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetIsKeyExist(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LSetMembers(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetMembers(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -690,8 +671,11 @@ static int LSetMembers(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -699,53 +683,49 @@ static int LSetMembers(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetRand(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetRand(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 1, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
 
-	plua_pushlstring(L, p, pLen);
+	if (p) {
+		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+	} else {
+		plg_Lvmpushnil(_plVMHandle);
+	}
 	return 1;
 }
 
-static int LSetRangCount(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetRangCount(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen, kbLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* kb = pluaL_checklstring(L, 3, &kbLen);
-	const char* ke = pluaL_checklstring(L, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
 	return 1;
 }
 
-static int LSetUion(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetUion(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -753,27 +733,29 @@ static int LSetUion(lua_State* L)
 		return 0;
 	}
 
-	void* pDictKeyExten = plg_DictExtenCreate();
+	void* pDictExten = plg_DictExtenCreate();
 	for (int i = 0; i < pJson_GetArraySize(root); i++)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
 
-	root = pJson_CreateObject();
-	void* pDictExten = plg_DictExtenCreate();
+	void* pDictKeyExten = plg_DictExtenCreate();
 	root = pJson_CreateObject();
 
 	plg_JobSUion((void*)t, tLen, pDictExten, pDictKeyExten);
 
-	void* dictIter = plg_DictExtenGetIterator(pDictExten);
+	void* dictIter = plg_DictExtenGetIterator(pDictKeyExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -782,21 +764,18 @@ static int LSetUion(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetInter(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetInter(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -804,27 +783,29 @@ static int LSetInter(lua_State* L)
 		return 0;
 	}
 
-	void* pDictKeyExten = plg_DictExtenCreate();
+	void* pDictExten = plg_DictExtenCreate();
 	for (int i = 0; i < pJson_GetArraySize(root); i++)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
 
-	root = pJson_CreateObject();
-	void* pDictExten = plg_DictExtenCreate();
+	void* pDictKeyExten = plg_DictExtenCreate();
 	root = pJson_CreateObject();
 
 	plg_JobSInter((void*)t, tLen, pDictExten, pDictKeyExten);
 
-	void* dictIter = plg_DictExtenGetIterator(pDictExten);
+	void* dictIter = plg_DictExtenGetIterator(pDictKeyExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -833,21 +814,18 @@ static int LSetInter(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetDiff(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetDiff(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -855,27 +833,29 @@ static int LSetDiff(lua_State* L)
 		return 0;
 	}
 
-	void* pDictKeyExten = plg_DictExtenCreate();
+	void* pDictExten = plg_DictExtenCreate();
 	for (int i = 0; i < pJson_GetArraySize(root); i++)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictKeyExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictExten, item->valuestring, strlen(item->valuestring), NULL, 0);
 		}
 	}
 	pJson_Delete(root);
 
-	root = pJson_CreateObject();
-	void* pDictExten = plg_DictExtenCreate();
+	void* pDictKeyExten = plg_DictExtenCreate();
 	root = pJson_CreateObject();
 
 	plg_JobSDiff((void*)t, tLen, pDictExten, pDictKeyExten);
 
-	void* dictIter = plg_DictExtenGetIterator(pDictExten);
+	void* dictIter = plg_DictExtenGetIterator(pDictKeyExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
-		pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), plg_DictExtenValue(dictNode, &valueLen));
+		unsigned int keyLen=0, valueLen=0;
+		void* pk = plg_DictExtenKey(dictNode, &keyLen);
+		void* pv = plg_DictExtenValue(dictNode, &valueLen);
+
+		pJson_AddStringToObjectWithLen(root, pk, keyLen, pv, valueLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 	plg_DictExtenDestroy(pDictExten);
@@ -884,42 +864,38 @@ static int LSetDiff(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSet2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LSet2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	char* v = plg_LvmMallocWithType(L, instance, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
 	return 1;
 }
 
-static int LMultiSet2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LMultiSet2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	lua_Number r = 0;
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
 		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
-		plua_pushnumber(L, r);
+		plg_Lvmpushnumber(_plVMHandle, r);
 		return 1;
 	}
 
@@ -943,123 +919,106 @@ static int LMultiSet2(lua_State* L)
 	r = plg_JobMultiSet((void*)t, tLen, pDictExten);
 	plg_DictExtenDestroy(pDictExten);
 
-	plua_pushnumber(L, r);
+	pJson_Delete(root);
+	plg_Lvmpushnumber(_plVMHandle, r);
 	return 1;
 }
 
-static int LDel2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LDel2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LSetIfNoExit2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LSetIfNoExit2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LTableClear2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LTableClear2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
 	plg_JobTableClear((void*)t, tLen);
 	return 0;
 }
 
-static int LRename2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LRename2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen, kLen, nkLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* nk = pluaL_checklstring(L, 3, &nkLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* nk = plg_Lvmchecklstring(_plVMHandle, 3, &nkLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
 	return 1;
 }
 
-static int LGet2(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LGet2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plua_pushnumber(L, v);
+		plg_Lvmpushnumber(_plVMHandle, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plua_pushlstring(L, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
 	} 
 	
 	return 1;
 }
 
-static int LLength2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LLength2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobLength((void*)t, tLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobLength((void*)t, tLen));
 	return 1;
 }
 
-static int LIsKeyExist2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LIsKeyExist2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LLimite2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LLimite2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	lua_Integer l = pluaL_checkinteger(L, 3);
-	lua_Integer r = pluaL_checkinteger(L, 4);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 4);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1069,7 +1028,7 @@ static int LLimite2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1087,22 +1046,19 @@ static int LLimite2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LOrder2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LOrder2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	lua_Integer o = pluaL_checkinteger(L, 2);
-	lua_Integer l = pluaL_checkinteger(L, 3);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, 2);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1112,7 +1068,7 @@ static int LOrder2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1130,22 +1086,19 @@ static int LOrder2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LRang2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LRang2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* ke = pluaL_checklstring(L, 3, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1155,7 +1108,7 @@ static int LRang2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1173,23 +1126,20 @@ static int LRang2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LPattern2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LPattern2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen, pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* ke = pluaL_checklstring(L, 3, &keLen);
-	const char* p = pluaL_checklstring(L, 4, &pLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
+	const char* p = plg_Lvmchecklstring(_plVMHandle, 4, &pLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1199,7 +1149,7 @@ static int LPattern2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1217,21 +1167,18 @@ static int LPattern2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LMultiGet2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LMultiGet2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1258,7 +1205,7 @@ static int LMultiGet2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1277,98 +1224,86 @@ static int LMultiGet2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LRand2(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, lua_pushnumber, 0);
+static int LRand2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
 
 	const char* p = plg_JobRand((void*)t, tLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plua_pushnumber(L, v);
+		plg_Lvmpushnumber(_plVMHandle, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plua_pushlstring(L, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
 	}
 
 	return 1;
 }
 
-static int LSetAdd2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetAdd2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	char* v = plg_LvmMallocWithType(L, instance, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
 	return 1;
 }
 
-static int LSetMove2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetMove2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, dkLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* dk = pluaL_checklstring(L, 2, &dkLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* dk = plg_Lvmchecklstring(_plVMHandle, 3, &dkLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 4, &vLen);
 
 	plg_JobSMove((void*)t, tLen, (void*)k, kLen, (void*)dk, dkLen, (void*)v, vLen);
 	return 0;
 }
 
-static int LSetPop2(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, lua_pushnumber, 0);
+static int LSetPop2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plua_pushnumber(L, v);
+		plg_Lvmpushnumber(_plVMHandle, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plua_pushlstring(L, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
 	}
 	return 1;
 }
 
-static int LSetDel2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetDel2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1391,15 +1326,13 @@ static int LSetDel2(lua_State* L)
 	return 0;
 }
 
-static int LSetUionStore2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LSetUionStore2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1422,15 +1355,13 @@ static int LSetUionStore2(lua_State* L)
 	return 0;
 }
 
-static int LSetInterStore2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-
+static int LSetInterStore2(lua_State* L) {
+	
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1453,15 +1384,13 @@ static int LSetInterStore2(lua_State* L)
 	return 0;
 }
 
-static int LSetDiffStore2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetDiffStore2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &vLen);
-	const char* k = pluaL_checklstring(L, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1484,17 +1413,14 @@ static int LSetDiffStore2(lua_State* L)
 	return 0;
 }
 
-static int LSetRang2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetRang2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, kbLen, keLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* kb = pluaL_checklstring(L, 3, &kbLen);
-	const char* ke = pluaL_checklstring(L, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1504,7 +1430,7 @@ static int LSetRang2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1522,24 +1448,21 @@ static int LSetRang2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetLimite2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetLimite2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
-	lua_Integer l = pluaL_checkinteger(L, 4);
-	lua_Integer r = pluaL_checkinteger(L, 5);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 4);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 5);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1549,7 +1472,7 @@ static int LSetLimite2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1567,48 +1490,41 @@ static int LSetLimite2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetLength2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetLength2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
-static int LSetIsKeyExist2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LSetIsKeyExist2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* v = pluaL_checklstring(L, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
-static int LSetMembers2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetMembers2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1618,7 +1534,7 @@ static int LSetMembers2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1636,60 +1552,51 @@ static int LSetMembers2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetRand2(lua_State* L)
-{
-	FillFun(instance, lua_pushlstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, lua_pushnumber, 0);
+static int LSetRand2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 1, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plua_pushnumber(L, v);
+		plg_Lvmpushnumber(_plVMHandle, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plua_pushlstring(L, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
 	}
 	return 1;
 }
 
-static int LSetRangCount2(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetRangCount2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen, keLen, kbLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* k = pluaL_checklstring(L, 2, &kLen);
-	const char* kb = pluaL_checklstring(L, 3, &kbLen);
-	const char* ke = pluaL_checklstring(L, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
 
-	plua_pushnumber(L, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
 	return 1;
 }
 
-static int LSetUion2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetUion2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1716,7 +1623,7 @@ static int LSetUion2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1735,21 +1642,18 @@ static int LSetUion2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetInter2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetInter2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1776,7 +1680,7 @@ static int LSetInter2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1795,21 +1699,18 @@ static int LSetInter2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LSetDiff2(lua_State* L)
-{
-	FillFun(instance, lua_pushstring, 0);
-	FillFun(instance, luaL_checklstring, 0);
-	FillFun(instance, luaL_checkinteger, 0);
+static int LSetDiff2(lua_State* L) {
 
+	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = pluaL_checklstring(L, 1, &tLen);
-	const char* json = pluaL_checklstring(L, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1836,7 +1737,7 @@ static int LSetDiff2(lua_State* L)
 	void* dictIter = plg_DictExtenGetIterator(pDictExten);
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-		unsigned int keyLen, valueLen;
+		unsigned int keyLen=0, valueLen=0;
 		char* p = plg_DictExtenValue(dictNode, &valueLen);
 		if (p[0] == LUA_TNUMBER) {
 			lua_Number v;
@@ -1855,25 +1756,32 @@ static int LSetDiff2(lua_State* L)
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plua_pushstring(L, out);
+	plg_Lvmpushstring(_plVMHandle, out);
 	free(out);
 
 	return 1;
 }
 
-static int LEventSend(lua_State* L)
-{
-	FillFun(instance, lua_pushnumber, 0);
-	FillFun(instance, luaL_checklstring, 0);
+static int LEventSend(lua_State* L) {
 
+	NOTUSED(L);
 	size_t hLen, vLen;
-	const char* h = pluaL_checklstring(L, 1, &hLen);
-	const char* v = pluaL_checklstring(L, 2, &vLen);
+	const char* h = plg_Lvmchecklstring(_plVMHandle, 1, &hLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
 
 	unsigned int decsize;
-	unsigned char* p = plg_B64DecodeEx(h, hLen, &decsize);
+	unsigned char* buff = plg_B64DecodeEx(h, hLen, &decsize);
+	void* p;
 
-	plg_EventSend(p , v, vLen);
+	memcpy(&p, buff, decsize);
+	unsigned long long up = (unsigned long long)p;
+	if (up == 101021) {
+		printf("%s\n", v);
+	} else {
+		plg_EventSend(p , v, vLen);
+	}
+	
+	free(buff);
 	return 0;
 }
 
@@ -1882,6 +1790,7 @@ static luaL_Reg mylibs[] = {
 	{ "MVersion", L_MVersion },
 
 	{ "RemoteCall", LRemoteCall },
+	{ "LTimer", LTimer },
 	{ "Set", LSet },
 	{ "MultiSet", LMultiSet },
 	{ "Del", LDel },
@@ -1967,11 +1876,10 @@ int plg_lualapilib(void* plVMHandle)
 		elog(log_error, "plg_lualapilib.plVMHandle");
 		return 0;
 	}
-	FillFun(plg_LvmGetInstance(plVMHandle), luaL_register, 0);
-	instance = plg_LvmGetInstance(plVMHandle);
 
+	_plVMHandle = plVMHandle;
 	const char *libName = "pelagia";
-	pluaL_register(plg_LvmGetL(plVMHandle), libName, mylibs);
+	plg_Lvmregister(plVMHandle, libName, mylibs);
 	return 1;
 }
 

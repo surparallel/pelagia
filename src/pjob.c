@@ -239,18 +239,18 @@ void plg_JobSetExitThread(char value) {
 	pJobHandle->exitThread = value;
 }
 
-void plg_JobSetDonotFlush(short value) {
+void plg_JobSetDonotFlush() {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
-	pJobHandle->donotFlush = value;
+	pJobHandle->donotFlush = 1;
 }
 
-void plg_JobSetDonotCommit(short value) {
+void plg_JobSetDonotCommit() {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
-	pJobHandle->donotCommit = value;
+	pJobHandle->donotCommit = 1;
 }
 
 void job_Flush(void* pvJobHandle) {
@@ -386,7 +386,7 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->luaPath = luaPath;
 
 	if (dllPath && plg_sdsLen(dllPath)) {
-		pJobHandle->dllHandle = plg_SysLibLoad(dllPath, 0);
+		pJobHandle->dllHandle = plg_SysLibLoad(dllPath, 1);
 	} else {
 		pJobHandle->dllHandle = 0;
 	}
@@ -552,7 +552,7 @@ static int IntervalometerCmpFun(void* value1, void* value2) {
 	}
 }
 
-static long long plg_JogActIntervalometer(void* pvJobHandle) {
+static unsigned long long plg_JogActIntervalometer(void* pvJobHandle) {
 
 	PJobHandle pJobHandle = pvJobHandle;
 	if (!listLength(pJobHandle->pListIntervalometer)) {
@@ -561,13 +561,13 @@ static long long plg_JogActIntervalometer(void* pvJobHandle) {
 
 	plg_SortList(pJobHandle->pListIntervalometer, IntervalometerCmpFun);
 	
-	unsigned long long sec = plg_GetCurrentSec();
+	unsigned long long milli = plg_GetCurrentMilli();
 	listIter* iter = plg_listGetIterator(pJobHandle->pListIntervalometer, AL_START_HEAD);
 	listNode* node;
 	while ((node = plg_listNext(iter)) != NULL) {
 
 		PIntervalometer pPIntervalometer = (PIntervalometer)node->value;
-		if (pPIntervalometer->tim <= sec) {
+		if (pPIntervalometer->tim <= milli) {
 			plg_JobRemoteCall(pPIntervalometer->Order, plg_sdsLen(pPIntervalometer->Order), pPIntervalometer->Value, plg_sdsLen(pPIntervalometer->Value));
 			plg_listDelNode(pJobHandle->pListIntervalometer, node);
 		} else {
@@ -619,13 +619,13 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 		pFinishPorcess = (PEventPorcess)dictGetVal(entry);
 	}
 	plg_sdsFree(sdsKey);
-	long long timer = 0;
+	unsigned long long timer = 0;
 
 	do {
 		if (timer == 0) {
 			plg_eqWait(pJobHandle->eQueue);
 		} else {
-			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, timer, 0)) {
+			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, timer / 1000, timer % 1000 * 1000)) {
 				timer = plg_JogActIntervalometer(pJobHandle);
 				continue;
 			}
@@ -650,19 +650,33 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 						if (0 == pEventPorcess->functionPoint(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 							job_Rollback(pJobHandle);
 						}
-					} else if (pEventPorcess->scriptType == ST_DLL && pJobHandle->dllHandle) {
+					} else if (pEventPorcess->scriptType == ST_DLL) {
 
-						RoutingFun fun = plg_SysLibSym(pJobHandle->dllHandle, pEventPorcess->function);
-						if (fun) {
-							if (0 == fun(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
+						if (pJobHandle->luaHandle)  {
+							RoutingFun fun = plg_SysLibSym(pJobHandle->dllHandle, pEventPorcess->function);
+							if (fun) {
+								if (0 == fun(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
+									job_Rollback(pJobHandle);
+								}
+							}
+						} else {
+							elog(log_error, "DLL instruction %s received, but no DLL extern found!", (char*)pOrderPacket->order);
+						}
+					} else if (pEventPorcess->scriptType == ST_LUA){
+						if (pJobHandle->luaHandle)  {
+							sds file;
+							if (strlen(pJobHandle->luaPath)) {
+								file = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s", pJobHandle->luaPath, pEventPorcess->fileClass);
+							} else {
+								file = plg_sdsCatFmt(plg_sdsEmpty(), "./%s", pEventPorcess->fileClass);
+							}
+
+							if (0 == plg_LvmCallFile(pJobHandle->luaHandle, file, pEventPorcess->function, pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 								job_Rollback(pJobHandle);
 							}
-						}
-					} else if (pEventPorcess->scriptType == ST_LUA && pJobHandle->luaHandle)  {
-
-						sds file = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s", pJobHandle->luaPath, pEventPorcess->fileClass);
-						if (0 == plg_LvmCallFile(pJobHandle->luaHandle, file, pEventPorcess->function, pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
-							job_Rollback(pJobHandle);
+							plg_sdsFree(file);
+						} else {
+							elog(log_error, "Lua instruction %s received, but no Lua virtual machine found!", (char*)pOrderPacket->order);
 						}
 					}
 				}
@@ -932,7 +946,7 @@ unsigned int plg_JobLength(void* table, unsigned short tableLen) {
 	return len;
 }
 
-unsigned int plg_JobSIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
+unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
@@ -947,10 +961,10 @@ unsigned int plg_JobSIfNoExit(void* table, unsigned short tableLen, void* key, u
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSIfNoExit.No permission to table <%s>!", sdsTable);
+			elog(log_error, "plg_JobSetIfNoExit.No permission to table <%s>!", sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSIfNoExit.Cannot access table <%s>!", sdsTable);
+		elog(log_error, "plg_JobSetIfNoExit.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 	plg_sdsFree(sdsKey);
@@ -1578,15 +1592,15 @@ char* plg_JobCurrentOrder(short* orderLen) {
 	return pJobHandle->pOrderName;
 }
 
-void plg_JobAddTimer(unsigned int timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen) {
+void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen) {
 	CheckUsingThread(NORET);
 
-	unsigned long long sec = plg_GetCurrentSec();
+	unsigned long long milli = plg_GetCurrentMilli();
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	PIntervalometer pPIntervalometer = malloc(sizeof(Intervalometer));
 	pPIntervalometer->Order = plg_sdsNewLen(order, orderLen);
 	pPIntervalometer->Value = plg_sdsNewLen(value, valueLen);
-	pPIntervalometer->tim = sec + timer;
+	pPIntervalometer->tim = milli + timer * 1000;
 
 	plg_listAddNodeHead(pJobHandle->pListIntervalometer, pPIntervalometer);
 }

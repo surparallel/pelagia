@@ -7,7 +7,7 @@
 PLAT= none
 
 CC= gcc -std=gnu99
-CFLAGS= -O2 -Wall -Wextra $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -O2 -fPIC -Wall -Wextra $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
@@ -46,6 +46,11 @@ PLG_O=	pelagia.o
 ALL_O= $(BASE_O) $(PLG_O)
 ALL_T= $(PLG_A) $(PLG_T)
 ALL_A= $(PLG_A)
+
+PLG_SO=	libpelagia.so
+ALL_T= $(PLG_A) $(PLG_T) $(PLG_SO)
+$(PLG_SO): $(CORE_O)
+	$(CC) -o $@ -shared $? -ldl -lm
 
 # Targets start here.
 default: $(PLAT)
@@ -86,40 +91,14 @@ none:
 	@echo "Please do 'make PLATFORM' where PLATFORM is one of these:"
 	@echo "   $(PLATS)"
 
-aix:
-	$(MAKE) $(ALL) CC="xlc" CFLAGS="-O2" SYSLIBS="-ldl" SYSLDFLAGS="-brtl -bexpall -lpthread "
-
-bsd:
-	$(MAKE) $(ALL) SYSCFLAGS="" SYSLIBS="-Wl,-E -lpthread "
-
-c89:
-	$(MAKE) $(ALL) SYSCFLAGS="-DPLG_USE_C89" CC="gcc -std=c89"
-	@echo ''
-	@echo '*** C89 does not guarantee 64-bit integers for Pelagia.'
-	@echo ''
-
-
-freebsd:
-	$(MAKE) $(ALL) SYSCFLAGS="-lpthread" SYSLIBS="-Wl,-E" CC="cc"
-
 generic: $(ALL)
 
 linux:
-	$(MAKE) $(ALL) SYSCFLAGS="" SYSLIBS="-Wl,-E -ldl -lpthread"
+	$(MAKE) $(ALL) SYSCFLAGS="" SYSLIBS="-Wl,-E -ldl -lpthread -lreadline"
 
 macosx:
-	$(MAKE) $(ALL) SYSCFLAGS="" SYSLIBS="-lpthread"
+	$(MAKE) $(ALL) SYSCFLAGS="" SYSLIBS="-lpthread -lreadline"
 
-mingw:
-	$(MAKE) "PLG_A=pelagia.dll" "PLG_T=pelagia.exe" \
-	"AR=$(CC) -shared -o" "RANLIB=strip --strip-unneeded" \
-	"SYSCFLAGS=-DPLG_BUILD_AS_DLL" "SYSLIBS=" "SYSLDFLAGS=-s" pelagia.exe
-
-posix:
-	$(MAKE) $(ALL) SYSCFLAGS=""
-
-solaris:
-	$(MAKE) $(ALL) SYSCFLAGS="-D_REENTRANT" SYSLIBS="-ldl -lpthread "
 
 # list targets that do not create files (but not all makes understand .PHONY)
 .PHONY: all $(PLATS) default o a clean depend echo none

@@ -91,6 +91,7 @@ extern pJSON *pJson_CreateFalse(void);
 extern pJSON *pJson_CreateBool(int b);
 extern pJSON *pJson_CreateNumber(double num);
 extern pJSON *pJson_CreateString(const char *string);
+extern pJSON *pJson_CreateStringWihtLen(const char *string, size_t len);
 extern pJSON *pJson_CreateArray(void);
 extern pJSON *pJson_CreateObject(void);
 
@@ -103,6 +104,7 @@ extern pJSON *pJson_CreateStringArray(const char **strings,int count);
 /* Append item to the specified array/object. */
 extern void pJson_AddItemToArray(pJSON *array, pJSON *item);
 extern void	pJson_AddItemToObject(pJSON *object,const char *string,pJSON *item);
+extern void pJson_AddItemToObjectWithLen(pJSON *object, const char *string, size_t len, pJSON *item);
 extern void	pJson_AddItemToObjectCS(pJSON *object,const char *string,pJSON *item);	/* Use this when string is definitely const (i.e. a literal, or as good as), and will definitely survive the pJSON object */
 /* Append reference to item to the specified array/object. Use this when you want to add an existing pJSON to a new pJSON, but don't want to corrupt your existing pJSON. */
 extern void pJson_AddItemReferenceToArray(pJSON *array, pJSON *item);
@@ -137,6 +139,7 @@ extern void pJson_Minify(char *json);
 #define pJson_AddBoolToObject(object,name,b)	pJson_AddItemToObject(object, name, pJson_CreateBool(b))
 #define pJson_AddNumberToObject(object,name,n)	pJson_AddItemToObject(object, name, pJson_CreateNumber(n))
 #define pJson_AddStringToObject(object,name,s)	pJson_AddItemToObject(object, name, pJson_CreateString(s))
+#define pJson_AddStringToObjectWithLen(object,name,ln,s,ls)	pJson_AddItemToObjectWithLen(object, name, ln, pJson_CreateStringWihtLen(s,ls))
 
 /* When assigning an integer value, it needs to be propagated to valuedouble too. */
 #define pJson_SetIntValue(object,val)			((object)?(object)->valueint=(object)->valuedouble=(val):(val))

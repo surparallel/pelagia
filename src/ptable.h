@@ -81,7 +81,7 @@ unsigned int plg_TableSetRand(void* pTableHandle, char* sdsKey, void* pInDictExt
 void plg_TableSetDel(void* pTableHandle, char* sdsKey, void* pValueDictExten);
 unsigned int plg_TableSetPop(void* pTableHandle, char* sdsKey, void* pInDictExten);
 unsigned int plg_TableSetRangCount(void* pTableHandle, char* sdsKey, char* sdsBeginValue, char* sdsEndValue);
-void plg_TableSetUion(void* pTableHandle, void* pKeyDictExten, void* pInDictExten);
+void plg_TableSetUion(void* pTableHandle, void* pSetDictExten, void* pKeyDictExten);
 void plg_TableSetUionStore(void* pTableHandle, void* pSetDictExten, char* sdsKey);
 void plg_TableSetInter(void* pTableHandle, void* pSetDictExten, void* pKeyDictExten);
 void plg_TableSetInterStore(void* pTableHandle, void* pSetDictExten, char* sdsKey);

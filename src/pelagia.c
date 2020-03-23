@@ -33,7 +33,7 @@
 #include "prfesa.h"
 #include "pbase64.h"
 
-static void* pManage = 0;
+static void* _pManage = 0;
 
 #define VERSION_MAJOR	"0"
 #define VERSION_MINOR	"12"
@@ -61,6 +61,7 @@ void plg_CliOutputGenericHelp(void) {
 		"\n"
 		"      \"quit\" to exit\n"
 		"      \"init [path]\" Init system. path: The path of the file.\n"
+		"      \"iwj [json path]\" Init system wiht json. path: The path of the file.\n"
 		"      \"destory\" Destory system.\n"
 		"      \"star\" Star job.\n"
 		"      \"stop\" Stop job.\n"
@@ -73,6 +74,7 @@ void plg_CliOutputGenericHelp(void) {
 		"      \"aj [core]\" Alloc job.\n"
 		"      \"fj\" Free job.\n"
 		"      \"rc [order] [arg]\" Remote call.\n"
+		"      \"rcj [order] [arg]\" Remote call with json.\n"
 		"      \"pas\"Print all status.\n"
 		"      \"pajs\" Print all job status.\n"
 		"      \"pajd\" Print all job details.\n"
@@ -80,169 +82,228 @@ void plg_CliOutputGenericHelp(void) {
 		"      \"base\" base example.\n"
 		"      \"simple\" simple example.\n"
 		"      \"fe\" spseudo random finite element simulation analysis.\n"
+		"      \"logfile\" Log set to file\n"
+		"      \"loglevel [0~5]\" Level of log output\n"
+		"      \"logprint\" Log set to print stdio\n"
 		);
 }
 
-static int IssueCommand(int argc, char **argv) {
+int plg_IssueCommand(int argc, char **argv, int noFind) {
+
+	if (!argc) {
+		return 1;
+	}
 	char *command = argv[0];
 	
 	if (!strcasecmp(command, "help") || !strcasecmp(command, "?")) {
 		plg_CliOutputGenericHelp();
+		return 1;
 	}
 	else if (!strcasecmp(command, "version")) {
 		plg_Version();
+		return 1;
 	}
 	else if (!strcasecmp(command, "quit")) {
 		printf("bye!\n");
 		return 0;
 	}
 	else if (!strcasecmp(command, "init")) {
-		if (pManage == 0) {
-			pManage = plg_MngCreateHandle(argv[1], strlen(argv[1]));
-		} else {
-			printf("It has been initialized. Please destroy it first\n");
+		if (_pManage != 0) {
+			plg_MngDestoryHandle(_pManage);
 		}
+
+		if (argc == 2) {
+			_pManage = plg_MngCreateHandle(argv[1], strlen(argv[1]));
+		} else {
+			printf("Parameter does not meet the requirement\n");
+		}
+		return 1;
+	} else if (!strcasecmp(command, "iwj")) {
+		if (_pManage != 0) {
+			plg_MngDestoryHandle(_pManage);
+		}
+
+		if (argc == 2) {
+			_pManage = plg_MngCreateHandleWithJson(argv[1]);
+		} else {
+			printf("Parameter does not meet the requirement\n");
+		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "destory")) {
-		if (pManage != 0) {
-			plg_MngDestoryHandle(pManage);
+		if (_pManage != 0) {
+			plg_MngDestoryHandle(_pManage);
+			_pManage = 0;
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "star")) {
-		if (pManage != 0) {
-			plg_MngStarJob(pManage);
+		if (_pManage != 0) {
+			plg_MngStarJob(_pManage);
 		}
 	}
 	else if (!strcasecmp(command, "stop")) {
-		if (pManage != 0) {
-			plg_MngStopJob(pManage);
+		if (_pManage != 0) {
+			plg_MngStopJob(_pManage);
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "order")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 4) {
-				plg_MngAddOrder(pManage, argv[1], strlen(argv[1]), plg_JobCreateLua(argv[2], strlen(argv[2]), argv[3], strlen(argv[3])));
+				plg_MngAddOrder(_pManage, argv[1], strlen(argv[1]), plg_JobCreateLua(argv[2], strlen(argv[2]), argv[3], strlen(argv[3])));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "max")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 2) {
-				plg_MngSetMaxTableWeight(pManage, atoi(argv[1]));
+				plg_MngSetMaxTableWeight(_pManage, atoi(argv[1]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "table")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 3) {
-				plg_MngAddTable(pManage, argv[1], strlen(argv[1]), argv[2], strlen(argv[2]));
+				plg_MngAddTable(_pManage, argv[1], strlen(argv[1]), argv[2], strlen(argv[2]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "weight")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 3) {
-				plg_MngSetWeight(pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
+				plg_MngSetWeight(_pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "share")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 3) {
-				plg_MngSetNoShare(pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
+				plg_MngSetNoShare(_pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "save")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 3) {
-				plg_MngSetNoSave(pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
+				plg_MngSetNoSave(_pManage, argv[1], strlen(argv[1]), atoi(argv[2]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "aj")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 2) {
-				plg_MngAllocJob(pManage, atoi(argv[1]));
+				plg_MngAllocJob(_pManage, atoi(argv[1]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "fj")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 1) {
-				plg_MngFreeJob(pManage);
+				plg_MngFreeJob(_pManage);
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "rc")) {
-		if (pManage != 0) {
+		if (_pManage != 0) {
 			if (argc == 3) {
-				plg_MngRemoteCall(pManage, argv[1], strlen(argv[1]), argv[2], strlen(argv[2]));
+				plg_MngRemoteCall(_pManage, argv[1], strlen(argv[1]), argv[2], strlen(argv[2]));
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
 		}
+		return 1;
+	}
+	else if (!strcasecmp(command, "rcj")) {
+		if (_pManage != 0) {
+			if (argc >= 2) {
+				unsigned long long p = 101021;
+				plg_MngRemoteCallWithArg(_pManage, argv[1], strlen(argv[1]), (void*)p, argc - 2, (const char**) &argv[2]);
+			} else {
+				printf("Parameter does not meet the requirement\n");
+			}
+		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "pas")) {
-		if (pManage != 0) {
-			if (argc == 1) {
-				plg_MngPrintAllStatus(pManage);
-			} else {
-				printf("Parameter does not meet the requirement\n");
-			}
+		if (_pManage != 0) {
+			plg_MngPrintAllStatus(_pManage);
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "pajs")) {
-		if (pManage != 0) {
-			if (argc == 1) {
-				plg_MngPrintAllJobStatus(pManage);
-			} else {
-				printf("Parameter does not meet the requirement\n");
-			}
+		if (_pManage != 0) {
+			plg_MngPrintAllJobStatus(_pManage);
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "pajd")) {
-		if (pManage != 0) {
-			if (argc == 1) {
-				plg_MngPrintAllJobDetails(pManage);
-			} else {
-				printf("Parameter does not meet the requirement\n");
-			}
+		if (_pManage != 0) {
+			plg_MngPrintAllJobDetails(_pManage);
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "ppa")) {
-		if (pManage != 0) {
-			if (argc == 1) {
-				plg_MngPrintPossibleAlloc(pManage);
-			} else {
-				printf("Parameter does not meet the requirement\n");
-			}
+		if (_pManage != 0) {
+			plg_MngPrintPossibleAlloc(_pManage);
 		}
+		return 1;
 	}
 	else if (!strcasecmp(command, "base")) {
 		plg_BaseAll();
+		return 1;
 	} 
 	else if (!strcasecmp(command, "simple")) {
 		plg_simple();
+		return 1;
 	}
 	else if (!strcasecmp(command, "pfs")) {
 		PRFESA();
+		return 1;
+	}
+	else if (!strcasecmp(command, "logfile")) {
+		plg_LogSetErrFile();
+		return 1;
+	}
+	else if (!strcasecmp(command, "logprint")) {
+		plg_LogSetErrPrint();
+		return 1;
+	}
+	else if (!strcasecmp(command, "loglevel")) {
+		if (argc == 1) {
+			plg_LogSetMaxLevel(atoi(argv[1]));
+		} else {
+			printf("Parameter does not meet the requirement\n");
+		}
+		return 1;
+	}
+	else {
+		if(noFind)printf("command \"%s\" no found!\n", command);
+		return -1;
 	}
 
 	return 1;
@@ -250,18 +311,21 @@ static int IssueCommand(int argc, char **argv) {
 
 static sds ReadArgFromStdin(void) {
 	char buf[1024];
+	char* p = buf;
 	sds arg = plg_sdsEmpty();
+	size_t len;
 
-	while (1) {
-		int nread = (int)read(fileno(stdin), buf, 1024);
-		if (nread == 0) break;
-		else if (nread == -1) {
-			perror("Reading from standard input");
-			exit(1);
-		}
-		arg = plg_sdsCatLen(arg, buf, nread);
-		if (arg[nread-1] == '\n') break;
+	if (plg_readline(p, ">") == 0)
+		return 0;
+
+	len = strlen(p);
+	if (p[len - 1] == '\n') {
+		p[len - 1] = '\0';
+		len -= 1;
 	}
+
+	arg = plg_sdsCatLen(arg, p, len);
+	plg_freeline(p);
 	return arg;
 }
 
@@ -269,9 +333,10 @@ int plg_Interactive(FUNIssueCommand pIssueCommand) {
 	while (1) {
 		sds ptr = ReadArgFromStdin();
 		int vlen;
-		sds *v = plg_sdsSplitLen(ptr, (int)plg_sdsLen(ptr) - 1, " ", 1, &vlen);
+		sds *v = plg_sdsSplitLen(ptr, (int)plg_sdsLen(ptr), " ", 1, &vlen);
 		plg_sdsFree(ptr);
-		int ret = pIssueCommand(vlen, v);
+		int ret = pIssueCommand(vlen, v, 1);
+		plg_saveline(v[0]);
 		plg_sdsFreeSplitres(v, vlen);
 		if (0 == ret) break;
 	}
@@ -314,7 +379,7 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 			strcmp(argv[i], "-s") == 0)
 		{
 			if (checkArg(argv[i + 1])) {
-				plg_StartFromJsonFile(argv[i + 1]);
+				plg_MngCreateHandleWithJson(argv[i + 1]);
 			} else {
 				printf("Not enough parameters found!\n");
 			}
@@ -363,9 +428,17 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 
 int PMIAN(int argc, char **argv) {
 
-	printf("Welcome to pelgia!\n");	
-	if (plg_ReadArgFromParam(argc, argv))
-		return plg_Interactive(IssueCommand);
-	else
-		return 1;
+	plg_Version();
+	int ret = 1;
+	if (plg_ReadArgFromParam(argc, argv)){
+		ret = plg_Interactive(plg_IssueCommand);
+		
+		if (_pManage) {
+			plg_MngDestoryHandle(_pManage);
+		}
+
+		return ret;
+	} else {
+		return ret;
+	}
 }

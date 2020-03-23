@@ -27,10 +27,11 @@
 #define PMIAN __main
 #endif
 
-typedef int (*FUNIssueCommand)(int argc, char **argv);
+typedef int(*FUNIssueCommand)(int argc, char **argv, int noFind);
 
 void plg_CliOutputGenericHelp(void);
 int plg_Interactive(FUNIssueCommand pIssueCommand);
 int plg_ReadArgFromParam(int argc, char **argv);
+int plg_IssueCommand(int argc, char **argv, int noFind);
 
 #endif

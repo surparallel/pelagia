@@ -20,17 +20,15 @@
 #define __MANAGE_H
 
 //user manage API for test
-
-
 //Internal API
 typedef void(*AfterDestroyFun)(void* value);
-char* plg_MngGetDBPath(void* pManage);
-void plg_MngAddUserEvent(void* pManage, char* nevent, short neventLen, void* equeue);
-void* plg_MngJobHandle(void* pManage);
+char* plg_MngGetDBPath(void* pvManage);
+void plg_MngAddUserEvent(void* pvManage, char* nevent, short neventLen, void* equeue);
+void* plg_MngJobHandle(void* pvManage);
 char plg_MngCheckUsingThread();
-int plg_MngSetTableParent(void* pManage, char* nameTable, short nameTableLen, char* parent, short parentLen);
-void plg_MngPrintAllDetails(void* pManage);
-int plg_MngInterAllocJob(void* pManage, unsigned int core, char* fileName);
+int plg_MngSetTableParent(void* pvManage, char* nameTable, short nameTableLen, char* parent, short parentLen);
+void plg_MngPrintAllDetails(void* pvManage);
+int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName);
 
 void plg_MngOutJson(char* fileName, char* outJson);
 void plg_MngFromJson(char* fromJson);

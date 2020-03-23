@@ -1,4 +1,4 @@
-/*
+/*base.c --base test of all api
 *
 * Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>
 * All rights reserved.
@@ -30,7 +30,7 @@ static int TestRouting(char* value, short valueLen) {
 	void* pEvent; 
 	memcpy(&pEvent, value, valueLen);
 
-	//multiset and table clear
+	//TableClear and get
 	plg_JobTableClear("t0", 2);
 	unsigned int  len = 0, error = 1;;
 	void* ptr = plg_JobGet("t0", 2, "c1", 1, &len);
@@ -112,7 +112,7 @@ static int TestRouting(char* value, short valueLen) {
 
 	//setIfNoExit and get
 	error = 1;
-	plg_JobSIfNoExit("t0", 2, "a", 1, "b", 1);
+	plg_JobSetIfNoExit("t0", 2, "a", 1, "b", 1);
 	len = 0;
 	ptr = plg_JobGet("t0", 2, "a", 1, &len);
 	if (ptr) {
@@ -258,7 +258,7 @@ static int TestRouting(char* value, short valueLen) {
 	plg_DictExtenDestroy(pDictExten);
 
 	if (error) {
-		printf("fail MultiSet and order!\n");
+		printf("fail MultiSet and rang!\n");
 		plg_EventSend(pEvent, NULL, 0);
 		return 1;
 	}
@@ -316,8 +316,6 @@ static int TestRouting(char* value, short valueLen) {
 
 	//multiset and table clear
 	plg_JobTableClear("t1", 2);
-	len = 0, error = 1;;
-	ptr = plg_JobGet("t1", 2, "c1", 1, &len);
 	if (plg_JobSIsKeyExist("t1", 2, "a", 1, "b", 1)) {
 		printf("fail plg_JobTableClear!\n");
 		plg_EventSend(pEvent, NULL, 0);
@@ -462,7 +460,7 @@ static int TestRouting(char* value, short valueLen) {
 		return 1;
 	}
 
-	//SetAdd and SetDel 注意!a如果为空是否被清除干净
+	//SetAdd and SetDel
 	error = 1;
 	plg_JobSAdd("t1", 2, "a", 1, "b", 1);
 	pDictKeyExten = plg_DictExtenCreate();
@@ -576,15 +574,10 @@ static int TestRouting(char* value, short valueLen) {
 	plg_JobSUionStore("t1", 2, pDictKeyExten, "u", 1);
 	plg_DictExtenDestroy(pDictKeyExten);
 
-	pDictKeyExten = plg_DictExtenCreate();
-	plg_JobSMembers("t1", 2, "u", 1, pDictKeyExten);
-	plg_DictExtenDestroy(pDictKeyExten);
-
 	if (plg_JobSIsKeyExist("t1", 2, "u", 1, "d", 1)) {
 		error = 0;
 	}
 	
-
 	if (error) {
 		printf("fail SetAdd and SetUionStore!\n");
 		plg_EventSend(pEvent, NULL, 0);

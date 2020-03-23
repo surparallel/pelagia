@@ -126,7 +126,7 @@ static int TestRouting(char* value, short valueLen) {
 			pParam->i = c;
 			pParam->dmage = rand() % 1 ? 2 : 5;
 			plg_JobRemoteCall(order, strlen(order), (char*)pParam, sizeof(PfsParam));
-			plg_JobSetDonotFlush(1);
+			plg_JobSetDonotFlush();
 		}
 	}
 	//printf("---TestRouting--%d--%d--\n", pParam->i, count);

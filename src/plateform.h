@@ -162,6 +162,22 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #endif
 #endif // _WIN32
 
+#ifndef _WIN32
+#include <readline/readline.h>
+#include <readline/history.h>
+#define plg_readline(b,p)	(((b)=readline(p)) != NULL)
+#define plg_saveline(b) \
+	if (strlen(b) > 0) \
+	  add_history(b);
+#define plg_freeline(b)	(free(b))
+#else
+#define plg_readline(b,p)	\
+	(fputs(p, stdout), fflush(stdout),\
+	fgets(b, 1024, stdin) != NULL)
+#define plg_saveline(b)	{ (void)b; }
+#define plg_freeline(b)	{ (void)b; }
+#endif
+
 #ifdef _WIN32
 #if defined(_MSC_VER) && _MSC_VER < 1900
 

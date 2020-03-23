@@ -20,5 +20,9 @@
 #ifndef __BASE64_H
 #define __BASE64_H
 
+//base64
+unsigned char * plg_B64Decode(const char *src, unsigned int len);
+unsigned char * plg_B64DecodeEx(const char *src, unsigned int len, unsigned int *decsize);
+char * plg_B64Encode(const unsigned char *src, unsigned int len);
 
 #endif

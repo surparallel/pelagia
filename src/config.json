@@ -1,0 +1,35 @@
+{
+"dbPath":"",
+"core":1,
+"MaxTableWeight":100,
+"LuaDllPath":"./liblua.so",
+
+"o1":{
+    "orderType":"lua",
+    "file":"hello2.lua",
+    "fun":"sayHello",
+    "weight":1,
+    "t1":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+
+"base":{
+    "orderType":"lua",
+    "file":"base.lua",
+    "fun":"base",
+    "weight":1,
+    "t0":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        },
+    "t1":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    }
+}
