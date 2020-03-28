@@ -377,6 +377,7 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->exitThread = 0;
 	pJobHandle->donotFlush = 0;
 	pJobHandle->donotCommit = 0;
+	pJobHandle->privateData = 0;
 
 	pJobHandle->flush_lastStamp = plg_GetCurrentSec();
 	pJobHandle->flush_interval = 5*60;
@@ -536,6 +537,12 @@ static char job_IsCacheAllowWrite(void* pvJobHandle, char* PtrCache) {
 		return 1;
 	else
 		return 0;
+}
+
+static int job_IsTableAllowWrite(void* pvJobHandle, char* sdsTable) {
+
+	PJobHandle pJobHandle = pvJobHandle;
+	return plg_MngTableIsInOrder(pJobHandle->privateData, pJobHandle->pOrderName, plg_sdsLen(pJobHandle->pOrderName), sdsTable, plg_sdsLen(sdsTable));
 }
 
 static int IntervalometerCmpFun(void* value1, void* value2) {
@@ -849,7 +856,7 @@ unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigne
 	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableAdd(dictGetVal(valueEntry), sdsTable, sdsKye, value, valueLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -912,7 +919,7 @@ unsigned int plg_JobDel(void* table, unsigned short tableLen, void* key, unsigne
 	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableDel(dictGetVal(valueEntry), sdsTable, sdsKye);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -955,7 +962,7 @@ unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key,
 	sds sdsKey = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableAddIfNoExist(dictGetVal(valueEntry), sdsTable, sdsKey, value, valueLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -1002,7 +1009,7 @@ unsigned int plg_JobRename(void* table, unsigned short tableLen, void* key, unsi
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableRename(dictGetVal(valueEntry), sdsTable, sdsKye, sdsNewKye);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -1103,7 +1110,7 @@ unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictEx
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableMultiAdd(dictGetVal(valueEntry), sdsTable, pDictExten);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -1174,7 +1181,7 @@ void plg_JobTableClear(void* table, unsigned short tableLen) {
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableClear(dictGetVal(valueEntry), sdsTable);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1197,7 +1204,7 @@ unsigned int plg_JobSAdd(void* table, unsigned short tableLen, void* key, unsign
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			r = plg_CacheTableSetAdd(dictGetVal(valueEntry), sdsTable, sdsKye, sdsValue);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
@@ -1358,7 +1365,7 @@ void plg_JobSDel(void* table, unsigned short tableLen, void* key, unsigned short
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableSetDel(dictGetVal(valueEntry), sdsTable, sdsKey, pValueDictExten);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1455,7 +1462,7 @@ void plg_JobSUionStore(void* table, unsigned short tableLen, void* pSetDictExten
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableSetUionStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1492,7 +1499,7 @@ void plg_JobSInterStore(void* table, unsigned short tableLen, void* pSetDictExte
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableSetInterStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1529,7 +1536,7 @@ void plg_JobSDiffStore(void* table, unsigned short tableLen, void* pSetDictExten
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableSetDiffStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1553,7 +1560,7 @@ void plg_JobSMove(void* table, unsigned short tableLen, void* srcKey, unsigned s
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry))) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
 			plg_CacheTableSetMove(dictGetVal(valueEntry), sdsTable, sdsSrcKye, sdsDesKye, sdsValue);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
@@ -1603,6 +1610,40 @@ void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* v
 	pPIntervalometer->tim = milli + timer * 1000;
 
 	plg_listAddNodeHead(pJobHandle->pListIntervalometer, pPIntervalometer);
+}
+
+char* plg_JobTableNameWithJson() {
+	CheckUsingThread(0);
+
+	void* pManage = plg_JobGetPrivate();
+	if (!pManage) {
+		return 0;
+	}
+
+	short orderLen = 0;
+	void* orderName = plg_JobCurrentOrder(&orderLen);
+	if (!orderLen) {
+		return 0;
+	}
+
+	return plg_MngOrderAllTableWithJson(pManage, orderName, orderLen);
+}
+
+char** plg_JobTableName(short* tableLen) {
+	CheckUsingThread(0);
+
+	void* pManage = plg_JobGetPrivate();
+	if (!pManage) {
+		return 0;
+	}
+
+	short orderLen = 0;
+	void* orderName = plg_JobCurrentOrder(&orderLen);
+	if (!orderLen) {
+		return 0;
+	}
+
+	return plg_MngOrderAllTable(pManage, orderName, orderLen, tableLen);
 }
 
 #undef NORET

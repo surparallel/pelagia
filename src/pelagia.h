@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"12"
+#define VERSION_MINOR	"14"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	12
+#define VERSION_NUMMINOR	14
 
 #include "papidefine.h"
 
@@ -66,10 +66,11 @@ PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
 PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 
-//remotecall
+//system
 PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen);
-PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);
+PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
 PELAGIA_API void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen);
+PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
 
 //namorl db
 PELAGIA_API unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);

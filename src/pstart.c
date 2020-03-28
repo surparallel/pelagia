@@ -132,6 +132,20 @@ static void* plg_StartFromJson(const char* jsonStr) {
 		pManage = plg_MngCreateHandle(0, 0);
 	}
 
+	pJSON * logoutput = pJson_GetObjectItem(root, "LogOutput");
+	if (logoutput) {
+		if (strcmp(logoutput->valuestring, "file") == 0) {
+			plg_LogSetErrFile();
+		} else if (strcmp(logoutput->valuestring, "print") == 0) {
+			plg_LogSetErrPrint();
+		}
+	}
+
+	pJSON * loglevel = pJson_GetObjectItem(root, "LogLevel");
+	if (loglevel && (log_null <= loglevel->valueint && loglevel->valueint <= log_all)) {
+		plg_LogSetMaxLevel(loglevel->valueint);
+	}
+
 	EnumJson(root, pManage);
 
 	int iCore = 1;
@@ -172,7 +186,9 @@ void* plg_MngCreateHandleWithJson(const char* jsonFile) {
 	}
 
 	fclose(cFile);
-	return plg_StartFromJson(dstBuf);
+	void* p = plg_StartFromJson(dstBuf);
+	free(dstBuf);
+	return p;
 }
 
 unsigned int plg_NVersion() {

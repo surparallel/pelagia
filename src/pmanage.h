@@ -33,4 +33,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName);
 void plg_MngOutJson(char* fileName, char* outJson);
 void plg_MngFromJson(char* fromJson);
 void plg_MngSendExit(void* pvManage);
+int plg_MngTableIsInOrder(void* pvManage, void* order, short orderLen, void* table, short tableLen);
+char** plg_MngOrderAllTable(void* pvManage, void* order, short orderLen, short* tableLen);
+char* plg_MngOrderAllTableWithJson(void* pvManage, void* order, short orderLen);
 #endif

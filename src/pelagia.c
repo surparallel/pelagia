@@ -318,6 +318,9 @@ static sds ReadArgFromStdin(void) {
 int plg_Interactive(FUNIssueCommand pIssueCommand) {
 	while (1) {
 		sds ptr = ReadArgFromStdin();
+		if (ptr == 0) {
+			continue;
+		}
 		int vlen;
 		sds *v = plg_sdsSplitLen(ptr, (int)plg_sdsLen(ptr), " ", 1, &vlen);
 		plg_sdsFree(ptr);

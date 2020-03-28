@@ -54,8 +54,8 @@ void plg_JobSetExitThread(char value);
 void* job_ManageEqueue();
 void plg_JobSetPrivate(void* pJobHandle, void* privateData);
 void* plg_JobGetPrivate();
-
+char* plg_JobTableNameWithJson();
 void plg_JobTableMembersWithJson(void* table, unsigned short tableLen, void* jsonRoot);
-
 int plg_jobStartRouting(void* pvJobHandle);
+
 #endif

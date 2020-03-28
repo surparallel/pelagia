@@ -27,6 +27,8 @@
 #include "pelog.h"
 #include "psds.h"
 #include "pbase64.h"
+#include "pjob.h"
+#include "ptimesys.h"
 
 //As long as there is no problem of not loading multiple Lua modules, loading multiple modules may result in one of them not being used
 static void* _plVMHandle = 0;
@@ -53,6 +55,32 @@ static int LRemoteCall(lua_State* L) {
 	const char* v = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
 
 	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRemoteCall((void*)o, oLen, (void*)v, vLen));
+	return 1;
+}
+
+static int LMS(lua_State* L) {
+
+	NOTUSED(L);
+	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_GetCurrentMilli());
+	return 1;
+}
+
+static int LTableName(lua_State* L) {
+	
+	NOTUSED(L);
+	void* p = plg_JobTableNameWithJson();
+	plg_Lvmpushstring(_plVMHandle, p);
+	free(p);
+	return 1;
+}
+
+static int LOrderName(lua_State* L) {
+
+	NOTUSED(L);
+	short orderLen = 0;
+	void* p = plg_JobCurrentOrder(&orderLen);
+	plg_Lvmpushlstring(_plVMHandle, p, orderLen);
+	free(p);
 	return 1;
 }
 
@@ -1790,7 +1818,10 @@ static luaL_Reg mylibs[] = {
 	{ "MVersion", L_MVersion },
 
 	{ "RemoteCall", LRemoteCall },
-	{ "LTimer", LTimer },
+	{ "MS", LMS },
+	{ "TableName", LTableName },
+	{ "OrderName", LOrderName },
+	{ "Timer", LTimer },
 	{ "Set", LSet },
 	{ "MultiSet", LMultiSet },
 	{ "Del", LDel },

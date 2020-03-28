@@ -365,7 +365,7 @@ static void manage_AddEqueueToJob(void* pvManage, sds order, void* equeue) {
 }
 
 /*
-添加表到job
+Add table to job
 */
 static void manage_AddTableToJob(void* pvManage, void* pJobHandle, dict * table) {
 
@@ -426,7 +426,9 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
-		plg_listAddNodeHead(pManage->listJob, plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath));
+		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath);
+		plg_JobSetPrivate(pJobHandle, pvManage);
+		plg_listAddNodeHead(pManage->listJob, pJobHandle);
 	}
 
 	//listOrder
@@ -518,13 +520,18 @@ int plg_MngAllocJob(void* pvManage, unsigned int core) {
 }
 
 /*
-添加事件然后manage_CreateJob分配到多个线程
-single:1独占线程
+Add an event and then manage &amp; createjob to multiple threads
+Single: 1 exclusive thread
 */
 int plg_MngAddOrder(void* pvManage, char* nameOrder, short nameOrderLen, void* ptrProcess) {
 
 	CheckUsingThread(0);
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	sds sdsnameOrder = plg_sdsNewLen(nameOrder, nameOrderLen);
 	dictEntry * entry = plg_dictFind(pManage->order_process, sdsnameOrder);
 	if (entry == 0) {
@@ -540,14 +547,19 @@ int plg_MngAddOrder(void* pvManage, char* nameOrder, short nameOrderLen, void* p
 }
 
 /*
-添加并分配table到文件
-parent:所属key,子key与母key必须在同一个文件，优先于single
-single:1独占文件
+Add and assign table to file
+Parent: the owning key. The child key and the parent key must be in the same file, which takes precedence over single
+Single: 1 exclusive file
 */
 int plg_MngAddTable(void* pvManage, char* nameOrder, short nameOrderLen, char* nameTable, short nameTableLen) {
 
 	CheckUsingThread(0);
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	sds sdsnameOrder = plg_sdsNewLen(nameOrder, nameOrderLen);
 	dictEntry * entry = plg_dictFind(pManage->order_process, sdsnameOrder);
 	if (entry != 0) {
@@ -586,6 +598,11 @@ int plg_MngAddTable(void* pvManage, char* nameOrder, short nameOrderLen, char* n
 int plg_MngSetTableParent(void* pvManage, char* nameTable, short nameTableLen, char* parent, short parentLen) {
 
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	int ret = 0;
 	sds sdsNameTable = plg_sdsNewLen(nameTable, nameTableLen);
 	dictEntry* tableNameNode = plg_dictFind(pManage->dictTableName, sdsNameTable);
@@ -604,6 +621,11 @@ int plg_MngSetTableParent(void* pvManage, char* nameTable, short nameTableLen, c
 int plg_MngSetWeight(void* pvManage, char* nameTable, short nameTableLen, unsigned int weight) {
 
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	int ret = 0;
 	sds sdsNameTable = plg_sdsNewLen(nameTable, nameTableLen);
 	dictEntry* tableNameNode = plg_dictFind(pManage->dictTableName, sdsNameTable);
@@ -619,6 +641,11 @@ int plg_MngSetWeight(void* pvManage, char* nameTable, short nameTableLen, unsign
 int plg_MngSetNoSave(void* pvManage, char* nameTable, short nameTableLen, unsigned char noSave) {
 
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	int ret = 0;
 	sds sdsNameTable = plg_sdsNewLen(nameTable, nameTableLen);
 	dictEntry* tableNameNode = plg_dictFind(pManage->dictTableName, sdsNameTable);
@@ -634,6 +661,11 @@ int plg_MngSetNoSave(void* pvManage, char* nameTable, short nameTableLen, unsign
 int plg_MngSetNoShare(void* pvManage, char* nameTable, short nameTableLen, unsigned char noShare) {
 
 	PManage pManage = pvManage;
+	if (pManage->runStatus) {
+		elog(log_error, "Changes are not allowed during system operation!");
+		return 0;
+	}
+
 	int ret = 0;
 	sds sdsNameTable = plg_sdsNewLen(nameTable, nameTableLen);
 	dictEntry* tableNameNode = plg_dictFind(pManage->dictTableName, sdsNameTable);
@@ -647,9 +679,9 @@ int plg_MngSetNoShare(void* pvManage, char* nameTable, short nameTableLen, unsig
 }
 
 /*
-因为有检查模式所以create和star中间分开
-用户可以根据结果调整核心的数量如果不满意可以
-destroyjob后重新createjob
+Because of the check mode, create and star are separated
+Users can adjust the number of cores according to the results. If they are not satisfied, they can
+Recreate EJB after destroyjob
 */
 int plg_MngStarJob(void* pvManage) {
 
@@ -692,7 +724,7 @@ int plg_MngStarJob(void* pvManage) {
 }
 
 /*
-通过消息系统实现退出线程,不能强制退出
+Exit thread through message system, cannot force exit
 */
 static void manage_DestroyJob(void* pvManage, AfterDestroyFun fun, void* ptr) {
 
@@ -715,7 +747,7 @@ static void manage_DestroyJob(void* pvManage, AfterDestroyFun fun, void* ptr) {
 }
 
 /*
-通过消息系统实现退出线程,不能强制退出
+Exit thread through message system, cannot force exit
 */
 void plg_MngStopJob(void* pvManage) {
 
@@ -733,9 +765,9 @@ void plg_MngStopJob(void* pvManage) {
 
 
 /*
-不对等通讯指用户使用不同的方式发送和接收数据.
-不对等通讯user使用发送数据,
-user使用event接收数据
+Unequal communication means that users send and receive data in different ways
+Do not use send data to wait for communication users,
+User receives data using event
 */
 int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, short valueLen) {
 
@@ -788,7 +820,7 @@ void* plg_MngJobHandle(void* pvManage) {
 }
 
 /*
-当锁在循环嵌套中时要谨慎考虑,这里加锁可能导致释放失败或死锁
+Consider carefully when the lock is nested in a loop, where adding a lock may result in a release failure or deadlock
 */
 static int OrderDestroyCount(char* value, short valueLen) {
 	unsigned int run = 0;
@@ -845,7 +877,7 @@ static void manage_InternalDestoryHandle(void* pvManage) {
 }
 
 /*
-所有线程已经停止,不用再使用锁了
+All threads have been stopped and locks are no longer needed
 */
 static void CompleteDestroyFile(void* value) {
 
@@ -893,8 +925,8 @@ static void CallBackDestroyFile(void* value) {
 }
 
 /*
-创建一个句柄用于管理多个文件
-多线程不安全,在多线程启动期间只读。
+Create a handle to manage multiple files
+Multithreading is not safe and is read-only during multithreading startup.
 */
 void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 
@@ -968,7 +1000,7 @@ void plg_MngSendExit(void* pvManage){
 }
 
 /*
-实际要停止所有线程在多线程安全下执行
+Actually stop all threads from executing in multithreading safety
 */
 void plg_MngDestoryHandle(void* pvManage) {
 	
@@ -1389,6 +1421,67 @@ void plg_MngFromJson(char* fromJson) {
 	pJson_Delete(root);
 	plg_EventDestroyHandle(pEvent);
 	plg_MngDestoryHandle(pManage);
+}
+
+int plg_MngTableIsInOrder(void* pvManage, void* order, short orderLen, void* table, short tableLen) {
+
+	PManage pManage = pvManage;
+	sds sdsOrder = plg_sdsNewLen(order, orderLen);
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	
+	dict * dictTable = plg_DictSetValue(pManage->order_tableName, sdsOrder);
+	if (!dictTable) {
+		return 0;
+	}
+
+	dictEntry* entry = plg_dictFind(dictTable, sdsTable);
+
+	plg_sdsFree(sdsOrder);
+	plg_sdsFree(sdsTable);
+	if (entry) {
+		return 1;
+	}
+
+	return 0;
+}
+
+char** plg_MngOrderAllTable(void* pvManage, void* order, short orderLen, short* tableLen) {
+
+	PManage pManage = pvManage;
+	sds sdsOrder = plg_sdsNewLen(order, orderLen);
+
+	dict * table = plg_DictSetValue(pManage->order_tableName, sdsOrder);
+	if (!table) {
+		return 0;
+	}
+
+	*tableLen = dictSize(table);
+	short count = 0;
+	char** arrary = malloc(dictSize(table) * sizeof(char*));
+	dictIterator* dictIter = plg_dictGetSafeIterator(table);
+	dictEntry* dictNode;
+	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
+		arrary[count] = plg_sdsNewLen(dictGetKey(dictNode), plg_sdsLen(dictGetKey(dictNode)));
+	}
+	plg_dictReleaseIterator(dictIter);
+
+	return arrary;
+}
+
+char* plg_MngOrderAllTableWithJson(void* pvManage, void* order, short orderLen) {
+
+	short tableLen;
+	char** arrary = plg_MngOrderAllTable(pvManage, order, orderLen, &tableLen);
+
+	pJSON * root = pJson_CreateArray();
+	for (int i = 0; i < tableLen; i++) {
+		pJson_AddItemToArray(root, pJson_CreateStringWihtLen(arrary[i], plg_sdsLen(arrary[i])));
+	}
+	free(arrary);
+
+	char* p = pJson_Print(root);
+	pJson_Delete(root);
+	return p;
 }
 
 #undef NORET
