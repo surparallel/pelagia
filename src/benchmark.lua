@@ -1,7 +1,7 @@
 local json = require 'dkjson'
 
 function benchmark(param)
-  print("benchmark:"..param)
+  print("benchmark: ")
 
   local var = json.decode(param);
   local loop  = 0;
@@ -32,8 +32,7 @@ function benchmark(param)
       error = 1;
       pelagia.Set("t2", "a"..i, "b")
     end
-
-    print("set benchmark time:"..(pelagia.MS() - ms)/1000);
+    print(loop.." requests in "..((pelagia.MS() - ms)/1000).." seconds for set");
 
     --set and get
     error = 1;
@@ -55,7 +54,7 @@ function benchmark(param)
       error = 1;
       r = pelagia.Get("t2", "a"..i)
     end
-    print("get benchmark time:"..(pelagia.MS() - ms)/1000);
+    print(loop.." requests in "..((pelagia.MS() - ms)/1000).." seconds for get");
   end
   print("job all pass!\n");
   return 1;

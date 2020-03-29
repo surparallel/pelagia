@@ -36,7 +36,7 @@
 static void* _pManage = 0;
 
 void plg_Version() {
-	printf("pelgia version \"" VERSION_MAJOR "." VERSION_MINOR "\"\n");
+	printf("pelagia version \"" VERSION_MAJOR "." VERSION_MINOR "\"\n");
 	printf("Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>\n");
 	printf("* All rights reserved. *\n");
 }
