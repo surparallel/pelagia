@@ -17,3 +17,4 @@ jobs:
       run: 'sudo apt install libreadline-dev'
     - name: make
       run: 'cd src && make linux'
+
