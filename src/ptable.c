@@ -3309,9 +3309,9 @@ void plg_TableSetUionStore(void* pvTableHandle, void* pSetDictExten, void* vKey,
 		void* dictIter = plg_DictExtenGetIterator(pDictExten);
 		void* dictNode;
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-			unsigned int keyLen = 0;
-			void* keyPtr = plg_DictExtenKey(dictNode, &keyLen);
-			table_InsideSetAdd(pTableHandle,vKey, keyLen, keyPtr, keyLen);
+			unsigned int retKeyLen = 0;
+			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
+			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
@@ -3381,9 +3381,9 @@ void plg_TableSetInterStore(void* pvTableHandle, void* pSetDictExten, void* vKey
 		void* dictIter = plg_DictExtenGetIterator(pDictExten);
 		void* dictNode;
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-			unsigned int keyLen = 0;
-			void* keyPtr = plg_DictExtenKey(dictNode, &keyLen);
-			table_InsideSetAdd(pTableHandle,vKey, keyLen, keyPtr, keyLen);
+			unsigned int retKeyLen = 0;
+			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
+			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
@@ -3453,9 +3453,9 @@ void plg_TableSetDiffStore(void* pvTableHandle, void* pSetDictExten, void* vKey,
 		void* dictIter = plg_DictExtenGetIterator(pDictExten);
 		void* dictNode;
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
-			unsigned int keyLen = 0;
-			void* keyPtr = plg_DictExtenKey(dictNode, &keyLen);
-			table_InsideSetAdd(pTableHandle,vKey, keyLen, keyPtr, keyLen);
+			unsigned int retKeyLen = 0;
+			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
+			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
