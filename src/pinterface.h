@@ -143,7 +143,7 @@ typedef struct _DiskTablePage
 {
 	unsigned int usingPageAddr;
 	unsigned short usingPageOffset;
-	unsigned short tableLength;
+	short tableLength;
 	unsigned short tableSize;
 	unsigned short spaceAddr;
 	unsigned short spaceLength;
@@ -241,7 +241,7 @@ typedef struct _DiskValuePage
 {
 	unsigned int valueUsingPageAddr;
 	unsigned short valueUsingPageOffset;
-	unsigned short valueLength;
+	short valueLength;
 	unsigned short valueSize;
 	unsigned short valueSpaceAddr;
 	unsigned short valueSpaceLength;

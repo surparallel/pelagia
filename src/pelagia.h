@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"15"
+#define VERSION_MINOR	"16"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	15
+#define VERSION_NUMMINOR	16
 
 #include "papidefine.h"
 
@@ -67,48 +67,48 @@ PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 
 //system
-PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen);
+PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, short valueLen);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
-PELAGIA_API void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen);
+PELAGIA_API void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, short valueLen);
 PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
 
 //namorl db
-PELAGIA_API unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
-PELAGIA_API unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictExten);
-PELAGIA_API unsigned int plg_JobDel(void* table, unsigned short tableLen, void* key, unsigned short keyLen);
-PELAGIA_API unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
-PELAGIA_API void plg_JobTableClear(void* table, unsigned short tableLen);
-PELAGIA_API unsigned int plg_JobRename(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* newKey, unsigned short newKeyLen);
+PELAGIA_API unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen);
+PELAGIA_API unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten);
+PELAGIA_API unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen);
+PELAGIA_API unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen);
+PELAGIA_API void plg_JobTableClear(void* table, short tableLen);
+PELAGIA_API unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen, void* newKey, short newKeyLen);
 
-PELAGIA_API void* plg_JobGet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen);
-PELAGIA_API unsigned int plg_JobLength(void* table, unsigned short tableLen);
-PELAGIA_API unsigned int plg_JobIsKeyExist(void* table, unsigned short tableLen, void* key, unsigned short keyLen);
-PELAGIA_API void plg_JobLimite(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int left, unsigned int right, void* pDictExten);
-PELAGIA_API void plg_JobOrder(void* table, unsigned short tableLen, short order, unsigned int limite, void* pDictExten);
-PELAGIA_API void plg_JobRang(void* table, unsigned short tableLen, void* beginKey, unsigned short beginKeyLen, void* endKey, unsigned short endKeyLen, void* pDictExten);
-PELAGIA_API void plg_JobPattern(void* table, unsigned short tableLen, void* beginKey, unsigned short beginKeyLen, void* endKey, unsigned short endKeyLen, char* pattern, unsigned short patternLen, void* pDictExten);
-PELAGIA_API void plg_JobMultiGet(void* table, unsigned short tableLen, void* pKeyDictExten, void* pValueDictExten);
-PELAGIA_API void* plg_JobRand(void* table, unsigned short tableLen, unsigned int* valueLen);
+PELAGIA_API void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);
+PELAGIA_API unsigned int plg_JobLength(void* table, short tableLen);
+PELAGIA_API unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short keyLen);
+PELAGIA_API void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigned int left, unsigned int right, void* pDictExten);
+PELAGIA_API void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite, void* pDictExten);
+PELAGIA_API void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pDictExten);
+PELAGIA_API void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten);
+PELAGIA_API void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten);
+PELAGIA_API void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen);
 
 //set db
-PELAGIA_API unsigned int plg_JobSAdd(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen);
-PELAGIA_API void plg_JobSMove(void* table, unsigned short tableLen, void* srcKey, unsigned short srcKeyLen, void* desKey, unsigned short desKeyLen, void* value, unsigned short valueLen);
-PELAGIA_API void* plg_JobSPop(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen);
-PELAGIA_API void plg_JobSDel(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* pValueDictExten);
-PELAGIA_API void plg_JobSUionStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen);
-PELAGIA_API void plg_JobSInterStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen);
-PELAGIA_API void plg_JobSDiffStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen);
+PELAGIA_API unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);
+PELAGIA_API void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, void* desKey, short desKeyLen, void* value, short valueLen);
+PELAGIA_API void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);
+PELAGIA_API void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pValueDictExten);
+PELAGIA_API void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
+PELAGIA_API void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
+PELAGIA_API void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
 
-PELAGIA_API void plg_JobSRang(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* beginValue, unsigned short beginValueLen, void* endValue, unsigned short endValueLen, void* pDictExten);
-PELAGIA_API void plg_JobSLimite(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned short valueLen, unsigned int left, unsigned int right, void* pDictExten);
-PELAGIA_API unsigned int plg_JobSLength(void* table, unsigned short tableLen, void* key, unsigned short keyLen);
-PELAGIA_API unsigned int plg_JobSIsKeyExist(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned short valueLen);
-PELAGIA_API void plg_JobSMembers(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* pDictExten);
-PELAGIA_API void* plg_JobSRand(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen);
-PELAGIA_API unsigned int plg_JobSRangCount(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* beginValue, unsigned short beginValueLen, void* endValue, unsigned short endValueLen);
-PELAGIA_API void plg_JobSUion(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten);
-PELAGIA_API void plg_JobSInter(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten);
-PELAGIA_API void plg_JobSDiff(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten);
+PELAGIA_API void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen, void* pDictExten);
+PELAGIA_API void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen, unsigned int left, unsigned int right, void* pDictExten);
+PELAGIA_API unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen);
+PELAGIA_API unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);
+PELAGIA_API void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void* pDictExten);
+PELAGIA_API void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);
+PELAGIA_API unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen);
+PELAGIA_API void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten);
+PELAGIA_API void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten);
+PELAGIA_API void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten);
 
 //event for user
 PELAGIA_API void* plg_EventCreateHandle();

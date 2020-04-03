@@ -661,9 +661,9 @@ unsigned int plg_DiskInsideTableAdd(void* pvDiskHandle, void* tableName, void* v
 		DiskKeyBigValue diskKeyBigValue;
 		if (0 == plg_TableNewBigValue(pDiskHandle->tableHandle, value, length, &diskKeyBigValue))
 			return 0;
-		return plg_TableAddWithAlter(pDiskHandle->tableHandle, tableName, VALUE_BIGVALUE, &diskKeyBigValue, sizeof(DiskKeyBigValue));
+		return plg_TableAddWithAlter(pDiskHandle->tableHandle, tableName, plg_sdsLen(tableName), VALUE_BIGVALUE, &diskKeyBigValue, sizeof(DiskKeyBigValue));
 	} else {
-		return plg_TableAddWithAlter(pDiskHandle->tableHandle, tableName, VALUE_NORMAL, value, length);
+		return plg_TableAddWithAlter(pDiskHandle->tableHandle, tableName, plg_sdsLen(tableName), VALUE_NORMAL, value, length);
 	}
 }
 
@@ -682,7 +682,7 @@ unsigned int plg_DiskTableAdd(void* pvDiskHandle, void* tableName, void* value, 
 
 unsigned int plg_DiskInsideTableDel(void* pvDiskHandle, void* tableName) {
 	PDiskHandle pDiskHandle = pvDiskHandle;
-	return plg_TableDel(pDiskHandle->tableHandle, tableName);
+	return plg_TableDel(pDiskHandle->tableHandle, tableName, plg_sdsLen(tableName));
 }
 
 unsigned int plg_DiskTableDel(void* pvDiskHandle, void* tableName) {
@@ -699,7 +699,7 @@ unsigned int plg_DiskTableDel(void* pvDiskHandle, void* tableName) {
 
 int plg_DiskInsideTableFind(void* pvDiskHandle, void* tableName, void* pDictExten) {
 	PDiskHandle pDiskHandle = pvDiskHandle;
-	return plg_TableFind(pDiskHandle->tableHandle, tableName, pDictExten, 0);
+	return plg_TableFind(pDiskHandle->tableHandle, tableName, plg_sdsLen(tableName), pDictExten, 0);
 }
 
 int plg_DiskTableFind(void* pvDiskHandle, void* tableName, void* pDictExten) {
@@ -714,7 +714,7 @@ int plg_DiskTableFind(void* pvDiskHandle, void* tableName, void* pDictExten) {
 void plg_DiskPrintTableName(void* pvDiskHandle) {
 
 	PDiskHandle pDiskHandle = pvDiskHandle;
-	void* iter = plg_TableGetIteratorWithKey(pDiskHandle->tableHandle, NULL);
+	void* iter = plg_TableGetIteratorWithKey(pDiskHandle->tableHandle, NULL, 0);
 
 	unsigned int pageAddr = 0;
 	unsigned int count = 0;
@@ -753,7 +753,7 @@ void plg_DiskPrintTableName(void* pvDiskHandle) {
 void plg_DiskFillTableName(void* pvDiskHandle, void* ptr, FillTableNameCB funCB) {
 
 	PDiskHandle pDiskHandle = pvDiskHandle;
-	void* iter = plg_TableGetIteratorWithKey(pDiskHandle->tableHandle, NULL);
+	void* iter = plg_TableGetIteratorWithKey(pDiskHandle->tableHandle, NULL, 0);
 
 	PDiskTableKey keyStr;
 	while ((keyStr = plg_TableNextIterator(iter)) != NULL) {

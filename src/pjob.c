@@ -510,7 +510,7 @@ unsigned int  plg_JobIsEmpty(void* pvJobHandle) {
 /*
 User VM use
 */
-int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, unsigned short valueLen) {
+int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
 
@@ -599,7 +599,7 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 	plg_LocksSetSpecific(pJobHandle);
 
 	//init
-	sds sdsKey = plg_sdsNew("init");
+	void* sdsKey = plg_sdsNew("init");
 	dictEntry* entry = plg_dictFind(pJobHandle->order_process, sdsKey);
 	if (entry) {
 		PEventPorcess pEventPorcess = (PEventPorcess)dictGetVal(entry);
@@ -847,17 +847,16 @@ void plg_JobPrintOrder(void* pvJobHandle) {
 /*
 First check the running cache
 */
-unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
+unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheTableAdd(dictGetVal(valueEntry), sdsTable, sdsKye, value, valueLen);
+			r = plg_CacheTableAdd(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
@@ -869,7 +868,6 @@ unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigne
 		elog(log_error, "plg_JobSet.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 
 	return r;
 }
@@ -877,17 +875,16 @@ unsigned int plg_JobSet(void* table, unsigned short tableLen, void* key, unsigne
 /*
 Get set type will fail
 */
-void* plg_JobGet(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen) {
+void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		void* pDictExten = plg_DictExtenCreate();
-		if (0 <= plg_CacheTableFind(dictGetVal(valueEntry), sdsTable, sdsKye, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
+		if (0 <= plg_CacheTableFind(dictGetVal(valueEntry), sdsTable, key, keyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				void* valuePtr = plg_DictExtenValue(entry, valueLen);
@@ -905,22 +902,20 @@ void* plg_JobGet(void* table, unsigned short tableLen, void* key, unsigned short
 		elog(log_error, "plg_JobGet.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 
 	return ptr;
 }
 
-unsigned int plg_JobDel(void* table, unsigned short tableLen, void* key, unsigned short keyLen) {
+unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheTableDel(dictGetVal(valueEntry), sdsTable, sdsKye);
+			r = plg_CacheTableDel(dictGetVal(valueEntry), sdsTable, key, keyLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
@@ -931,12 +926,11 @@ unsigned int plg_JobDel(void* table, unsigned short tableLen, void* key, unsigne
 		elog(log_error, "plg_JobDel.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 
 	return r;
 }
 
-unsigned int plg_JobLength(void* table, unsigned short tableLen) {
+unsigned int plg_JobLength(void* table, short tableLen) {
 
 	unsigned int len = 0;
 	CheckUsingThread(0);
@@ -953,17 +947,16 @@ unsigned int plg_JobLength(void* table, unsigned short tableLen) {
 	return len;
 }
 
-unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
+unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheTableAddIfNoExist(dictGetVal(valueEntry), sdsTable, sdsKey, value, valueLen);
+			r = plg_CacheTableAddIfNoExist(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
@@ -974,43 +967,37 @@ unsigned int plg_JobSetIfNoExit(void* table, unsigned short tableLen, void* key,
 		elog(log_error, "plg_JobSetIfNoExit.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 
 	return r;
 }
 
-unsigned int plg_JobIsKeyExist(void* table, unsigned short tableLen, void* key, unsigned short keyLen) {
+unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short keyLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		r = plg_CacheTableIsKeyExist(dictGetVal(valueEntry), sdsTable, sdsKye, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		r = plg_CacheTableIsKeyExist(dictGetVal(valueEntry), sdsTable, key, keyLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobIsKeyExist.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 
 	return r;
 }
 
-unsigned int plg_JobRename(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* newKey, unsigned short newKeyLen) {
+unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen, void* newKey, short newKeyLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
-	sds sdsNewKye = plg_sdsNewLen(newKey, newKeyLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheTableRename(dictGetVal(valueEntry), sdsTable, sdsKye, sdsNewKye);
+			r = plg_CacheTableRename(dictGetVal(valueEntry), sdsTable, key, keyLen, newKey, newKeyLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
@@ -1021,30 +1008,25 @@ unsigned int plg_JobRename(void* table, unsigned short tableLen, void* key, unsi
 		elog(log_error, "plg_JobRename.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
-	plg_sdsFree(sdsNewKye);
-
 	return r;
 }
 
-void plg_JobLimite(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int left, unsigned int right, void* pDictExten) {
+void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigned int left, unsigned int right, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTableLimite(dictGetVal(valueEntry), sdsTable, sdsKye, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTableLimite(dictGetVal(valueEntry), sdsTable, key, keyLen, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobLimite.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 }
 
-void plg_JobOrder(void* table, unsigned short tableLen, short order, unsigned int limite, void* pDictExten) {
+void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1059,50 +1041,39 @@ void plg_JobOrder(void* table, unsigned short tableLen, short order, unsigned in
 	plg_sdsFree(sdsTable);
 }
 
-void plg_JobRang(void* table, unsigned short tableLen, void* beginKey, unsigned short beginKeyLen, void* endKey, unsigned short endKeyLen, void* pDictExten) {
+void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsBeginKey = plg_sdsNewLen(beginKey, beginKeyLen);
-	sds sdsEndKey = plg_sdsNewLen(endKey, endKeyLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTableRang(dictGetVal(valueEntry), sdsTable, sdsBeginKey, sdsEndKey, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTableRang(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, endKey, endKeyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobRang.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsBeginKey);
-	plg_sdsFree(sdsEndKey);
+
 }
 
-void plg_JobPattern(void* table, unsigned short tableLen, void* beginKey, unsigned short beginKeyLen, void* endKey, unsigned short endKeyLen, char* pattern, unsigned short patternLen, void* pDictExten) {
+void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsBeginKey = plg_sdsNewLen(beginKey, beginKeyLen);
-	sds sdsEndKey = plg_sdsNewLen(endKey, endKeyLen);
-	sds sdsPattern = plg_sdsNewLen(pattern, patternLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTablePattern(dictGetVal(valueEntry), sdsTable, sdsBeginKey, sdsEndKey, sdsPattern, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTablePattern(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, endKey, endKeyLen, pattern, patternLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobPattern.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsBeginKey);
-	plg_sdsFree(sdsEndKey);
-	plg_sdsFree(sdsPattern);
 }
 
 /*
 First check the running cache
 */
-unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictExten) {
+unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 
 	unsigned int r = 0;
 	CheckUsingThread(0);
@@ -1125,7 +1096,7 @@ unsigned int plg_JobMultiSet(void* table, unsigned short tableLen, void* pDictEx
 	return r;
 }
 
-void plg_JobMultiGet(void* table, unsigned short tableLen, void* pKeyDictExten, void* pValueDictExten) {
+void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1140,7 +1111,7 @@ void plg_JobMultiGet(void* table, unsigned short tableLen, void* pKeyDictExten, 
 	plg_sdsFree(sdsTable);
 }
 
-void* plg_JobRand(void* table, unsigned short tableLen, unsigned int* valueLen) {
+void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
 	void* ptr = 0;
@@ -1173,7 +1144,7 @@ void* plg_JobRand(void* table, unsigned short tableLen, unsigned int* valueLen) 
 	return ptr;
 }
 
-void plg_JobTableClear(void* table, unsigned short tableLen) {
+void plg_JobTableClear(void* table, short tableLen) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1193,19 +1164,16 @@ void plg_JobTableClear(void* table, unsigned short tableLen) {
 	plg_sdsFree(sdsTable);
 }
 
-unsigned int plg_JobSAdd(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned int valueLen) {
+unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
-	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
-	sds sdsValue = plg_sdsNewLen(value, valueLen);
-
+	sds sdsTable = plg_sdsNewLen(table, tableLen);	
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheTableSetAdd(dictGetVal(valueEntry), sdsTable, sdsKye, sdsValue);
+			r = plg_CacheTableSetAdd(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen);
 			if (r) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
@@ -1216,124 +1184,102 @@ unsigned int plg_JobSAdd(void* table, unsigned short tableLen, void* key, unsign
 		elog(log_error, "plg_JobSAdd.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
-	plg_sdsFree(sdsValue);
 
 	return r;
 }
 
-void plg_JobSRang(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* beginValue, unsigned short beginValueLen, void* endValue, unsigned short endValueLen, void* pDictExten) {
+void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-	sds sdsBeginKey = plg_sdsNewLen(beginValue, beginValueLen);
-	sds sdsEndKey = plg_sdsNewLen(endValue, endValueLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTableSetRang(dictGetVal(valueEntry), sdsTable, sdsKey, sdsBeginKey, sdsEndKey, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTableSetRang(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, endValue, endValueLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSRang.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
-	plg_sdsFree(sdsBeginKey);
-	plg_sdsFree(sdsEndKey);
 }
 
-void plg_JobSLimite(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned short valueLen, unsigned int left, unsigned int right, void* pDictExten) {
+void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen, unsigned int left, unsigned int right, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-	sds sdsValue = plg_sdsNewLen(value, valueLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTableSetLimite(dictGetVal(valueEntry), sdsTable, sdsKey, sdsValue, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTableSetLimite(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSLimite.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
-	plg_sdsFree(sdsValue);
 }
 
-unsigned int plg_JobSLength(void* table, unsigned short tableLen, void* key, unsigned short keyLen) {
+unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen) {
 
 	unsigned int len = 0;
 	CheckUsingThread(0);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		len = plg_CacheTableSetLength(dictGetVal(valueEntry), sdsTable, sdsKey, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		len = plg_CacheTableSetLength(dictGetVal(valueEntry), sdsTable, key, keyLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSLength.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 
 	return len;
 }
 
-unsigned int plg_JobSIsKeyExist(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* value, unsigned short valueLen) {
+unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-	sds sdsValue = plg_sdsNewLen(value, valueLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		r = plg_CacheTableSetIsKeyExist(dictGetVal(valueEntry), sdsTable, sdsKey, sdsValue, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		r = plg_CacheTableSetIsKeyExist(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSIsKeyExist.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
-	plg_sdsFree(sdsValue);
 
 	return r;
 }
 
-void plg_JobSMembers(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* pDictExten) {
+void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		plg_CacheTableSetMembers(dictGetVal(valueEntry), sdsTable, sdsKey, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		plg_CacheTableSetMembers(dictGetVal(valueEntry), sdsTable, key, keyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSMembers.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 }
 
-void* plg_JobSRand(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen) {
+void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 
 		void* pDictExten = plg_DictExtenCreate();
-		if (1 <= plg_CacheTableSetRand(dictGetVal(valueEntry), sdsTable, sdsKey, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
+		if (1 <= plg_CacheTableSetRand(dictGetVal(valueEntry), sdsTable, key, keyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				void* keyPtr = plg_DictExtenKey(entry, valueLen);
@@ -1351,22 +1297,19 @@ void* plg_JobSRand(void* table, unsigned short tableLen, void* key, unsigned sho
 		elog(log_error, "plg_JobSRand.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 
 	return ptr;
 }
 
-void plg_JobSDel(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* pValueDictExten) {
+void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pValueDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			plg_CacheTableSetDel(dictGetVal(valueEntry), sdsTable, sdsKey, pValueDictExten);
+			plg_CacheTableSetDel(dictGetVal(valueEntry), sdsTable, key, keyLen, pValueDictExten);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
 			elog(log_error, "plg_JobSDel.No permission to table <%s>!", sdsTable);
@@ -1375,22 +1318,20 @@ void plg_JobSDel(void* table, unsigned short tableLen, void* key, unsigned short
 		elog(log_error, "plg_JobSDel.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 }
 
-void* plg_JobSPop(void* table, unsigned short tableLen, void* key, unsigned short keyLen, unsigned int* valueLen) {
+void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 
 		void* pDictExten = plg_DictExtenCreate();
-		if (1 <= plg_CacheTableSetPop(dictGetVal(valueEntry), sdsTable, sdsKey, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
+		if (1 <= plg_CacheTableSetPop(dictGetVal(valueEntry), sdsTable, key, keyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)))) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				void* valuePtr = plg_DictExtenKey(entry, valueLen);
@@ -1408,37 +1349,30 @@ void* plg_JobSPop(void* table, unsigned short tableLen, void* key, unsigned shor
 		elog(log_error, "plg_JobSPop.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
 
 	return ptr;
 
 }
 
-unsigned int plg_JobSRangCount(void* table, unsigned short tableLen, void* key, unsigned short keyLen, void* beginValue, unsigned short beginValueLen, void* endValue, unsigned short endValueLen) {
+unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen) {
 
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKey = plg_sdsNewLen(key, keyLen);
-	sds sdsBeginKey = plg_sdsNewLen(beginValue, beginValueLen);
-	sds sdsEndKey = plg_sdsNewLen(endValue, endValueLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
-		r = plg_CacheTableSetRangCount(dictGetVal(valueEntry), sdsTable, sdsKey, sdsBeginKey, sdsEndKey, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+		r = plg_CacheTableSetRangCount(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, endValue, endValueLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSRangCount.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKey);
-	plg_sdsFree(sdsBeginKey);
-	plg_sdsFree(sdsEndKey);
 
 	return r;
 }
 
-void plg_JobSUion(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten) {
+void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1453,17 +1387,15 @@ void plg_JobSUion(void* table, unsigned short tableLen, void* pSetDictExten, voi
 	plg_sdsFree(sdsTable);
 }
 
-void plg_JobSUionStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen) {
+void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
-
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			plg_CacheTableSetUionStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
+			plg_CacheTableSetUionStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
 			elog(log_error, "plg_JobSUionStore.No permission to table <%s>!", sdsTable);
@@ -1472,10 +1404,9 @@ void plg_JobSUionStore(void* table, unsigned short tableLen, void* pSetDictExten
 		elog(log_error, "plg_JobSUionStore.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 }
 
-void plg_JobSInter(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten) {
+void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1490,17 +1421,16 @@ void plg_JobSInter(void* table, unsigned short tableLen, void* pSetDictExten, vo
 	plg_sdsFree(sdsTable);
 }
 
-void plg_JobSInterStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen) {
+void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			plg_CacheTableSetInterStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
+			plg_CacheTableSetInterStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
 			elog(log_error, "plg_JobSInterStore.No permission to table <%s>!", sdsTable);
@@ -1509,10 +1439,9 @@ void plg_JobSInterStore(void* table, unsigned short tableLen, void* pSetDictExte
 		elog(log_error, "plg_JobSInterStore.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 }
 
-void plg_JobSDiff(void* table, unsigned short tableLen, void* pSetDictExten, void* pKeyDictExten) {
+void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1527,17 +1456,16 @@ void plg_JobSDiff(void* table, unsigned short tableLen, void* pSetDictExten, voi
 	plg_sdsFree(sdsTable);
 }
 
-void plg_JobSDiffStore(void* table, unsigned short tableLen, void* pSetDictExten, void* key, unsigned short keyLen) {
+void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsKye = plg_sdsNewLen(key, keyLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			plg_CacheTableSetDiffStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, sdsKye);
+			plg_CacheTableSetDiffStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
 			elog(log_error, "plg_JobSDiffStore.No permission to table <%s>!", sdsTable);
@@ -1546,22 +1474,18 @@ void plg_JobSDiffStore(void* table, unsigned short tableLen, void* pSetDictExten
 		elog(log_error, "plg_JobSDiffStore.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsKye);
 }
 
-void plg_JobSMove(void* table, unsigned short tableLen, void* srcKey, unsigned short srcKeyLen, void* desKey, unsigned short desKeyLen, void* value, unsigned short valueLen) {
+void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, void* desKey, short desKeyLen, void* value, short valueLen) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	sds sdsSrcKye = plg_sdsNewLen(srcKey, srcKeyLen);
-	sds sdsDesKye = plg_sdsNewLen(desKey, desKeyLen);
-	sds sdsValue = plg_sdsNewLen(value, valueLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			plg_CacheTableSetMove(dictGetVal(valueEntry), sdsTable, sdsSrcKye, sdsDesKye, sdsValue);
+			plg_CacheTableSetMove(dictGetVal(valueEntry), sdsTable, srcKey, srcKeyLen, desKey, desKeyLen, value, valueLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
 			elog(log_error, "plg_JobSMove.No permission to table <%s>!", sdsTable);
@@ -1570,13 +1494,10 @@ void plg_JobSMove(void* table, unsigned short tableLen, void* srcKey, unsigned s
 		elog(log_error, "plg_JobSMove.Cannot access table <%s>!", sdsTable);
 	}
 	plg_sdsFree(sdsTable);
-	plg_sdsFree(sdsSrcKye);
-	plg_sdsFree(sdsDesKye);
-	plg_sdsFree(sdsValue);
 }
 
 
-void plg_JobTableMembersWithJson(void* table, unsigned short tableLen, void* jsonRoot) {
+void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
@@ -1599,7 +1520,7 @@ char* plg_JobCurrentOrder(short* orderLen) {
 	return pJobHandle->pOrderName;
 }
 
-void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, unsigned short valueLen) {
+void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, short valueLen) {
 	CheckUsingThread(NORET);
 
 	unsigned long long milli = plg_GetCurrentMilli();
