@@ -1,0 +1,98 @@
+{
+"dbPath":"",
+"core":1,
+"MaxTableWeight":100,
+"LuaDllPath":"./lua5.1.dll",
+"LogOutput": "print",
+"LogLevel":5,
+
+"acc_insert":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"acc_insert",
+    "weight":1,
+    "acc_title":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"acc_del":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"acc_del",
+    "weight":1,
+    "acc_title":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"acc_alt":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"acc_alt",
+    "weight":1,
+    "acc_title":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"book_insert":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"book_insert",
+    "weight":1,
+    "book_level":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"book_del":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"book_del",
+    "weight":1,
+    "book_level":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"book_borrow":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"book_borrow",
+    "weight":1,
+    "book_records":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"book_returned":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"book_returned",
+    "weight":1,
+    "book_records":{
+        "weight":1,
+        "nosave":0,
+        "noshare":0
+        }
+    },
+"init_test":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"init_test",
+    "weight":1
+    },
+"borrow_test":{
+    "orderType":"lua",
+    "file":"simple.lua",
+    "fun":"borrow_test",
+    "weight":1
+    }
+}

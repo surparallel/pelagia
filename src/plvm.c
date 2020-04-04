@@ -243,15 +243,14 @@ int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short
 	PlVMHandle plVMHandle = pvlVMHandle;
 	if (plg_Lvmloadfilex(pvlVMHandle, file)){
 		elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, -1, NULL));
-		plg_Lvmsettop(plVMHandle, -2);
+		plg_Lvmsettop(plVMHandle, 0);
 		return 0;
 	}
 
 	//load fun
 	if (plg_Lvmpcall(pvlVMHandle, 0, LUA_MULTRET, 0)) {
-		printf("\nFATAL ERROR:%s\n\n", plg_Lvmtolstring(plVMHandle, -1, NULL));
 		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", file, plg_Lvmtolstring(pvlVMHandle, -1, NULL));
-		plg_Lvmsettop(plVMHandle, -2);
+		plg_Lvmsettop(plVMHandle, 0);
 		return 0;
 	}
 
@@ -261,7 +260,7 @@ int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short
 
 	if (plg_Lvmpcall(pvlVMHandle, 1, LUA_MULTRET, 0)) {
 		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", fun, plg_Lvmtolstring(plVMHandle, -1, NULL));
-		plg_Lvmsettop(pvlVMHandle, -2);
+		plg_Lvmsettop(pvlVMHandle, 0);
 		return 0;
 	}
 
@@ -271,7 +270,7 @@ int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short
 	}
 
 	//clear lua --lua_pop(L,1) lua_settop(L, -(n)-1)
-	plg_Lvmsettop(pvlVMHandle, -2);
+	plg_Lvmsettop(pvlVMHandle, 0);
 	return ret;
 }
 
