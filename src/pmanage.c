@@ -179,6 +179,7 @@ static void manage_InitLoadFile(void* pvManage) {
 	pManage->fileCount = 0;
 	unsigned short loop = 0;
 	do {
+
 		sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%sp%i", pManage->dbPath, loop++);
 		void* pDiskHandle;
 
@@ -260,6 +261,8 @@ static void manage_AddTableToDisk(void* pvManage, PTableName pTableName, sds tab
 		}
 	} else {
 		if (count > pManage->maxTableWeight) {
+
+			plg_MkDirs(pManage->dbPath);
 			sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%sp%i", pManage->dbPath, listLength(pManage->listDisk));
 			void* pDiskHandle;
 			if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 1, 0)) {

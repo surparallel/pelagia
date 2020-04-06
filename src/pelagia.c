@@ -65,6 +65,7 @@ void plg_CliOutputGenericHelp(void) {
 		"      \"pajs\" Print all job status.\n"
 		"      \"pajd\" Print all job details.\n"
 		"      \"ppa\" Print possible alloc.\n"
+		"      \"pajo\" Print all order of job.\n"
 		"      \"base\" base example.\n"
 		"      \"simple\" simple example.\n"
 		"      \"fe\" spseudo random finite element simulation analysis.\n"
@@ -256,6 +257,12 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	else if (!strcasecmp(command, "ppa")) {
 		if (_pManage != 0) {
 			plg_MngPrintPossibleAlloc(_pManage);
+		}
+		return 1;
+	}
+	else if (!strcasecmp(command, "pajo")) {
+		if (_pManage != 0) {
+			plg_MngPrintAllJobOrder(_pManage);
 		}
 		return 1;
 	}

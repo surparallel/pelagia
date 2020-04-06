@@ -42,6 +42,11 @@ void* plg_LvmGetL(void* pvlVMHandle) {
 	return plVMHandle->luaVM;
 }
 
+void plg_LvmSetL(void* pvlVMHandle, void* L) {
+	PlVMHandle plVMHandle = pvlVMHandle;
+	plVMHandle->luaVM = L;
+}
+
 void* plg_LvmCheckSym(void *lib, const char *sym) {
 
 	if (!lib) {
@@ -61,123 +66,123 @@ void* plg_LvmCheckSym(void *lib, const char *sym) {
 #define NORET
 #define FillFun(h, n, r)n p##n = plg_LvmCheckSym(h, #n);if (!p##n) {return r;}
 
-void plg_Lvmgetfield(void* pvlVMHandle, int idx, const char *k) {
+void plg_Lvmgetfield(void* pvlVMHandle, void* L, int idx, const char *k) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_getfield, NORET);
-	plua_getfield(plVMHandle->luaVM, idx, k);
+	plua_getfield(L, idx, k);
 }
 
-int plg_Lvmloadfilex(void* pvlVMHandle, const char *filename) {
+int plg_Lvmloadfilex(void* pvlVMHandle, void* L, const char *filename) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, luaL_loadfile, 0);
-	return pluaL_loadfile(plVMHandle->luaVM, filename);
+	return pluaL_loadfile(L, filename);
 }
 
-int plg_Lvmpcall(void* pvlVMHandle, int nargs, int nresults, int errfunc) {
+int plg_Lvmpcall(void* pvlVMHandle, void* L, int nargs, int nresults, int errfunc) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pcall, 0);
-	return plua_pcall(plVMHandle->luaVM, nargs, nresults, errfunc);
+	return plua_pcall(L, nargs, nresults, errfunc);
 }
 
-void plg_Lvmpushlstring(void* pvlVMHandle, const char *s, size_t l) {
+void plg_Lvmpushlstring(void* pvlVMHandle, void* L, const char *s, size_t l) {
 	
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pushlstring, NORET);
-	plua_pushlstring(plVMHandle->luaVM, s, l);
+	plua_pushlstring(L, s, l);
 }
 
-int plg_Lvmisnumber(void* pvlVMHandle, int idx) {
+int plg_Lvmisnumber(void* pvlVMHandle, void* L, int idx) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_isnumber, 0);
-	return plua_isnumber(plVMHandle->luaVM, idx);
+	return plua_isnumber(L, idx);
 }
 
-lua_Number plg_Lvmtonumber(void* pvlVMHandle, int idx) {
+lua_Number plg_Lvmtonumber(void* pvlVMHandle, void* L, int idx) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_tonumber, 0);
-	return plua_tonumber(plVMHandle->luaVM, idx);
+	return plua_tonumber(L, idx);
 }
 
-void plg_Lvmsettop(void* pvlVMHandle, int idx) {
+void plg_Lvmsettop(void* pvlVMHandle, void* L, int idx) {
 	
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_settop, NORET);
-	plua_settop(plVMHandle->luaVM, idx);
+	plua_settop(L, idx);
 }
 
-const char* plg_Lvmtolstring(void* pvlVMHandle, int idx, size_t *len) {
+const char* plg_Lvmtolstring(void* pvlVMHandle, void* L, int idx, size_t *len) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_tolstring, 0);
-	return plua_tolstring(plVMHandle->luaVM, idx, len);
+	return plua_tolstring(L, idx, len);
 }
 
-int plg_Lvmtype(void* pvlVMHandle, int idx) {
+int plg_Lvmtype(void* pvlVMHandle, void* L, int idx) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_type, 0);
-	return plua_type(plVMHandle->luaVM, idx);
+	return plua_type(L, idx);
 }
 
-lua_Number plg_Lvmchecknumber(void* pvlVMHandle, int numArg) {
+lua_Number plg_Lvmchecknumber(void* pvlVMHandle, void* L, int numArg) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, luaL_checknumber, 0);
-	return pluaL_checknumber(plVMHandle->luaVM, numArg);
+	return pluaL_checknumber(L, numArg);
 }
 
-const char * plg_Lvmchecklstring(void* pvlVMHandle, int numArg, size_t *l) {
+const char * plg_Lvmchecklstring(void* pvlVMHandle, void* L, int numArg, size_t *l) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, luaL_checklstring, 0);
-	return pluaL_checklstring(plVMHandle->luaVM, numArg, l);
+	return pluaL_checklstring(L, numArg, l);
 }
 
-void plg_Lvmpushlightuserdata(void* pvlVMHandle, void *p) {
+void plg_Lvmpushlightuserdata(void* pvlVMHandle, void* L, void *p) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pushlightuserdata, NORET);
-	plua_pushlightuserdata(plVMHandle->luaVM, p);
+	plua_pushlightuserdata(L, p);
 }
 
-void plg_Lvmpushstring(void* pvlVMHandle, const char *s) {
+void plg_Lvmpushstring(void* pvlVMHandle, void* L, const char *s) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pushstring, NORET);
-	plua_pushstring(plVMHandle->luaVM, s);
+	plua_pushstring(L, s);
 }
 
-void plg_Lvmpushnil(void* pvlVMHandle) {
+void plg_Lvmpushnil(void* pvlVMHandle, void* L) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pushnil, NORET);
-	plua_pushnil(plVMHandle->luaVM);
+	plua_pushnil(L);
 }
 
-void plg_Lvmsettable(void* pvlVMHandle, int idx) {
+void plg_Lvmsettable(void* pvlVMHandle, void* L, int idx) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_settable, NORET);
-	plua_settable(plVMHandle->luaVM, idx);
+	plua_settable(L, idx);
 }
 
-void plg_Lvmpushnumber(void* pvlVMHandle, double n) {
+void plg_Lvmpushnumber(void* pvlVMHandle, void* L, double n) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, lua_pushnumber, NORET);
-	plua_pushnumber(plVMHandle->luaVM, n);
+	plua_pushnumber(L, n);
 }
 
-long long plg_Lvmcheckinteger(void* pvlVMHandle, int numArg) {
+long long plg_Lvmcheckinteger(void* pvlVMHandle, void* L, int numArg) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
 	FillFun(plVMHandle->hInstance, luaL_checkinteger, 0);
-	return pluaL_checkinteger(plVMHandle->luaVM, numArg);
+	return pluaL_checkinteger(L, numArg);
 }
 
 void plg_Lvmregister(void* pvlVMHandle, const char *libname, const luaL_Reg *l) {
@@ -241,36 +246,36 @@ void plg_LvmDestory(void* pvlVMHandle) {
 int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short len) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	if (plg_Lvmloadfilex(pvlVMHandle, file)){
-		elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, -1, NULL));
-		plg_Lvmsettop(plVMHandle, 0);
+	if (plg_Lvmloadfilex(plVMHandle, plVMHandle->luaVM, file)){
+		elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+		plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
 		return 0;
 	}
 
 	//load fun
-	if (plg_Lvmpcall(pvlVMHandle, 0, LUA_MULTRET, 0)) {
-		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", file, plg_Lvmtolstring(pvlVMHandle, -1, NULL));
-		plg_Lvmsettop(plVMHandle, 0);
+	if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 0, LUA_MULTRET, 0)) {
+		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", file, plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+		plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
 		return 0;
 	}
 
 	//call fun
-	plg_Lvmgetfield(pvlVMHandle, LUA_GLOBALSINDEX, fun);
-	plg_Lvmpushlstring(pvlVMHandle, value, len);
+	plg_Lvmgetfield(pvlVMHandle, plVMHandle->luaVM, LUA_GLOBALSINDEX, fun);
+	plg_Lvmpushlstring(pvlVMHandle, plVMHandle->luaVM, value, len);
 
-	if (plg_Lvmpcall(pvlVMHandle, 1, LUA_MULTRET, 0)) {
-		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", fun, plg_Lvmtolstring(plVMHandle, -1, NULL));
-		plg_Lvmsettop(pvlVMHandle, 0);
+	if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 1, LUA_MULTRET, 0)) {
+		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", fun, plg_Lvmtolstring(plVMHandle, plVMHandle->luaVM, -1, NULL));
+		plg_Lvmsettop(pvlVMHandle, plVMHandle->luaVM, 0);
 		return 0;
 	}
 
 	double ret = 1;
-	if (plg_Lvmisnumber(pvlVMHandle, -1)) {
-		ret = plg_Lvmtonumber(pvlVMHandle, -1);
+	if (plg_Lvmisnumber(pvlVMHandle, plVMHandle->luaVM, -1)) {
+		ret = plg_Lvmtonumber(pvlVMHandle, plVMHandle->luaVM, -1);
 	}
 
 	//clear lua --lua_pop(L,1) lua_settop(L, -(n)-1)
-	plg_Lvmsettop(pvlVMHandle, 0);
+	plg_Lvmsettop(pvlVMHandle, plVMHandle->luaVM, 0);
 	return ret;
 }
 
@@ -282,22 +287,22 @@ void* plg_LvmMallocForBuf(void* p, int len, char type) {
 	return r;
 }
 
-void* plg_LvmMallocWithType(void* plVMHandle, int nArg, size_t* len) {
+void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len) {
 
-	int t = plg_Lvmtype(plVMHandle, nArg);
+	int t = plg_Lvmtype(plVMHandle, L, nArg);
 	char* p = 0;
 
 	if (t == LUA_TNUMBER) {
 		*len = sizeof(lua_Number) + 1;
 		p = malloc(*len);
-		lua_Number r = plg_Lvmchecknumber(plVMHandle, nArg);
+		lua_Number r = plg_Lvmchecknumber(plVMHandle, L, nArg);
 		memcpy((p + 1), (char*)&r, sizeof(lua_Number));
 		p[0] = LUA_TNUMBER;
 
 		return p;
 	} else if (t == LUA_TSTRING) {
 		size_t sLen;
-		const char* s = plg_Lvmchecklstring(plVMHandle, nArg, &sLen);
+		const char* s = plg_Lvmchecklstring(plVMHandle, L, nArg, &sLen);
 		*len = sLen + 1;
 		p = malloc(*len);
 

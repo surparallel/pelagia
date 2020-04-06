@@ -34,63 +34,55 @@
 static void* _plVMHandle = 0;
 
 static int L_NVersion(lua_State* L) {
-
-	NOTUSED(L);
-	plg_Lvmpushnumber(_plVMHandle, plg_NVersion());
+	plg_Lvmpushnumber(_plVMHandle, L, plg_NVersion());
 	return 1;
 }
 
 static int L_MVersion(lua_State* L) {
 
-	NOTUSED(L);
-	plg_Lvmpushnumber(_plVMHandle, plg_MVersion());
+	plg_Lvmpushnumber(_plVMHandle, L, plg_MVersion());
 	return 1;
 }
 
 static int LRemoteCall(lua_State* L) {
 
-	NOTUSED(L);
 	size_t oLen, vLen;
-	const char* o = plg_Lvmchecklstring(_plVMHandle, 1, &oLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, L, 1, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRemoteCall((void*)o, oLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobRemoteCall((void*)o, oLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LMS(lua_State* L) {
 
-	NOTUSED(L);
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_GetCurrentMilli());
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_GetCurrentMilli());
 	return 1;
 }
 
 static int LTableName(lua_State* L) {
 	
-	NOTUSED(L);
 	void* p = plg_JobTableNameWithJson();
-	plg_Lvmpushstring(_plVMHandle, p);
+	plg_Lvmpushstring(_plVMHandle, L, p);
 	free(p);
 	return 1;
 }
 
 static int LOrderName(lua_State* L) {
 
-	NOTUSED(L);
 	short orderLen = 0;
 	void* p = plg_JobCurrentOrder(&orderLen);
-	plg_Lvmpushlstring(_plVMHandle, p, orderLen);
+	plg_Lvmpushlstring(_plVMHandle, L, p, orderLen);
 	free(p);
 	return 1;
 }
 
 static int LTimer(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t oLen, vLen;
-	double timer = plg_Lvmchecknumber(_plVMHandle, 1);
-	const char* o = plg_Lvmchecklstring(_plVMHandle, 2, &oLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	double timer = plg_Lvmchecknumber(_plVMHandle, L, 1);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, L, 2, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	plg_JobAddTimer(timer, (void*)o, oLen, (void*)v, vLen);
 	return 0;
@@ -99,28 +91,26 @@ static int LTimer(lua_State* L) {
 
 static int LSet(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LMultiSet(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	lua_Number r = 0;
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
 		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
-		plg_Lvmpushnumber(_plVMHandle, r);
+		plg_Lvmpushnumber(_plVMHandle, L, r);
 		return 1;
 	}
 
@@ -137,38 +127,35 @@ static int LMultiSet(lua_State* L) {
 	plg_DictExtenDestroy(pDictExten);
 
 	pJson_Delete(root);
-	plg_Lvmpushnumber(_plVMHandle, r);
+	plg_Lvmpushnumber(_plVMHandle, L, r);
 	return 1;
 }
 
 static int LDel(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LSetIfNoExit(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LTableClear(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	plg_JobTableClear((void*)t, tLen);
 	return 0;
@@ -176,63 +163,58 @@ static int LTableClear(lua_State* L) {
 
 static int LRename(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, nkLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* nk = plg_Lvmchecklstring(_plVMHandle, 3, &nkLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* nk = plg_Lvmchecklstring(_plVMHandle, L, 3, &nkLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
 	return 1;
 }
 
 static int LGet(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p != 0) {
-		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
-		plg_Lvmpushnil(_plVMHandle);
+		plg_Lvmpushnil(_plVMHandle, L);
 	}	
 	return 1;
 }
 
 static int LLength(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobLength((void*)t, tLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobLength((void*)t, tLen));
 	return 1;
 }
 
 static int LIsKeyExist(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LLimite(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
-	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 4);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 4);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -254,7 +236,7 @@ static int LLimite(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 	
 	return 1;
@@ -262,11 +244,10 @@ static int LLimite(lua_State* L) {
 
 static int LOrder(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, 2);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, L, 2);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -288,7 +269,7 @@ static int LOrder(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -296,11 +277,10 @@ static int LOrder(lua_State* L) {
 
 static int LRang(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, keLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -322,7 +302,7 @@ static int LRang(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -330,12 +310,11 @@ static int LRang(lua_State* L) {
 
 static int LPattern(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, keLen, pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
-	const char* p = plg_Lvmchecklstring(_plVMHandle, 4, &pLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
+	const char* p = plg_Lvmchecklstring(_plVMHandle, L, 4, &pLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -357,7 +336,7 @@ static int LPattern(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -365,10 +344,9 @@ static int LPattern(lua_State* L) {
 
 static int LMultiGet(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -408,7 +386,7 @@ static int LMultiGet(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -416,41 +394,38 @@ static int LMultiGet(lua_State* L) {
 
 static int LRand(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	const char* p = plg_JobRand((void*)t, tLen, &pLen);
 
 	if (p != 0) {
-		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
-		plg_Lvmpushnil(_plVMHandle);
+		plg_Lvmpushnil(_plVMHandle, L);
 	}
 	return 1;
 }
 
 static int LSetAdd(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LSetMove(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, dkLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* dk = plg_Lvmchecklstring(_plVMHandle, 3, &dkLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 4, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* dk = plg_Lvmchecklstring(_plVMHandle, L, 3, &dkLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 4, &vLen);
 
 	plg_JobSMove((void*)t, tLen, (void*)k, kLen, (void*)dk, dkLen, (void*)v, vLen);
 	return 0;
@@ -458,29 +433,27 @@ static int LSetMove(lua_State* L) {
 
 static int LSetPop(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p != 0) {
-		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
-		plg_Lvmpushnil(_plVMHandle);
+		plg_Lvmpushnil(_plVMHandle, L);
 	}
 	return 1;
 }
 
 static int LSetDel(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -505,11 +478,10 @@ static int LSetDel(lua_State* L) {
 
 static int LSetUionStore(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 	
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -534,11 +506,10 @@ static int LSetUionStore(lua_State* L) {
 
 static int LSetInterStore(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -563,11 +534,10 @@ static int LSetInterStore(lua_State* L) {
 
 static int LSetDiffStore(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -592,12 +562,11 @@ static int LSetDiffStore(lua_State* L) {
 
 static int LSetRang(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, kbLen, keLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 4, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -619,7 +588,7 @@ static int LSetRang(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -627,13 +596,12 @@ static int LSetRang(lua_State* L) {
 
 static int LSetLimite(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 4);
-	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 5);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 4);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 5);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -655,7 +623,7 @@ static int LSetLimite(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -663,33 +631,30 @@ static int LSetLimite(lua_State* L) {
 
 static int LSetLength(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LSetIsKeyExist(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LSetMembers(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -711,7 +676,7 @@ static int LSetMembers(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -719,41 +684,38 @@ static int LSetMembers(lua_State* L) {
 
 static int LSetRand(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p) {
-		plg_Lvmpushlstring(_plVMHandle, p, pLen);
+		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
-		plg_Lvmpushnil(_plVMHandle);
+		plg_Lvmpushnil(_plVMHandle, L);
 	}
 	return 1;
 }
 
 static int LSetRangCount(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, keLen, kbLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 4, &keLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
 	return 1;
 }
 
 static int LSetUion(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -792,7 +754,7 @@ static int LSetUion(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -800,10 +762,9 @@ static int LSetUion(lua_State* L) {
 
 static int LSetInter(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -842,7 +803,7 @@ static int LSetInter(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -850,10 +811,9 @@ static int LSetInter(lua_State* L) {
 
 static int LSetDiff(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -892,21 +852,20 @@ static int LSetDiff(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
 }
 
 static int LSet2(lua_State* L) {
-	
-	NOTUSED(L);
-	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	char* v = plg_LvmMallocWithType(_plVMHandle, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	size_t tLen, kLen, vLen;
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen);
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
 	return 1;
@@ -914,16 +873,15 @@ static int LSet2(lua_State* L) {
 
 static int LMultiSet2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	lua_Number r = 0;
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
 		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
-		plg_Lvmpushnumber(_plVMHandle, r);
+		plg_Lvmpushnumber(_plVMHandle, L, r);
 		return 1;
 	}
 
@@ -948,38 +906,35 @@ static int LMultiSet2(lua_State* L) {
 	plg_DictExtenDestroy(pDictExten);
 
 	pJson_Delete(root);
-	plg_Lvmpushnumber(_plVMHandle, r);
+	plg_Lvmpushnumber(_plVMHandle, L, r);
 	return 1;
 }
 
 static int LDel2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobDel((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LSetIfNoExit2(lua_State* L) {
-	
-	NOTUSED(L);
-	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	size_t tLen, kLen, vLen;
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LTableClear2(lua_State* L) {
-	
-	NOTUSED(L);
+
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	plg_JobTableClear((void*)t, tLen);
 	return 0;
@@ -987,32 +942,30 @@ static int LTableClear2(lua_State* L) {
 
 static int LRename2(lua_State* L) {
 	
-	NOTUSED(L);
 	size_t tLen, kLen, nkLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* nk = plg_Lvmchecklstring(_plVMHandle, 3, &nkLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* nk = plg_Lvmchecklstring(_plVMHandle, L, 3, &nkLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobRename((void*)t, tLen, (void*)k, kLen, (void*)nk, nkLen));
 	return 1;
 }
 
 static int LGet2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plg_Lvmpushnumber(_plVMHandle, v);
+		plg_Lvmpushnumber(_plVMHandle, L, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
 	} 
 	
 	return 1;
@@ -1020,33 +973,30 @@ static int LGet2(lua_State* L) {
 
 static int LLength2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobLength((void*)t, tLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobLength((void*)t, tLen));
 	return 1;
 }
 
 static int LIsKeyExist2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobIsKeyExist((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LLimite2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
-	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 4);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 4);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1074,7 +1024,7 @@ static int LLimite2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1082,11 +1032,10 @@ static int LLimite2(lua_State* L) {
 
 static int LOrder2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, 2);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 3);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, L, 2);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1114,7 +1063,7 @@ static int LOrder2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1122,11 +1071,10 @@ static int LOrder2(lua_State* L) {
 
 static int LRang2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, keLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1154,7 +1102,7 @@ static int LRang2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1162,12 +1110,11 @@ static int LRang2(lua_State* L) {
 
 static int LPattern2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, keLen, pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 3, &keLen);
-	const char* p = plg_Lvmchecklstring(_plVMHandle, 4, &pLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
+	const char* p = plg_Lvmchecklstring(_plVMHandle, L, 4, &pLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1195,18 +1142,17 @@ static int LPattern2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
 }
 
 static int LMultiGet2(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1252,7 +1198,7 @@ static int LMultiGet2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1260,19 +1206,18 @@ static int LMultiGet2(lua_State* L) {
 
 static int LRand2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	const char* p = plg_JobRand((void*)t, tLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plg_Lvmpushnumber(_plVMHandle, v);
+		plg_Lvmpushnumber(_plVMHandle, L, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
 	}
 
 	return 1;
@@ -1280,13 +1225,12 @@ static int LRand2(lua_State* L) {
 
 static int LSetAdd2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	char* v = plg_LvmMallocWithType(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
 	return 1;
@@ -1294,44 +1238,41 @@ static int LSetAdd2(lua_State* L) {
 
 static int LSetMove2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, dkLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* dk = plg_Lvmchecklstring(_plVMHandle, 3, &dkLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 4, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* dk = plg_Lvmchecklstring(_plVMHandle, L, 3, &dkLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 4, &vLen);
 
 	plg_JobSMove((void*)t, tLen, (void*)k, kLen, (void*)dk, dkLen, (void*)v, vLen);
 	return 0;
 }
 
 static int LSetPop2(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plg_Lvmpushnumber(_plVMHandle, v);
+		plg_Lvmpushnumber(_plVMHandle, L, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
 	}
 	return 1;
 }
 
 static int LSetDel2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1356,11 +1297,10 @@ static int LSetDel2(lua_State* L) {
 
 static int LSetUionStore2(lua_State* L) {
 	
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1385,11 +1325,10 @@ static int LSetUionStore2(lua_State* L) {
 
 static int LSetInterStore2(lua_State* L) {
 	
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1414,11 +1353,10 @@ static int LSetInterStore2(lua_State* L) {
 
 static int LSetDiffStore2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 3, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1443,12 +1381,11 @@ static int LSetDiffStore2(lua_State* L) {
 
 static int LSetRang2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, kbLen, keLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 4, &keLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1476,21 +1413,20 @@ static int LSetRang2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
 }
 
 static int LSetLimite2(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
-	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, 4);
-	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, 5);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
+	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 4);
+	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 5);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1518,7 +1454,7 @@ static int LSetLimite2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1526,33 +1462,30 @@ static int LSetLimite2(lua_State* L) {
 
 static int LSetLength2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSLength((void*)t, tLen, (void*)k, kLen));
 	return 1;
 }
 
 static int LSetIsKeyExist2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen, vLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 3, &vLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSIsKeyExist((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
 
 static int LSetMembers2(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -1580,7 +1513,7 @@ static int LSetMembers2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1588,43 +1521,40 @@ static int LSetMembers2(lua_State* L) {
 
 static int LSetRand2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
 	unsigned int pLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p[0] == LUA_TNUMBER) {
 		lua_Number v;
 		memcpy(&v, SHELLING(p), SHELLING(pLen));
-		plg_Lvmpushnumber(_plVMHandle, v);
+		plg_Lvmpushnumber(_plVMHandle, L, v);
 	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, SHELLING(p), SHELLING(pLen));
+		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
 	}
 	return 1;
 }
 
 static int LSetRangCount2(lua_State* L) {
-
-	NOTUSED(L);
+	
 	size_t tLen, kLen, keLen, kbLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* k = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
-	const char* kb = plg_Lvmchecklstring(_plVMHandle, 3, &kbLen);
-	const char* ke = plg_Lvmchecklstring(_plVMHandle, 4, &keLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
+	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 4, &keLen);
 
-	plg_Lvmpushnumber(_plVMHandle, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSRangCount((void*)t, tLen, (void*)k, kLen, (void*)kb, kbLen, (void*)ke, keLen));
 	return 1;
 }
 
 static int LSetUion2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1670,7 +1600,7 @@ static int LSetUion2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1678,10 +1608,9 @@ static int LSetUion2(lua_State* L) {
 
 static int LSetInter2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1727,7 +1656,7 @@ static int LSetInter2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1735,10 +1664,9 @@ static int LSetInter2(lua_State* L) {
 
 static int LSetDiff2(lua_State* L) {
 
-	NOTUSED(L);
 	size_t tLen, kLen;
-	const char* t = plg_Lvmchecklstring(_plVMHandle, 1, &tLen);
-	const char* json = plg_Lvmchecklstring(_plVMHandle, 2, &kLen);
+	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
+	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1784,7 +1712,7 @@ static int LSetDiff2(lua_State* L) {
 	char* out = pJson_Print(root);
 	pJson_Delete(root);
 
-	plg_Lvmpushstring(_plVMHandle, out);
+	plg_Lvmpushstring(_plVMHandle, L, out);
 	free(out);
 
 	return 1;
@@ -1792,10 +1720,9 @@ static int LSetDiff2(lua_State* L) {
 
 static int LEventSend(lua_State* L) {
 
-	NOTUSED(L);
 	size_t hLen, vLen;
-	const char* h = plg_Lvmchecklstring(_plVMHandle, 1, &hLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, 2, &vLen);
+	const char* h = plg_Lvmchecklstring(_plVMHandle, L, 1, &hLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
 
 	unsigned int decsize;
 	unsigned char* buff = plg_B64DecodeEx(h, hLen, &decsize);

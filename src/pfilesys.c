@@ -54,7 +54,6 @@ short plg_SysSetFileLength(void* vfile, unsigned long long len)
 #endif
 }
 
-
 void plg_MkDirs(char *muldir)
 {
 	int i, len;

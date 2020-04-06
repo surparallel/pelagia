@@ -31,26 +31,27 @@ void* plg_LvmCheckSym(void *lib, const char *sym);
 void* plg_LvmGetInstance(void* plVMHandle);
 void* plg_LvmGetL(void* plVMHandle);
 void* plg_LvmMallocForBuf(void* p, int len, char type);
-void* plg_LvmMallocWithType(void* plVMHandle, int nArg, size_t* len);
+void plg_LvmSetL(void* pvlVMHandle, void* L);
+void plg_Lvmregister(void* pvlVMHandle, const char *libname, const luaL_Reg *l);
 
 //lua api
-void plg_Lvmgetfield(void* pvlVMHandle, int idx, const char *k);
-int plg_Lvmloadfilex(void* pvlVMHandle, const char *filename);
-int plg_Lvmpcall(void* pvlVMHandle, int nargs, int nresults, int errfunc);
-void plg_Lvmpushlstring(void* pvlVMHandle, const char *s, size_t l);
-int plg_Lvmisnumber(void* pvlVMHandle, int idx);
-double plg_Lvmtonumber(void* pvlVMHandle, int idx);
-void plg_Lvmsettop(void* pvlVMHandle, int idx);
-const char* plg_Lvmtolstring(void* pvlVMHandle, int idx, size_t *len);
-int plg_Lvmtype(void* pvlVMHandle, int idx);
-double plg_Lvmchecknumber(void* pvlVMHandle, int numArg);
-const char * plg_Lvmchecklstring(void* pvlVMHandle, int numArg, size_t *l);
-void plg_Lvmpushlightuserdata(void* pvlVMHandle, void *p);
-void plg_Lvmpushstring(void* pvlVMHandle, const char *s);
-void plg_Lvmsettable(void* pvlVMHandle, int idx);
-void plg_Lvmpushnumber(void* pvlVMHandle, double n);
-long long plg_Lvmcheckinteger(void* pvlVMHandle, int numArg);
-void plg_Lvmregister(void* pvlVMHandle, const char *libname, const luaL_Reg *l);
-void plg_Lvmpushnil(void* pvlVMHandle);
+void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len);
+void plg_Lvmgetfield(void* pvlVMHandle, void* L, int idx, const char *k);
+int plg_Lvmloadfilex(void* pvlVMHandle, void* L, const char *filename);
+int plg_Lvmpcall(void* pvlVMHandle, void* L, int nargs, int nresults, int errfunc);
+void plg_Lvmpushlstring(void* pvlVMHandle, void* L, const char *s, size_t l);
+int plg_Lvmisnumber(void* pvlVMHandle, void* L, int idx);
+double plg_Lvmtonumber(void* pvlVMHandle, void* L, int idx);
+void plg_Lvmsettop(void* pvlVMHandle, void* L, int idx);
+const char* plg_Lvmtolstring(void* pvlVMHandle, void* L, int idx, size_t *len);
+int plg_Lvmtype(void* pvlVMHandle, void* L, int idx);
+double plg_Lvmchecknumber(void* pvlVMHandle, void* L, int numArg);
+const char * plg_Lvmchecklstring(void* pvlVMHandle, void* L, int numArg, size_t *l);
+void plg_Lvmpushlightuserdata(void* pvlVMHandle, void* L, void *p);
+void plg_Lvmpushstring(void* pvlVMHandle, void* L, const char *s);
+void plg_Lvmsettable(void* pvlVMHandle, void* L, int idx);
+void plg_Lvmpushnumber(void* pvlVMHandle, void* L, double n);
+long long plg_Lvmcheckinteger(void* pvlVMHandle, void* L, int numArg);
+void plg_Lvmpushnil(void* pvlVMHandle, void* L);
 
 #endif
