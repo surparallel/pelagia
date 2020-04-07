@@ -510,7 +510,7 @@ unsigned int  plg_JobIsEmpty(void* pvJobHandle) {
 /*
 User VM use
 */
-int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, short valueLen) {
+int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
 
@@ -1520,7 +1520,7 @@ char* plg_JobCurrentOrder(short* orderLen) {
 	return pJobHandle->pOrderName;
 }
 
-void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, short valueLen) {
+void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen) {
 	CheckUsingThread(NORET);
 
 	unsigned long long milli = plg_GetCurrentMilli();

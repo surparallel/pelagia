@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"18"
+#define VERSION_MINOR	"19"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	18
+#define VERSION_NUMMINOR	19
 
 #include "papidefine.h"
 
@@ -67,9 +67,9 @@ PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 
 //system
-PELAGIA_API int plg_JobRemoteCall(void* order, unsigned short orderLen, void* value, short valueLen);
+PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
-PELAGIA_API void plg_JobAddTimer(double timer, void* order, unsigned short orderLen, void* value, short valueLen);
+PELAGIA_API void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
 
 //namorl db

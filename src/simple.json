@@ -2,9 +2,9 @@
 "dbPath":"",
 "core":1,
 "MaxTableWeight":100,
-"LuaDllPath":"./lua5.1.dll",
+"LuaDllPath":"./liblua.so",
 "LogOutput": "print",
-"LogLevel":5,
+"LogLevel":2,
 
 "acc_insert":{
     "orderType":"lua",
