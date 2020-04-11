@@ -31,9 +31,6 @@
 #include "pbitarray.h"
 #include "pinterface.h"
 
-//Block size of page mask
-#define Mask_Compress 1024
-
 #define FileName(filePath) (strrchr(filePath, '\\') ? (strrchr(filePath, '\\') + 1):filePath)
 
 typedef struct _FileHandle
@@ -91,14 +88,14 @@ unsigned int plg_FileInsideFlushPage(void* pvFileHandle, void* pPFileParamPageIn
 		//write to file ftruncate
 		if (pInterPFileParamPageInfo[l].pPMaskPage) {
 
-			int count = pFileHandle->fullPageSize / Mask_Compress;
+			int count = pFileHandle->fullPageSize / _MASKCOMPRESS_;
 			for (int i = 0; i < count; i++) {
 				if (plg_BitArrayIsIn(pInterPFileParamPageInfo[l].pPMaskPage->maskBuff, i) == 0) {
 					continue;
 				}
-				fseek_t(pFileHandle->fileHandle, pInterPFileParamPageInfo[l].pageId * pFileHandle->fullPageSize + (i * Mask_Compress), SEEK_SET);
-				unsigned long long retWrite = fwrite((char*)(pageArrary[l]) + (i * Mask_Compress), 1, Mask_Compress, pFileHandle->fileHandle);
-				if (retWrite != Mask_Compress) {
+				fseek_t(pFileHandle->fileHandle, pInterPFileParamPageInfo[l].pageId * pFileHandle->fullPageSize + (i * _MASKCOMPRESS_), SEEK_SET);
+				unsigned long long retWrite = fwrite((char*)(pageArrary[l]) + (i * _MASKCOMPRESS_), 1, _MASKCOMPRESS_, pFileHandle->fileHandle);
+				if (retWrite != _MASKCOMPRESS_) {
 					elog(log_error, "plg_FileInsideFlushPage.fwrite!");
 					return 0;
 				}
@@ -243,13 +240,13 @@ unsigned int plg_FileFlushPage(void* pvFileHandle, void* pPFileParamPageInfo, vo
 
 void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 
-	if (len % Mask_Compress != 0 || len / Mask_Compress % 8 != 0) {
-		elog(log_error, "plg_MaskMalloc Len(%d) and Mask_Compress(%d) don't match", len, Mask_Compress);
+	if (len % _MASKCOMPRESS_ != 0 || len / _MASKCOMPRESS_ % 8 != 0) {
+		elog(log_error, "plg_MaskMalloc Len(%d) and _MASKCOMPRESS_(%d) don't match", len, _MASKCOMPRESS_);
 		return 0;
 	}
 	
-	int outLen = len / Mask_Compress / 8 + 1;
-	int count = len / Mask_Compress;
+	int outLen = len / _MASKCOMPRESS_ / 8 + 1;
+	int count = len / _MASKCOMPRESS_;
 	PMaskPage ptrMask;
 	char *tmp;
 	tmp = (char*)malloc(outLen + sizeof(MaskPage));
@@ -267,8 +264,8 @@ void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 	}
 
 	for (int i = 0; i < count; i++) {
-		int inc = i * Mask_Compress;
-		if (memcmp(src + inc, des + inc, Mask_Compress) != 0) {
+		int inc = i * _MASKCOMPRESS_;
+		if (memcmp(src + inc, des + inc, _MASKCOMPRESS_) != 0) {
 			plg_BitArrayAdd(ptrMask->maskBuff, i);
 		}
 	}
@@ -277,18 +274,18 @@ void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 
 void plg_MaskCmp(void* ptrVMask, char* src, char* des, int len) {
 
-	if (len % Mask_Compress != 0 || len / Mask_Compress % 8 != 0) {
-		elog(log_error, "plg_MaskMalloc Len(%d) and Mask_Compress(%d) don't match", len, Mask_Compress);
+	if (len % _MASKCOMPRESS_ != 0 || len / _MASKCOMPRESS_ % 8 != 0) {
+		elog(log_error, "plg_MaskMalloc Len(%d) and _MASKCOMPRESS_(%d) don't match", len, _MASKCOMPRESS_);
 		return;
 	}
 
 	//Because plg_maskmalloc is an internal function without any length checking for ptrMask->length
 	PMaskPage ptrMask = ptrVMask;
-	int count = len / Mask_Compress;
+	int count = len / _MASKCOMPRESS_;
 
 	for (int i = 0; i < count; i++) {
-		int inc = i * Mask_Compress;
-		if (memcmp(src + inc, des + inc, Mask_Compress) != 0) {
+		int inc = i * _MASKCOMPRESS_;
+		if (memcmp(src + inc, des + inc, _MASKCOMPRESS_) != 0) {
 			plg_BitArrayAdd(ptrMask->maskBuff, i);
 		}
 	}

@@ -54,6 +54,9 @@ enum ValueType {
 #define OFFSET(page, point) ((unsigned char *)point - (unsigned char *)page)
 #define POINTER(page, offset) (offset + (unsigned char *)page)
 
+//Block size of page mask
+#define _MASKCOMPRESS_ 1024
+
 //Data format stored on file
 #pragma pack(push,1)
 /*
@@ -287,7 +290,7 @@ typedef struct _MaskPage
 {
 	unsigned int pageId;
 	short length;
-	char maskBuff[];
+	unsigned char maskBuff[];
 }*PMaskPage, MaskPage;
 
 /*
