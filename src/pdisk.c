@@ -300,7 +300,8 @@ unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCa
 
 	//flush dict page
 	int dirtySize = dictSize(pDiskHandle->pageDirty);
-	unsigned int* pageAddr = malloc(dirtySize*sizeof(unsigned int));
+
+	PFileParamPageInfo pPFileParamPageInfo = malloc(dirtySize*sizeof(FileParamPageInfo));
 	unsigned count = 0;
 	void** memArrary;
 	plg_FileMallocPageArrary(pDiskHandle->fileHandle, &memArrary, dirtySize);
@@ -308,15 +309,17 @@ unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCa
 	dictIterator* dictIter = plg_dictGetSafeIterator(pDiskHandle->pageDirty);
 	dictEntry* dictNode;
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		pageAddr[count++] = *(unsigned int*) dictGetKey(dictNode);
+		pPFileParamPageInfo[count].pageId = *(unsigned int*)dictGetKey(dictNode);
+		pPFileParamPageInfo[count].pPMaskPage = 0;
+		count++;
 	}
 	plg_dictReleaseIterator(dictIter);
 
 	for (int l = 0; l < dirtySize; l++) {
-		dictEntry* diskNode = plg_dictFind(pDiskHandle->pageDisk, &pageAddr[l]);
+		dictEntry* diskNode = plg_dictFind(pDiskHandle->pageDisk, &pPFileParamPageInfo[l].pageId);
 		if (diskNode != 0) {
 			unsigned char* page = dictGetVal(diskNode);
-			if (pageAddr[l] == 0) {
+			if (pPFileParamPageInfo[l].pageId == 0) {
 
 				//Write files one way during use
 				PDiskHead pdiskHead = (PDiskHead)page;
@@ -338,7 +341,7 @@ unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCa
 	//Clear before switching to file critical area for transaction integrity
 	plg_dictEmpty(pDiskHandle->pageDirty, NULL);
 
-	pFlushCallBack(pDiskHandle->fileHandle, pageAddr, memArrary, dirtySize);
+	pFlushCallBack(pDiskHandle->fileHandle, pPFileParamPageInfo, memArrary, dirtySize);
 	return 1;
 }
 

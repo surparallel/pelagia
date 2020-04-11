@@ -74,6 +74,7 @@ typedef struct _CacheHandle
 	unsigned int cacheInterval;
 	unsigned long long cacheStamp;
 	ListDict* listPageCache;
+	dict* pageMask;
 	dict* pageDirty;
 	ListDict* listTableHandle;
 	dict* dictTableHandleDirty;
@@ -162,10 +163,8 @@ static dictType tableDictType = {
 	TableFreeCallback
 };
 
-SDS_TYPE
 static void TableHeadFreeCallback(void* privdata, void *val) {
 
-	SDS_CHECK(privdata, val);
 	PCacheHandle pCacheHandle = privdata;
 	plg_MemListPush(pCacheHandle->memoryListTable, listNodeValue((listNode*)val));
 }
@@ -179,9 +178,18 @@ static dictType tableHeadDictType = {
 	TableHeadFreeCallback
 };
 
+static dictType maskDictType = {
+	hashCallback,
+	NULL,
+	NULL,
+	uintCompareCallback,
+	NULL,
+	NULL
+};
 /*
 loading page from file;
 */
+SDS_TYPE
 unsigned int cache_LoadPageFromFile(void* pvCacheHandle, unsigned int pageAddr, void* page) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
@@ -197,6 +205,7 @@ unsigned int cache_LoadPageFromFile(void* pvCacheHandle, unsigned int pageAddr, 
 
 	//check crc
 	PDiskPageHead pdiskPageHead = (PDiskPageHead)page;
+	SDS_CHECK(pvCacheHandle, pageAddr);
 	char* pdiskBitPage = (char*)page + sizeof(DiskPageHead);
 	unsigned short crc = plg_crc16(pdiskBitPage, FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead));
 	if (pdiskPageHead->crc == 0 || pdiskPageHead->crc != crc) {
@@ -473,6 +482,7 @@ void* plg_CacheCreateHandle(void* pDiskHandle) {
 	pCacheHandle->cacheStamp = plg_GetCurrentSec();
 	pCacheHandle->listPageCache = plg_ListDictCreateHandle(&pageDictType, DICT_MIDDLE, LIST_MIDDLE, PageCacheCmpFun, pCacheHandle);
 	pCacheHandle->pageDirty = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
+	pCacheHandle->pageMask = plg_dictCreate(&maskDictType, NULL, DICT_MIDDLE);
 	pCacheHandle->listTableHandle = plg_ListDictCreateHandle(&tableDictType, DICT_MIDDLE, LIST_MIDDLE, plg_TableHandleCmpFun, pCacheHandle);
 	pCacheHandle->dictTableHandleDirty = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pCacheHandle->delPage = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
@@ -495,6 +505,7 @@ void plg_CacheDestroyHandle(void* pvCacheHandle) {
 	plg_sdsFree(pCacheHandle->objectName);
 	plg_ListDictDestroyHandle(pCacheHandle->listPageCache);
 	plg_dictRelease(pCacheHandle->pageDirty);
+	plg_dictRelease(pCacheHandle->pageMask);
 	plg_ListDictDestroyHandle(pCacheHandle->listTableHandle);
 	plg_dictRelease(pCacheHandle->dictTableHandleDirty);
 	plg_dictRelease(pCacheHandle->delPage);
@@ -1051,7 +1062,7 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 
 	//flush dict page
 	int dirtySize = dictSize(pCacheHandle->pageDirty);
-	unsigned int* pageAddr = malloc(dirtySize*sizeof(unsigned int));
+	PFileParamPageInfo pPFileParamPageInfo = malloc(dirtySize*sizeof(FileParamPageInfo));
 	unsigned count = 0;
 	void** memArrary;
 	void* fileHandle = plg_DiskFileHandle(pCacheHandle->pDiskHandle);
@@ -1060,16 +1071,28 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 	dictIterator* dictIter = plg_dictGetSafeIterator(pCacheHandle->pageDirty);
 	dictEntry* dictNode;
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		pageAddr[count++] = *(unsigned int*)dictGetKey(dictNode);
+		pPFileParamPageInfo[count].pageId = *(unsigned int*)dictGetKey(dictNode);
+
+		dictEntry* maskNode = plg_dictFind(pCacheHandle->pageMask, &pPFileParamPageInfo[count].pageId);
+		if (maskNode) {
+			pPFileParamPageInfo[count].pPMaskPage = dictGetVal(maskNode);
+			plg_MaskBit(pPFileParamPageInfo[count].pPMaskPage, 1);
+		} else {
+			pPFileParamPageInfo[count].pPMaskPage = 0;
+		}
+
+		count++;
 	}
 	plg_dictReleaseIterator(dictIter);
 
+	//Find in the original cache, update if it exists
 	for (int l = 0; l < dirtySize; l++) {
-		dictEntry* diskNode = plg_dictFind(plg_ListDictDict(pCacheHandle->listPageCache), &pageAddr[l]);
+		dictEntry* diskNode = plg_dictFind(plg_ListDictDict(pCacheHandle->listPageCache), &pPFileParamPageInfo[l].pageId);
 		if (diskNode != 0) {
 			char* page = plg_ListDictGetVal(diskNode);
-			assert(pageAddr[l]);
-			if (pageAddr[l] != 0) {
+			assert(pPFileParamPageInfo[l].pageId);
+			if (pPFileParamPageInfo[l].pageId != 0) {
+
 				PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 				char* pDiskPage = page + sizeof(DiskPageHead);
 
@@ -1082,8 +1105,9 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 
 	//Clear before switching to file critical area for transaction integrity
 	plg_dictEmpty(pCacheHandle->pageDirty, NULL);
+	plg_dictEmpty(pCacheHandle->pageMask, NULL);
 
-	plg_FileFlushPage(fileHandle, pageAddr, memArrary, dirtySize);
+	plg_FileFlushPage(fileHandle, pPFileParamPageInfo, memArrary, dirtySize);
 	return 1;
 }
 
@@ -1113,8 +1137,21 @@ int plg_CacheCommit(void* pvCacheHandle) {
 			//add to chache
 			PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 			plg_ListDictAdd(pCacheHandle->listPageCache, &pDiskPageHead->addr, page);
+
+			PMaskPage pPMaskPage = plg_MaskMalloc(pDiskPageHead->addr, 0, 0, FULLSIZE(pCacheHandle->pageSize));
+			plg_dictAdd(pCacheHandle->pageMask, &pPMaskPage->pageId, pPMaskPage);
 		} else {
 			page = plg_ListDictGetVal(pcEntry);
+			PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
+
+			dictEntry* pMaskEntry = plg_dictFind(pCacheHandle->pageMask, &pDiskPageHead->addr);
+			if (pMaskEntry) {
+				plg_MaskCmp(dictGetVal(pMaskEntry), page, plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
+			} else {
+				PMaskPage pPMaskPage = plg_MaskMalloc(pDiskPageHead->addr, page, plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
+				plg_dictAdd(pCacheHandle->pageMask, &pPMaskPage->pageId, pPMaskPage);
+			}
+
 			memcpy(page, plg_ListDictGetVal(nodet_listDictPageCache), FULLSIZE(pCacheHandle->pageSize));
 		}
 

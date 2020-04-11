@@ -28,6 +28,11 @@
 #include "pmemorylist.h"
 #include "pfilesys.h"
 #include "pelagia.h"
+#include "pbitarray.h"
+#include "pinterface.h"
+
+//Block size of page mask
+#define Mask_Compress 1024
 
 #define FileName(filePath) (strrchr(filePath, '\\') ? (strrchr(filePath, '\\') + 1):filePath)
 
@@ -64,17 +69,18 @@ void file_FreePageArrary(void* pvFileHandle, void** memArrary, unsigned int size
 	free(memArrary);
 }
 
-unsigned int plg_FileInsideFlushPage(void* pvFileHandle, unsigned int* pageAddr, void** pageArrary, unsigned int pageArrarySize) {
+unsigned int plg_FileInsideFlushPage(void* pvFileHandle, void* pPFileParamPageInfo, void** pageArrary, unsigned int pageArrarySize) {
 
 	elog(log_fun, "plg_FileInsideFlushPage");
 	PFileHandle pFileHandle = pvFileHandle;
+	PFileParamPageInfo pInterPFileParamPageInfo = pPFileParamPageInfo;
 
 	for (unsigned int l = 0; l < pageArrarySize; l++) {
 
 		//check length
 		fseek_t(pFileHandle->fileHandle, 0, SEEK_END);
 		unsigned long long fileLength = ftell_t(pFileHandle->fileHandle);
-		unsigned long long newFileLength = pageAddr[l] * pFileHandle->fullPageSize + pFileHandle->fullPageSize;
+		unsigned long long newFileLength = pInterPFileParamPageInfo[l].pageId * pFileHandle->fullPageSize + pFileHandle->fullPageSize;
 		if (fileLength < newFileLength) {
 			if (0 == plg_SysSetFileLength(pFileHandle->fileHandle, newFileLength)) {
 				elog(log_error, "plg_FileInsideFlushPage.plg_SysSetFileLength!");
@@ -83,25 +89,42 @@ unsigned int plg_FileInsideFlushPage(void* pvFileHandle, unsigned int* pageAddr,
 		}
 
 		//write to file ftruncate
-		fseek_t(pFileHandle->fileHandle, pageAddr[l] * pFileHandle->fullPageSize, SEEK_SET);
-		unsigned long long retWrite = fwrite(pageArrary[l], 1, pFileHandle->fullPageSize, pFileHandle->fileHandle);
-		if (retWrite != pFileHandle->fullPageSize) {
-			elog(log_error, "plg_FileInsideFlushPage.fwrite!");
-			return 0;
+		if (pInterPFileParamPageInfo[l].pPMaskPage) {
+
+			int count = pFileHandle->fullPageSize / Mask_Compress;
+			for (int i = 0; i < count; i++) {
+				if (plg_BitArrayIsIn(pInterPFileParamPageInfo[l].pPMaskPage->maskBuff, i) == 0) {
+					continue;
+				}
+				fseek_t(pFileHandle->fileHandle, pInterPFileParamPageInfo[l].pageId * pFileHandle->fullPageSize + (i * Mask_Compress), SEEK_SET);
+				unsigned long long retWrite = fwrite((char*)(pageArrary[l]) + (i * Mask_Compress), 1, Mask_Compress, pFileHandle->fileHandle);
+				if (retWrite != Mask_Compress) {
+					elog(log_error, "plg_FileInsideFlushPage.fwrite!");
+					return 0;
+				}
+			}
+			free(pInterPFileParamPageInfo[l].pPMaskPage);
+		} else {
+			fseek_t(pFileHandle->fileHandle, pInterPFileParamPageInfo[l].pageId * pFileHandle->fullPageSize, SEEK_SET);
+			unsigned long long retWrite = fwrite(pageArrary[l], 1, pFileHandle->fullPageSize, pFileHandle->fileHandle);
+			if (retWrite != pFileHandle->fullPageSize) {
+				elog(log_error, "plg_FileInsideFlushPage.fwrite!");
+				return 0;
+			}
 		}
 	}
 
 	//close file
 	fflush(pFileHandle->fileHandle);
 	file_FreePageArrary(pFileHandle, pageArrary, pageArrarySize);
-	free(pageAddr);
+	free(pPFileParamPageInfo);
 	return 1;
 }
 
 typedef struct OrderFlushPageValue
 {
 	PFileHandle pFileHandle;
-	unsigned int* pageAddr;
+	void* pPFileParamPageInfo;
 	void** pageArrary;
 	unsigned int pageArrarySize;
 }*POrderFlushPageValue, OrderFlushPageValue;
@@ -109,7 +132,7 @@ typedef struct OrderFlushPageValue
 static int OrderFlushPage(char* value, short valueLen) {
 	NOTUSED(valueLen);
 	POrderFlushPageValue pOrderFlushPageValue = (POrderFlushPageValue)value;
-	plg_FileInsideFlushPage(pOrderFlushPageValue->pFileHandle, pOrderFlushPageValue->pageAddr, pOrderFlushPageValue->pageArrary, pOrderFlushPageValue->pageArrarySize);
+	plg_FileInsideFlushPage(pOrderFlushPageValue->pFileHandle, pOrderFlushPageValue->pPFileParamPageInfo, pOrderFlushPageValue->pageArrary, pOrderFlushPageValue->pageArrarySize);
 	return 1;
 }
 
@@ -205,15 +228,73 @@ void plg_FileMallocPageArrary(void* pvFileHandle, void*** memArrary, unsigned in
 	}
 }
 
-unsigned int plg_FileFlushPage(void* pvFileHandle, unsigned int* pageAddr, void** pageArrary, unsigned int pageArrarySize) {
+unsigned int plg_FileFlushPage(void* pvFileHandle, void* pPFileParamPageInfo, void** pageArrary, unsigned int pageArrarySize) {
 
 	PFileHandle pFileHandle = pvFileHandle;
 	OrderFlushPageValue orderFlushPageValue;
 	orderFlushPageValue.pFileHandle = pFileHandle;
-	orderFlushPageValue.pageAddr = pageAddr;
+	orderFlushPageValue.pPFileParamPageInfo = pPFileParamPageInfo;
 	orderFlushPageValue.pageArrary = pageArrary;
 	orderFlushPageValue.pageArrarySize = pageArrarySize;
 
 	plg_JobSendOrder(plg_JobEqueueHandle(pFileHandle->pJobHandle), "flush", (char*)&orderFlushPageValue, sizeof(OrderFlushPageValue));
 	return 1;
+}
+
+void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
+
+	if (len % Mask_Compress != 0 || len / Mask_Compress % 8 != 0) {
+		elog(log_error, "plg_MaskMalloc Len(%d) and Mask_Compress(%d) don't match", len, Mask_Compress);
+		return 0;
+	}
+	
+	int outLen = len / Mask_Compress / 8 + 1;
+	int count = len / Mask_Compress;
+	PMaskPage ptrMask;
+	char *tmp;
+	tmp = (char*)malloc(outLen + sizeof(MaskPage));
+	memset(tmp, 0, (outLen + sizeof(MaskPage)));
+
+	ptrMask = (PMaskPage)tmp;
+	ptrMask->pageId = pageId;
+	ptrMask->length = outLen;
+	
+	if (src == 0 || des == 0) {
+		for (int i = 0; i < outLen; i++) {
+			ptrMask->maskBuff[i] = 0xff;
+		}
+		return ptrMask;
+	}
+
+	for (int i = 0; i < count; i++) {
+		int inc = i * Mask_Compress;
+		if (memcmp(src + inc, des + inc, Mask_Compress) != 0) {
+			plg_BitArrayAdd(ptrMask->maskBuff, i);
+		}
+	}
+	return ptrMask;
+}
+
+void plg_MaskCmp(void* ptrVMask, char* src, char* des, int len) {
+
+	if (len % Mask_Compress != 0 || len / Mask_Compress % 8 != 0) {
+		elog(log_error, "plg_MaskMalloc Len(%d) and Mask_Compress(%d) don't match", len, Mask_Compress);
+		return;
+	}
+
+	//Because plg_maskmalloc is an internal function without any length checking for ptrMask->length
+	PMaskPage ptrMask = ptrVMask;
+	int count = len / Mask_Compress;
+
+	for (int i = 0; i < count; i++) {
+		int inc = i * Mask_Compress;
+		if (memcmp(src + inc, des + inc, Mask_Compress) != 0) {
+			plg_BitArrayAdd(ptrMask->maskBuff, i);
+		}
+	}
+}
+
+void plg_MaskBit(void* ptrVMask, int num) {
+	PMaskPage ptrMask = ptrVMask;
+	plg_BitArrayAdd(ptrMask->maskBuff, num);
 }

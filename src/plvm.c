@@ -315,6 +315,34 @@ void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len) {
 	return 0;
 }
 
+void* plg_LvmMallocForKey(void* plVMHandle, void* L, int nArg, size_t* len) {
+
+	int t = plg_Lvmtype(plVMHandle, L, nArg);
+	char* p = 0;
+
+	if (t == LUA_TINTEGER) {
+		*len = sizeof(lua_Integer) + 1;
+		p = malloc(*len);
+		lua_Integer r = plg_Lvmchecknumber(plVMHandle, L, nArg);
+		memcpy((p + 1), (char*)&r, sizeof(lua_Integer));
+		p[0] = LUA_TINTEGER;
+
+		return p;
+	} else if (t == LUA_TSTRING) {
+		size_t sLen;
+		const char* s = plg_Lvmchecklstring(plVMHandle, L, nArg, &sLen);
+		*len = sLen + 1;
+		p = malloc(*len);
+
+		memcpy((p + 1), s, sLen);
+		p[0] = LUA_TSTRING;
+
+		return p;
+	}
+
+	return 0;
+}
+
 
 #undef FillFun
 #undef NORET

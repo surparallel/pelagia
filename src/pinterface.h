@@ -279,5 +279,25 @@ typedef struct _TableName
 	unsigned char noSave;
 	unsigned char noShare;
 }*PTableName, TableName;
+
+/*
+page mask struct
+*/
+typedef struct _MaskPage
+{
+	unsigned int pageId;
+	short length;
+	char maskBuff[];
+}*PMaskPage, MaskPage;
+
+/*
+page mask struct
+*/
+typedef struct _FileParamPageInfo
+{
+	unsigned int pageId;
+	PMaskPage pPMaskPage;
+}*PFileParamPageInfo, FileParamPageInfo;
+
 #pragma pack(pop)
 #endif

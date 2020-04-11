@@ -36,6 +36,7 @@ void plg_Lvmregister(void* pvlVMHandle, const char *libname, const luaL_Reg *l);
 
 //lua api
 void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len);
+void* plg_LvmMallocForKey(void* plVMHandle, void* L, int nArg, size_t* len);
 void plg_Lvmgetfield(void* pvlVMHandle, void* L, int idx, const char *k);
 int plg_Lvmloadfilex(void* pvlVMHandle, void* L, const char *filename);
 int plg_Lvmpcall(void* pvlVMHandle, void* L, int nargs, int nresults, int errfunc);
