@@ -524,8 +524,8 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 		plg_eqPush(dictGetVal(entry), pOrderPacket);
 		return 1;
 	} else {
-		elog(log_error, "plg_JobRemoteCall.Order:%s not found", order);
-		return 0;
+		void* pManage = pJobHandle->privateData;
+		return plg_MngRemoteCallPacket(pManage, pOrderPacket);
 	}
 }
 
@@ -650,9 +650,16 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 					pStartPorcess->functionPoint(NULL, 0);
 				}
 
+				PEventPorcess pEventPorcess = 0;
 				entry = plg_dictFind(pJobHandle->order_process, pOrderPacket->order);
 				if (entry) {
-					PEventPorcess pEventPorcess = (PEventPorcess)dictGetVal(entry);
+					pEventPorcess = (PEventPorcess)dictGetVal(entry);
+				} else {
+					void* pManage = pJobHandle->privateData;
+					pEventPorcess = plg_MngGetProcess(pManage, pOrderPacket->order);
+				}
+
+				if (pEventPorcess) {
 					if (pEventPorcess->scriptType == ST_PTR) {
 						if (0 == pEventPorcess->functionPoint(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 							job_Rollback(pJobHandle);
@@ -687,6 +694,7 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 						}
 					}
 				}
+
 				pJobHandle->pOrderName = 0;
 				plg_sdsFree(pOrderPacket->order);
 				plg_sdsFree(pOrderPacket->value);

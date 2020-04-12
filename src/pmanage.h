@@ -36,4 +36,6 @@ void plg_MngSendExit(void* pvManage);
 int plg_MngTableIsInOrder(void* pvManage, void* order, short orderLen, void* table, short tableLen);
 char** plg_MngOrderAllTable(void* pvManage, void* order, short orderLen, short* tableLen);
 char* plg_MngOrderAllTableWithJson(void* pvManage, void* order, short orderLen);
+int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket);
+void* plg_MngGetProcess(void* pvManage, char* sdsOrder);
 #endif

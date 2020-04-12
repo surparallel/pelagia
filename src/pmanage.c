@@ -486,6 +486,13 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 
 		//other
 		do {
+
+			//table
+			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
+			if (!table) {
+				continue;
+			}
+
 			void* minJob = 0;
 			unsigned int Weight = UINT_MAX;
 			listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
@@ -501,10 +508,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 			plg_listReleaseIterator(jobIter);
 
 			//table
-			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			if (table) {
-				manage_AddTableToJob(pManage, minJob, table);
-			}
+			manage_AddTableToJob(pManage, minJob, table);
 
 			//process
 			plg_JobAddEventProcess(minJob, dictGetKey(EventProcessEntry), dictGetVal(EventProcessEntry));
@@ -515,6 +519,36 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	}
 	plg_listReleaseIterator(eventIter);
 	return 1;
+}
+
+void* plg_MngRandJobEqueue(void* pvManage) {
+	PManage pManage = pvManage;
+
+	void* jobEqueue = 0;
+	int r = rand() % listLength(pManage->listJob);
+	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
+	listNode* jobNode;
+	while ((jobNode = plg_listNext(jobIter)) != NULL) {
+
+		jobEqueue = plg_JobEqueueHandle(listNodeValue(jobNode));
+		if (--r < 0) {
+			break;
+		}
+	}
+	plg_listReleaseIterator(jobIter);
+
+	return jobEqueue;
+}
+ 
+void* plg_MngGetProcess(void* pvManage, char* sdsOrder) {
+	PManage pManage = pvManage;
+
+	dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, sdsOrder);
+	if (EventProcessEntry != 0) {
+		return dictGetVal(EventProcessEntry);
+	}
+
+	return 0;
 }
 
 int plg_MngAllocJob(void* pvManage, unsigned int core) {
@@ -776,20 +810,52 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 
 	int r = 0;
 	CheckUsingThread(0);
+
 	PManage pManage = pvManage;
 	POrderPacket POrderPacket = malloc(sizeof(OrderPacket));
 	POrderPacket->order = plg_sdsNewLen(order, orderLen);
 	POrderPacket->value = plg_sdsNewLen(value, valueLen);
 
-	MutexLock(pManage->mutexHandle, pManage->objName);
 	dictEntry* entry = plg_dictFind(pManage->order_equeue, POrderPacket->order);
 	if (entry) {
 		plg_eqPush(dictGetVal(entry), POrderPacket);
 		r = 1;
 	} else {
-		elog(log_error, "plg_MngRemoteCall.Order:%s not found", order);
+
+		dictEntry* entryPrcess = plg_dictFind(pManage->order_process, POrderPacket->order);
+		if (entryPrcess) {
+			void* equeue = plg_MngRandJobEqueue(pvManage);
+			plg_eqPush(equeue, POrderPacket);
+			r = 1;
+		} else {
+			elog(log_error, "plg_MngRemoteCall.Order:%s not found", order);
+
+			plg_sdsFree(POrderPacket->order);
+			plg_sdsFree(POrderPacket->value);
+			free(POrderPacket);
+		}
 	}
-	MutexUnlock(pManage->mutexHandle, pManage->objName);
+
+	return r;
+}
+
+int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket) {
+
+	int r = 0;
+	PManage pManage = pvManage;
+	POrderPacket pOrderPacket = pvOrderPacket;
+	dictEntry* entryPrcess = plg_dictFind(pManage->order_process, pOrderPacket->order);
+	if (entryPrcess) {
+		void* equeue = plg_MngRandJobEqueue(pvManage);
+		plg_eqPush(equeue, pOrderPacket);
+		r = 1;
+	} else {
+		elog(log_error, "plg_MngRemoteCallPacket.Order:%s not found", pOrderPacket->order);
+
+		plg_sdsFree(pOrderPacket->order);
+		plg_sdsFree(pOrderPacket->value);
+		free(pOrderPacket);
+	}
 
 	return r;
 }
