@@ -81,7 +81,7 @@ typedef void * (*lua_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 #define LUA_TUSERDATA		7
 #define LUA_TTHREAD		8
 
-#define LUA_TINTEGER 9
+#define LUA_TINTEGER 99
 
 /* minimum Lua stack available to a C function */
 #define LUA_MINSTACK	20
@@ -144,6 +144,10 @@ typedef int            (*lua_rawequal) (lua_State *L, int idx1, int idx2);
 typedef int            (*lua_lessthan) (lua_State *L, int idx1, int idx2);
 
 typedef lua_Number      (*lua_tonumber) (lua_State *L, int idx);
+
+//5.2 5.3
+typedef lua_Number		(*lua_tonumberx) (lua_State *L, int idx, int *isnum);
+
 typedef lua_Integer     (*lua_tointeger) (lua_State *L, int idx);
 typedef int             (*lua_toboolean) (lua_State *L, int idx);
 typedef const char     *(*lua_tolstring) (lua_State *L, int idx, size_t *len);
@@ -183,6 +187,8 @@ typedef void *(*lua_newuserdata) (lua_State *L, size_t sz);
 typedef int   (*lua_getmetatable) (lua_State *L, int objindex);
 typedef void  (*lua_getfenv) (lua_State *L, int idx);
 
+//for 5.2 5.3
+typedef void  (*lua_getglobal)(lua_State *L, const char *var);
 
 /*
 ** set functions (stack -> Lua)
@@ -203,6 +209,8 @@ typedef int   (*lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
 typedef int   (*lua_cpcall) (lua_State *L, lua_CFunction func, void *ud);
 typedef int   (*lua_load) (lua_State *L, lua_Reader reader, void *dt,
                                         const char *chunkname);
+//5.2 5.3
+typedef int   (*lua_pcallk)(lua_State *L, int nargs, int nresults, int errfunc, int ctx, lua_CFunction k);
 
 typedef int (*lua_dump) (lua_State *L, lua_Writer writer, void *data);
 
@@ -273,8 +281,8 @@ typedef void (*lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
 #define lua_pushliteral(L, s)	\
 	lua_pushlstring(L, "" s, (sizeof(s)/sizeof(char))-1)
 
-#define lua_setglobal(L,s)	lua_setfield(L, LUA_GLOBALSINDEX, (s))
-#define lua_getglobal(L,s)	lua_getfield(L, LUA_GLOBALSINDEX, (s))
+//#define lua_setglobal(L,s)	lua_setfield(L, LUA_GLOBALSINDEX, (s))
+//#define lua_getglobal(L,s)	lua_getfield(L, LUA_GLOBALSINDEX, (s))
 
 #define lua_tostring(L,i)	lua_tolstring(L, (i), NULL)
 

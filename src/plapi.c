@@ -1827,6 +1827,12 @@ static luaL_Reg mylibs[] = {
 	{ NULL, NULL }
 };
 
+static int plg_lualapilib2(void* L)
+{
+	const char *libName = "pelagia";
+	plg_Lvmregister(_plVMHandle, L, libName, mylibs);
+	return 1;
+}
 
 int plg_lualapilib(void* plVMHandle)
 {
@@ -1837,7 +1843,12 @@ int plg_lualapilib(void* plVMHandle)
 
 	_plVMHandle = plVMHandle;
 	const char *libName = "pelagia";
-	plg_Lvmregister(plVMHandle, libName, mylibs);
+	if (plg_LvmGetV(plVMHandle) == 1) {
+		plg_Lvmregister(plVMHandle, plg_LvmGetL(plVMHandle), libName, mylibs);
+	} else  {
+		plg_LvmRequiref(plVMHandle, "pelagia", plg_lualapilib2, 1);
+	}
+
 	return 1;
 }
 

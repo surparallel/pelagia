@@ -68,7 +68,6 @@ typedef int (*luaL_loadstring) (lua_State *L, const char *s);
 
 typedef lua_State *(*luaL_newstate) (void);
 
-
 typedef const char *(*luaL_gsub) (lua_State *L, const char *s, const char *p,
                                                   const char *r);
 
@@ -78,12 +77,19 @@ typedef const char *(*luaL_findtable) (lua_State *L, int idx,
 /* From Lua 5.2. */
 typedef int (*luaL_fileresult)(lua_State *L, int stat, const char *fname);
 typedef int (*luaL_execresult)(lua_State *L, int stat);
-typedef int (*luaL_loadfilex) (lua_State *L, const char *filename,
-				 const char *mode);
+typedef int (*luaL_loadfilex) (lua_State *L, const char *filename, const char *mode);
 typedef int (*luaL_loadbufferx) (lua_State *L, const char *buff, size_t sz,
 				   const char *name, const char *mode);
 typedef void (luaL_traceback) (lua_State *L, lua_State *L1, const char *msg,
 				int level);
+/*
+** ===============================================================
+** for 5.2 5.3
+** ===============================================================
+*/
+
+typedef void(*luaL_setfuncs)(lua_State *L, const luaL_Reg *l, int nup);
+typedef void(*luaL_requiref)(lua_State *L, const char *modname, lua_CFunction openf, int glb);
 
 
 /*

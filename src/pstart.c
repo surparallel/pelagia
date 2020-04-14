@@ -124,14 +124,6 @@ static void* plg_StartFromJson(const char* jsonStr) {
 		return 0;
 	}
 
-	void* pManage = 0;
-	pJSON * dbPath = pJson_GetObjectItem(root, "dbPath");
-	if (dbPath) {
-		pManage = plg_MngCreateHandle(dbPath->valuestring, strlen(dbPath->valuestring));
-	} else {
-		pManage = plg_MngCreateHandle(0, 0);
-	}
-
 	pJSON * logoutput = pJson_GetObjectItem(root, "LogOutput");
 	if (logoutput) {
 		if (strcmp(logoutput->valuestring, "file") == 0) {
@@ -144,6 +136,14 @@ static void* plg_StartFromJson(const char* jsonStr) {
 	pJSON * loglevel = pJson_GetObjectItem(root, "LogLevel");
 	if (loglevel && (log_null <= loglevel->valueint && loglevel->valueint <= log_all)) {
 		plg_LogSetMaxLevel(loglevel->valueint);
+	}
+
+	void* pManage = 0;
+	pJSON * dbPath = pJson_GetObjectItem(root, "dbPath");
+	if (dbPath) {
+		pManage = plg_MngCreateHandle(dbPath->valuestring, strlen(dbPath->valuestring));
+	} else {
+		pManage = plg_MngCreateHandle(0, 0);
 	}
 
 	EnumJson(root, pManage);

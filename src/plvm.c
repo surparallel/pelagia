@@ -26,11 +26,38 @@
 #include "plua.h"
 #include "plapi.h"
 
+enum LuaVersion {
+	lua5_1 = 1,
+	lua5_2,
+	lua5_3
+};
 typedef struct _lVMHandle
 {
 	void* hInstance;//dll handle
 	lua_State *luaVM;//lua handle
+	short luaVersion;
 }*PlVMHandle, lVMHandle;
+
+short plg_LvmSetLuaVersion(void* hInstance) {
+
+	short version = 0;
+	void* fun = (luaL_newstate)plg_SysLibSym(hInstance, "luaL_newstate");
+	if (fun) {
+		version = lua5_1;
+	}
+
+	fun = (luaL_newstate)plg_SysLibSym(hInstance, "luaL_checkunsigned");
+	if (fun) {
+		version = lua5_2;
+	}
+
+	fun = (luaL_newstate)plg_SysLibSym(hInstance, "lua_rotate");
+	if (fun) {
+		version = lua5_3;
+	}
+
+	return version;
+}
 
 void* plg_LvmGetInstance(void* pvlVMHandle) {
 	PlVMHandle plVMHandle = pvlVMHandle;
@@ -40,6 +67,11 @@ void* plg_LvmGetInstance(void* pvlVMHandle) {
 void* plg_LvmGetL(void* pvlVMHandle) {
 	PlVMHandle plVMHandle = pvlVMHandle;
 	return plVMHandle->luaVM;
+}
+
+short plg_LvmGetV(void* pvlVMHandle) {
+	PlVMHandle plVMHandle = pvlVMHandle;
+	return plVMHandle->luaVersion;
 }
 
 void plg_LvmSetL(void* pvlVMHandle, void* L) {
@@ -73,18 +105,37 @@ void plg_Lvmgetfield(void* pvlVMHandle, void* L, int idx, const char *k) {
 	plua_getfield(L, idx, k);
 }
 
-int plg_Lvmloadfilex(void* pvlVMHandle, void* L, const char *filename) {
+void plg_Lvmgetglobal(void* pvlVMHandle, void* L, const char * name) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	FillFun(plVMHandle->hInstance, luaL_loadfile, 0);
-	return pluaL_loadfile(L, filename);
+	FillFun(plVMHandle->hInstance, lua_getglobal, NORET);
+	plua_getglobal(L, name);
+}
+
+
+int plg_Lvmloadfile(void* pvlVMHandle, void* L, const char *filename) {
+
+	PlVMHandle plVMHandle = pvlVMHandle;
+	if (plVMHandle->luaVersion == lua5_1) {
+		FillFun(plVMHandle->hInstance, luaL_loadfile, 0);
+		return pluaL_loadfile(L, filename);
+	} else {
+		FillFun(plVMHandle->hInstance, luaL_loadfilex, 0);
+		return pluaL_loadfilex(L, filename, NULL);
+	}
 }
 
 int plg_Lvmpcall(void* pvlVMHandle, void* L, int nargs, int nresults, int errfunc) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	FillFun(plVMHandle->hInstance, lua_pcall, 0);
-	return plua_pcall(L, nargs, nresults, errfunc);
+	if (plVMHandle->luaVersion == lua5_1) {
+
+		FillFun(plVMHandle->hInstance, lua_pcall, 0);
+		return plua_pcall(L, nargs, nresults, errfunc);
+	} else {
+		FillFun(plVMHandle->hInstance, lua_pcallk, 0);
+		return plua_pcallk(L, nargs, nresults, errfunc, 0 , NULL);
+	}
 }
 
 void plg_Lvmpushlstring(void* pvlVMHandle, void* L, const char *s, size_t l) {
@@ -104,8 +155,13 @@ int plg_Lvmisnumber(void* pvlVMHandle, void* L, int idx) {
 lua_Number plg_Lvmtonumber(void* pvlVMHandle, void* L, int idx) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	FillFun(plVMHandle->hInstance, lua_tonumber, 0);
-	return plua_tonumber(L, idx);
+	if (plVMHandle->luaVersion == lua5_1) {
+		FillFun(plVMHandle->hInstance, lua_tonumber, 0);
+		return plua_tonumber(L, idx);
+	} else {
+		FillFun(plVMHandle->hInstance, lua_tonumberx, 0);
+		return plua_tonumberx(L, idx, NULL);
+	}
 }
 
 void plg_Lvmsettop(void* pvlVMHandle, void* L, int idx) {
@@ -185,11 +241,33 @@ long long plg_Lvmcheckinteger(void* pvlVMHandle, void* L, int numArg) {
 	return pluaL_checkinteger(L, numArg);
 }
 
-void plg_Lvmregister(void* pvlVMHandle, const char *libname, const luaL_Reg *l) {
-
+void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL_Reg *l) {
 	PlVMHandle plVMHandle = pvlVMHandle;
-	FillFun(plVMHandle->hInstance, luaL_register, NORET);
-	pluaL_register(plVMHandle->luaVM, libname, l);
+
+	if (plVMHandle->luaVersion == lua5_1) {
+		FillFun(plVMHandle->hInstance, luaL_register, NORET);
+		pluaL_register(L, libname, l);
+	} else {
+		/*
+		#define luaL_newlibtable(L,l)	\
+		lua_createtable(L, 0, sizeof(l)/sizeof((l)[0]) - 1)
+
+		#define luaL_newlib(L,l)	(luaL_newlibtable(L,l), luaL_setfuncs(L,l,0))
+		*/
+		FillFun(plVMHandle->hInstance, lua_createtable, NORET);
+		plua_createtable(L, 0, sizeof(l) / sizeof((l)[0]) - 1);
+		FillFun(plVMHandle->hInstance, luaL_setfuncs, NORET);
+		pluaL_setfuncs(L, l, 0);
+	}
+}
+
+void plg_LvmRequiref(void* pvlVMHandle, const char *modname, lua_CFunction openf, int glb) {
+	PlVMHandle plVMHandle = pvlVMHandle;
+
+	if (plVMHandle->luaVersion == lua5_2 || plVMHandle->luaVersion == lua5_3)  {
+		FillFun(plVMHandle->hInstance, luaL_requiref, NORET);
+		pluaL_requiref(plVMHandle->luaVM, modname, openf, glb);
+	}
 }
 
 void* plg_LvmLoad(const char *path) {
@@ -197,6 +275,14 @@ void* plg_LvmLoad(const char *path) {
 	void* hInstance = plg_SysLibLoad(path, 1);
 	if (hInstance == NULL) {
 		elog(log_error, "plg_LvmLoad.plg_SysLibLoad:%s", path);
+		plg_SysLibUnload(hInstance);
+		return 0;
+	}
+
+	short version = plg_LvmSetLuaVersion(hInstance);
+	if (version == 0) {
+		elog(log_error, "plg_LvmLoad.plg_LvmSetLuaVersion: Unsupported Lua version");
+		plg_SysLibUnload(hInstance);
 		return 0;
 	}
 
@@ -206,7 +292,7 @@ void* plg_LvmLoad(const char *path) {
 		return 0;
 	}
 
-	lua_State *luaVM = (*funNewstate)();
+	lua_State * luaVM = (*funNewstate)();
 
 	luaL_openlibs funOpenlibs = (luaL_openlibs)plg_SysLibSym(hInstance, "luaL_openlibs");
 	if (!funOpenlibs) {
@@ -214,12 +300,12 @@ void* plg_LvmLoad(const char *path) {
 		return 0;
 	}
 
-	funOpenlibs(luaVM);
-	
+	funOpenlibs(luaVM);	
 
 	PlVMHandle plVMHandle = malloc(sizeof(lVMHandle));
 	plVMHandle->hInstance = hInstance;
 	plVMHandle->luaVM = luaVM;
+	plVMHandle->luaVersion = version;
 	
 	plg_lualapilib(plVMHandle);
 	return plVMHandle;
@@ -246,7 +332,7 @@ void plg_LvmDestory(void* pvlVMHandle) {
 int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short len) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	if (plg_Lvmloadfilex(plVMHandle, plVMHandle->luaVM, file)){
+	if (plg_Lvmloadfile(plVMHandle, plVMHandle->luaVM, file)){
 		elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
 		plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
 		return 0;
@@ -260,7 +346,11 @@ int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short
 	}
 
 	//call fun
-	plg_Lvmgetfield(pvlVMHandle, plVMHandle->luaVM, LUA_GLOBALSINDEX, fun);
+	if (plVMHandle->luaVersion == lua5_1) {
+		plg_Lvmgetfield(pvlVMHandle, plVMHandle->luaVM, LUA_GLOBALSINDEX, fun);
+	} else {
+		plg_Lvmgetglobal(pvlVMHandle, plVMHandle->luaVM, fun);
+	}
 	plg_Lvmpushlstring(pvlVMHandle, plVMHandle->luaVM, value, len);
 
 	if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 1, LUA_MULTRET, 0)) {
