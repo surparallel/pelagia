@@ -248,14 +248,8 @@ void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL
 		FillFun(plVMHandle->hInstance, luaL_register, NORET);
 		pluaL_register(L, libname, l);
 	} else {
-		/*
-		#define luaL_newlibtable(L,l)	\
-		lua_createtable(L, 0, sizeof(l)/sizeof((l)[0]) - 1)
-
-		#define luaL_newlib(L,l)	(luaL_newlibtable(L,l), luaL_setfuncs(L,l,0))
-		*/
 		FillFun(plVMHandle->hInstance, lua_createtable, NORET);
-		plua_createtable(L, 0, sizeof(l) / sizeof((l)[0]) - 1);
+		plua_createtable(L, 0, -1);
 		FillFun(plVMHandle->hInstance, luaL_setfuncs, NORET);
 		pluaL_setfuncs(L, l, 0);
 	}

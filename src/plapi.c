@@ -1827,7 +1827,7 @@ static luaL_Reg mylibs[] = {
 	{ NULL, NULL }
 };
 
-static int plg_lualapilib2(void* L)
+static int plg_lualapilib2(lua_State *L)
 {
 	const char *libName = "pelagia";
 	plg_Lvmregister(_plVMHandle, L, libName, mylibs);
