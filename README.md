@@ -7,25 +7,28 @@ Pelagia is developed by ANSI C, abides by AGPL protocol, and supports multiple o
 It supports automatic parallelization, transparent thread calling, embedded key value database, embedded multi language running environment, and provides API and documents for each language.
 The set concept in Boolean algebra is used to describe the operation of data. Including key, value, ordered set, index set and other types.
 
-## principle
+## Principle
 
-Pelagia slices the attribute data according to the ECS method. According to the property read and write different automatically allocated to different threads to improve the efficiency.Pelagia is very impressed with writing data. All the table data written to the order must be written through "PLG mngaddtable".To use the following methods in order, you need to set write permissions. Otherwise, the write will fail.
+Pelagia slices the attribute according to the ECS program. According to the property read and write different automatically allocated to different threads to improve the efficiency.Pelagia is very impressed with writing. All the table written from the order must be allow by "plg_MngAddTable".To use the following methods in order, you need to set write permissions. Otherwise, the write will fail.
 
-* plg_JobSet
-* plg_JobMultiSet
-* plg_JobDel
-* plg_JobSetIfNoExit
-* plg_JobTableClear
-* plg_JobRename
+```c
+plg_JobSet
+plg_JobMultiSet
+plg_JobDel
+plg_JobSetIfNoExit
+plg_JobTableClear
+plg_JobRename
+```
 
-* plg_JobSAdd
-* plg_JobSMove
-* plg_JobSPop
-* plg_JobSDel
-* plg_JobSUionStore
-* plg_JobSInterStore
-* plg_JobSDiffStore
-
+```c
+plg_JobSAdd
+plg_JobSMove
+plg_JobSPop
+plg_JobSDel
+plg_JobSUionStore
+plg_JobSInterStore
+plg_JobSDiffStore
+```
 
 ## Related resources
 
