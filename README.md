@@ -11,20 +11,20 @@ The set concept in Boolean algebra is used to describe the operation of data. In
 
 Pelagia slices the attribute data according to the ECS method. According to the property read and write different automatically allocated to different threads to improve the efficiency.Pelagia is very impressed with writing data. All the table data written to the order must be written through "PLG mngaddtable".To use the following methods in order, you need to set write permissions. Otherwise, the write will fail.
 
-PELAGIA_API unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen);
-PELAGIA_API unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten);
-PELAGIA_API unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen);
-PELAGIA_API unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen);
-PELAGIA_API void plg_JobTableClear(void* table, short tableLen);
-PELAGIA_API unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen, void* newKey, short newKeyLen);
+plg_JobSet
+plg_JobMultiSet
+plg_JobDel
+plg_JobSetIfNoExit
+plg_JobTableClear
+plg_JobRename
 
-PELAGIA_API unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);
-PELAGIA_API void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, void* desKey, short desKeyLen, void* value, short valueLen);
-PELAGIA_API void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);
-PELAGIA_API void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pValueDictExten);
-PELAGIA_API void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
-PELAGIA_API void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
-PELAGIA_API void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
+plg_JobSAdd
+plg_JobSMove
+plg_JobSPop
+plg_JobSDel
+plg_JobSUionStore
+plg_JobSInterStore
+plg_JobSDiffStore
 
 
 ## Related resources
