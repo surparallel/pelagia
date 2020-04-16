@@ -1357,8 +1357,6 @@ static int LSetAdd2(lua_State* L) {
 	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
-
-	free(v);
 	return 1;
 }
 

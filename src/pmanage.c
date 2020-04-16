@@ -1404,7 +1404,6 @@ static int FromJsonRouting(char* value, short valueLen) {
 			unsigned char* pValue = plg_B64DecodeEx(item->valuestring, strlen(item->valuestring), &outLen);
 			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), pValue, outLen);
 		} else if (pJson_String == item->type && (tableType == TT_String || tableType == -1)) {
-			unsigned int outLen;
 			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), item->valuestring, strlen(item->valuestring) + 1);
 			tableType = TT_String;
 		} else if (pJson_Number == item->type && (tableType == TT_Double || tableType == -1)) {			

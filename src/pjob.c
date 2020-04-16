@@ -160,7 +160,7 @@ static char* TString[] = {
 
 char* plg_TT2String(unsigned short tt) {
 
-	if (tt >= TT_Byte && tt <= TT_Set) {
+	if (tt <= TT_Set) {
 		return TString[tt];
 	} else {
 		return "unknown type";
