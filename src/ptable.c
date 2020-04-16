@@ -556,39 +556,34 @@ unsigned short plg_TableGetTableType(void* pvTableHandle) {
 
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
-	if (pTableHandle->pTableInFile->isSetHead) {
-		return TT_Set;
-	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
-		return pTableInFile->tableType;
-	}
+
+	pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	return pTableInFile->tableType;
 }
 
 unsigned short plg_TableSetTableType(void* pvTableHandle, unsigned short tableType) {
 
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
-	if (pTableHandle->pTableInFile->isSetHead) {
-		return TT_Set;
-	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
-		pTableInFile->tableType = tableType;
-		return pTableInFile->tableType;
-	}
+	unsigned short oldType = pTableHandle->pTableInFile->tableType;
+
+	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	pTableInFile->tableType = tableType;
+	return oldType;
 }
 
 unsigned short plg_TableSetTableTypeIfByte(void* pvTableHandle, unsigned short tableType) {
 
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
-	if (pTableHandle->pTableInFile->isSetHead) {
-		return TT_Set;
+	unsigned short oldType = pTableHandle->pTableInFile->tableType;
+
+	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	pTableInFile->tableType = tableType;
+	if (oldType == TT_Byte || oldType == tableType) {
+		return tableType;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
-		if (pTableInFile->tableType == TT_Byte) {
-			pTableInFile->tableType = tableType;
-		}
-		return pTableInFile->tableType;
+		return oldType;
 	}
 }
 
@@ -2008,9 +2003,24 @@ unsigned int plg_TableAdd(void* pvTableHandle, void* vKey, short keyLen, void* v
 	return plg_InsideTableAdd(pTableHandle, vKey, keyLen, VALUE_NORMAL, value, length);
 }
 
+unsigned int plg_TableDelForSet(void* pvTableHandle, void* vKey, short keyLen) {
+
+	//find skip list point
+	PTableHandle pTableHandle = pvTableHandle;
+	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = { { 0 } };
+	if (plg_TableFindWithName(pTableHandle, vKey, keyLen, &skipListPoint, plg_TablePrevFindCmpFun) == 0) {
+		return 0;
+	}
+	//Pay attention to different parameters
+	if (table_InsideDel(pTableHandle, vKey, keyLen, &skipListPoint, 1) == 0) {
+		return 0;
+	}
+	return 1;
+}
+
 /*
-注意这里只是table的删除，不包括cache的删除。
-没有删除cahce就删除table将导致cache无法删除
+Note that this is only table deletion, not cache deletion.
+Deleting a table without deleting the cahce will cause the cache to fail to delete
 */
 unsigned int plg_TableDel(void* pvTableHandle, void* vKey, short keyLen) {
 
@@ -2756,6 +2766,7 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 	memset(&tableInFile, 0, sizeof(TableInFile));
 	TableInFile oldTableInFile;
 	memset(&oldTableInFile, 0, sizeof(TableInFile));
+	plg_TableSetTableType(pTableHandle, TT_Set);
 	PTableInFile pTableInFile = pTableHandle->pTableInFile;
 	void* pDictExten = plg_DictExtenCreate();
 
@@ -2790,8 +2801,6 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 
 		plg_TableInitTableInFile(&tableInFile);
 		tableInFile.isSetHead = 1;
-		tableInFile.tableType = TT_Set;
-
 		pTableHandle->pTableInFile = &tableInFile;
 		if (0 == plg_InsideTableAdd(pTableHandle, vValue, valueLen, VALUE_NORMAL, NULL, 0)) {
 			ret = 0;
@@ -2994,7 +3003,7 @@ void plg_TableSetDel(void* pvTableHandle, void* vKey, short keyLen, void* pValue
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}
@@ -3037,7 +3046,7 @@ static void table_InsideSetDel(void* pvTableHandle, void* vKey, short keyLen, vo
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}
@@ -3080,7 +3089,7 @@ unsigned int plg_TableSetPop(void* pvTableHandle, void* vKey, short keyLen, void
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}

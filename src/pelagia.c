@@ -392,7 +392,7 @@ int plg_ReadArgFromParam(int argc, char **argv) {
 		} else if (strcmp(argv[i], "--input") == 0 ||
 			strcmp(argv[i], "-i") == 0)
 		{
-			if (checkArg(argv[i + 1]) && checkArg(argv[i + 2])) {
+			if (checkArg(argv[i + 1])) {
 				plg_MngFromJson(argv[i + 1]);
 			} else {
 				printf("Not enough parameters found!\n");

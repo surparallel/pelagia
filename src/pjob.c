@@ -923,7 +923,7 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
-			r = plg_CacheSetTableType(dictGetVal(valueEntry), sdsTable, tableType);
+			r = plg_CacheSetTableTypeIfByte(dictGetVal(valueEntry), sdsTable, tableType);
 			if (r == tableType) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}

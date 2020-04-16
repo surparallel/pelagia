@@ -1426,10 +1426,20 @@ static int FromJsonRouting(char* value, short valueLen) {
 		} else if (pJson_Number == item->type && (tableType == TT_Double || tableType == -1)) {			
 			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), &item->valuedouble, sizeof(double));
 			tableType = TT_Double;
+		} else if (pJson_Object == item->type) {
+			
+			for (int i = 0; i < pJson_GetArraySize(item); i++)
+			{
+				pJSON * setItem = pJson_GetArrayItem(item, i);
+				for (int i = 0; i < pJson_GetArraySize(item); i++)
+				{
+					plg_JobSAdd(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), setItem->string, strlen(setItem->string));
+				}
+			}
 		}
 
 		//commit pre 100000
-		if (count++ % 100000 == 0) {
+		if (++count % 100000 == 0) {
 			plg_JobForceCommit();
 		}
 	}
@@ -1474,7 +1484,7 @@ void plg_MngFromJson(char* fromJson) {
 		elog(log_warn, "plg_MngFromJson.fopen_t.rb!");
 	}
 
-	pJSON * root = pJson_Parse(fromJson);
+	pJSON * root = pJson_Parse(rootJson);
 	free(rootJson);
 	if (!root) {
 		elog(log_error, "plg_MngFromJson:json Error before: [%s]\n", pJson_GetErrorPtr());
@@ -1506,7 +1516,7 @@ void plg_MngFromJson(char* fromJson) {
 			param.fromJson = item;
 			param.pEvent = pEvent;
 			param.pManage = pManage;
-			param.endFlg = (i == pJson_GetArraySize(root)) ? 1 : 0;
+			param.endFlg = (i == pJson_GetArraySize(root) - 1) ? 1 : 0;
 			param.tbaleType = tbaleType;
 			plg_MngRemoteCall(pManage, order, strlen(order), (char*)&param, sizeof(Param));
 		}
