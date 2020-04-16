@@ -73,6 +73,7 @@ PELAGIA_API void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fu
 PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
 PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
+PELAGIA_API void plg_JobForceCommit();
 
 //system
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);

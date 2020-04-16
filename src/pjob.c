@@ -345,6 +345,12 @@ static int OrderJobFinish(char* value, short valueLen) {
 	return 1;
 }
 
+void plg_JobForceCommit() {
+	PJobHandle pJobHandle = job_Handle();
+	job_Commit(pJobHandle);
+	job_Flush(pJobHandle);
+}
+
 static void InitProcessCommend(void* pvJobHandle) {
 
 	//event process

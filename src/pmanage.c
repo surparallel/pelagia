@@ -281,6 +281,13 @@ static void manage_AddTableToDisk(void* pvManage, PTableName pTableName, sds tab
 static void pFillTableNameCB(void* pDiskHandle, void* ptr, char* tableName) {
 
 	PManage pManage = (PManage)ptr;
+
+	PTableName pTableName = malloc(sizeof(TableName));
+	pTableName->sdsParent = 0;
+	pTableName->weight = 1;
+	pTableName->noShare = 0;
+	pTableName->noSave = 0;
+	plg_dictAdd(pManage->dictTableName, tableName, pTableName);
 	plg_dictAdd(pManage->tableName_diskHandle, tableName, pDiskHandle);
 
 	plg_MngAddTable(pManage, "o1", 2, tableName, plg_sdsLen(tableName));
@@ -425,7 +432,6 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 		manage_CreateDisk(pManage);
 	}
 	
-
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
@@ -525,17 +531,19 @@ void* plg_MngRandJobEqueue(void* pvManage) {
 	PManage pManage = pvManage;
 
 	void* jobEqueue = 0;
-	int r = rand() % listLength(pManage->listJob);
-	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
-	listNode* jobNode;
-	while ((jobNode = plg_listNext(jobIter)) != NULL) {
+	if (listLength(pManage->listJob)) {
+		int r = rand() % listLength(pManage->listJob);
+		listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
+		listNode* jobNode;
+		while ((jobNode = plg_listNext(jobIter)) != NULL) {
 
-		jobEqueue = plg_JobEqueueHandle(listNodeValue(jobNode));
-		if (--r < 0) {
-			break;
+			jobEqueue = plg_JobEqueueHandle(listNodeValue(jobNode));
+			if (--r < 0) {
+				break;
+			}
 		}
+		plg_listReleaseIterator(jobIter);
 	}
-	plg_listReleaseIterator(jobIter);
 
 	return jobEqueue;
 }
@@ -1325,42 +1333,49 @@ static int OutJsonRouting(char* value, short valueLen) {
 	NOTUSED(valueLen);
 	PParam pParam = (PParam)value;
 	PManage pManage = pParam->pManage;
-	pJSON* root = pJson_CreateObject();
 
+	plg_MkDirs(pParam->outJson);
+	
 	dictIterator* tableNameIter = plg_dictGetIterator(pManage->dictTableName);
 	dictEntry* tableNameNode;
 	while ((tableNameNode = plg_dictNext(tableNameIter)) != NULL) {
-		pJSON* obj = pJson_CreateObject();
-		pJson_AddItemToObject(root, dictGetKey(tableNameNode), obj);
-		plg_JobTableMembersWithJson(dictGetKey(tableNameNode), plg_sdsLen(dictGetKey(tableNameNode)), obj);
+		pJSON* root = pJson_CreateObject();
+
+		pJson_AddNumberToObject(root, "tableType", plg_JobGetTableType(dictGetKey(tableNameNode), plg_sdsLen(dictGetKey(tableNameNode))));
+		pJSON* tableObj = pJson_CreateObject();
+		pJson_AddItemToObject(root, dictGetKey(tableNameNode), tableObj);
+		plg_JobTableMembersWithJson(dictGetKey(tableNameNode), plg_sdsLen(dictGetKey(tableNameNode)), tableObj);
+
+		sds fileName = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s", pParam->outJson, dictGetKey(tableNameNode));
+		//open file
+		FILE *outputFile;
+		outputFile = fopen_t(fileName, "wb");
+		if (outputFile) {
+			char* ptr = pJson_Print(root);
+			fwrite(ptr, 1, strlen(ptr), outputFile);
+			free(ptr);
+		} else {
+			elog(log_warn, "OutJsonRouting.fopen_t.wb!");
+		}
+
+		plg_sdsFree(fileName);
+		fclose(outputFile); 
+		pJson_Delete(root);
+
 	}
 	plg_dictReleaseIterator(tableNameIter);
-
-	//open file
-	FILE *outputFile;
-	outputFile = fopen_t(pParam->outJson, "wb");
-	if (outputFile) {
-		char* ptr = pJson_Print(root);
-		fwrite(ptr, 1, strlen(ptr), outputFile);
-	} else {
-		elog(log_warn, "OutJsonRouting.fopen_t.wb!");
-	}
-
-	fclose(outputFile);
-
+	
 	plg_sdsFree(pParam->outJson);
-	pJson_Delete(root);
-
 	//all pass
 	plg_EventSend(pParam->pEvent, NULL, 0);
 	printf("OutJsonRouting all pass!\n");
-	sleep(0);
 	return 1;
 }
 
 void plg_MngOutJson(char* fileName, char* outJson) {
 
 	void* pManage = plg_MngCreateHandle(0, 0);
+	
 	void* pEvent = plg_EventCreateHandle();
 
 	plg_MngFreeJob(pManage);
@@ -1370,6 +1385,7 @@ void plg_MngOutJson(char* fileName, char* outJson) {
 	plg_MngAddOrder(pManage, order, strlen(order), plg_JobCreateFunPtr(OutJsonRouting));
 
 	plg_MngInterAllocJob(pManage, 1, fileName);
+	
 	plg_MngStarJob(pManage);
 
 	Param param;
@@ -1395,6 +1411,7 @@ static int FromJsonRouting(char* value, short valueLen) {
 	NOTUSED(valueLen);
 	PParam pParam = (PParam)value;
 	short tableType = pParam->tbaleType;
+	long long count = 0;
 	
 	for (int i = 0; i < pJson_GetArraySize(pParam->fromJson); i++)
 	{
@@ -1409,6 +1426,11 @@ static int FromJsonRouting(char* value, short valueLen) {
 		} else if (pJson_Number == item->type && (tableType == TT_Double || tableType == -1)) {			
 			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), &item->valuedouble, sizeof(double));
 			tableType = TT_Double;
+		}
+
+		//commit pre 100000
+		if (count++ % 100000 == 0) {
+			plg_JobForceCommit();
 		}
 	}
 
@@ -1490,7 +1512,6 @@ void plg_MngFromJson(char* fromJson) {
 		}
 	}
 
-	
 	//Because it is not a thread created by ptw32, ptw32 new cannot release memory leak
 	plg_EventWait(pEvent);
 
@@ -1506,17 +1527,15 @@ void plg_MngFromJson(char* fromJson) {
 int plg_MngTableIsInOrder(void* pvManage, void* order, short orderLen, void* table, short tableLen) {
 
 	PManage pManage = pvManage;
-	sds sdsOrder = plg_sdsNewLen(order, orderLen);
-	sds sdsTable = plg_sdsNewLen(table, tableLen);
-	
+	sds sdsOrder = plg_sdsNewLen(order, orderLen);	
 	dict * dictTable = plg_DictSetValue(pManage->order_tableName, sdsOrder);
+	plg_sdsFree(sdsOrder);
 	if (!dictTable) {
 		return 0;
 	}
 
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* entry = plg_dictFind(dictTable, sdsTable);
-
-	plg_sdsFree(sdsOrder);
 	plg_sdsFree(sdsTable);
 	if (entry) {
 		return 1;

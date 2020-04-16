@@ -88,6 +88,12 @@ static int LTimer(lua_State* L) {
 	return 0;
 }
 
+static int LCommit(lua_State* L) {
+
+	NOTUSED(L);
+	plg_JobForceCommit();
+	return 0;
+}
 
 static int LSet(lua_State* L) {
 
@@ -102,8 +108,6 @@ static int LSet(lua_State* L) {
 		elog(log_warn, "LSet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
 	}
 
-	//if string include \0
-	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
@@ -168,8 +172,6 @@ static int LSetIfNoExit(lua_State* L) {
 		elog(log_warn, "LSetIfNoExit Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
 	}
 
-	//if string include \0
-	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
@@ -933,8 +935,6 @@ static int LSet2(lua_State* L) {
 		elog(log_warn, "LRand Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
 	}
 
-	//if string include \0
-	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
@@ -967,7 +967,7 @@ static int LMultiSet2(lua_State* L) {
 				elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
 			}
 
-			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), &item->valuestring, strlen(item->valuestring) + 1);
+			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), &item->valuestring, strlen(item->valuestring));
 		} else if (pJson_Number == item->type) {
 
 			unsigned rtype = 0;
@@ -1921,6 +1921,8 @@ static luaL_Reg mylibs[] = {
 	{ "TableName", LTableName },
 	{ "OrderName", LOrderName },
 	{ "Timer", LTimer },
+	{ "Commit", LCommit },
+
 	{ "Set", LSet },
 	{ "MultiSet", LMultiSet },
 	{ "Del", LDel },
