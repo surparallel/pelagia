@@ -51,6 +51,10 @@ int plg_TableTailFindCmpFun(void* key1, unsigned int key1Len, void* key2, unsign
 unsigned int plg_TableFindWithName(void* pTableHandle, char* key, short keyLen, void* skipListPoint, FindCmpFun pFindCmpFun);
 
 //normal
+unsigned short plg_TableGetTableType(void* pvTableHandle);
+unsigned short plg_TableSetTableType(void* pvTableHandle, unsigned short tableType);
+unsigned short plg_TableSetTableTypeIfByte(void* pvTableHandle, unsigned short tableType);
+
 unsigned int plg_TableAdd(void* pTableHandle, void* vKey, short keyLen, void* value, unsigned short length);
 unsigned int plg_TableDel(void* pTableHandle, void* vKey, short keyLen);
 unsigned int plg_TableAlter(void* pTableHandle, void* vKey, short keyLen, void* value, unsigned short length);

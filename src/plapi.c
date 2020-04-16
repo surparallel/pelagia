@@ -96,6 +96,14 @@ static int LSet(lua_State* L) {
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
+	if (rtype != TT_String) {
+		elog(log_warn, "LSet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
+	//if string include \0
+	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
@@ -105,6 +113,12 @@ static int LMultiSet(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
+	if (rtype != TT_String) {
+		elog(log_warn, "LMultiSet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
 
 	lua_Number r = 0;
 	pJSON * root = pJson_Parse(json);
@@ -119,7 +133,7 @@ static int LMultiSet(lua_State* L) {
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring));
+			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), item->valuestring, strlen(item->valuestring) + 1);
 		}
 	}
 
@@ -148,6 +162,14 @@ static int LSetIfNoExit(lua_State* L) {
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
+	if (rtype != TT_String) {
+		elog(log_warn, "LSetIfNoExit Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
+	//if string include \0
+	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
 }
@@ -179,8 +201,13 @@ static int LGet(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LGet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
 
+	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 	if (p != 0) {
 		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
@@ -216,6 +243,12 @@ static int LLimite(lua_State* L) {
 	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 4);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LLimite Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -249,6 +282,12 @@ static int LOrder(lua_State* L) {
 	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, L, 2);
 	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LOrder Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -281,6 +320,12 @@ static int LRang(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LRang Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
 
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
@@ -316,6 +361,12 @@ static int LPattern(lua_State* L) {
 	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
 	const char* p = plg_Lvmchecklstring(_plVMHandle, L, 4, &pLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LPattern Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -347,6 +398,12 @@ static int LMultiGet(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LMultiGet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -398,8 +455,13 @@ static int LRand(lua_State* L) {
 	unsigned int pLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
-	const char* p = plg_JobRand((void*)t, tLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
 
+	const char* p = plg_JobRand((void*)t, tLen, &pLen);
 	if (p != 0) {
 		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
@@ -439,7 +501,6 @@ static int LSetPop(lua_State* L) {
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
 	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
-
 	if (p != 0) {
 		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
 	} else {
@@ -482,7 +543,7 @@ static int LSetUionStore(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 3, &kLen);
-	
+
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
 		elog(log_error, "json Error before: [%s]\n", pJson_GetErrorPtr());
@@ -861,10 +922,19 @@ static int LSetDiff(lua_State* L) {
 static int LSet2(lua_State* L) {
 
 	size_t tLen, kLen, vLen;
+	unsigned short tt;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
-	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen, &tt);
 
+	unsigned rtype = 0;
+	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, tt);
+	if (rtype != tt) {
+		elog(log_warn, "LRand Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
+	}
+
+	//if string include \0
+	vLen += 1;
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
 	free(v);
@@ -890,15 +960,24 @@ static int LMultiSet2(lua_State* L) {
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
 		if (pJson_String == item->type) {
-			int len = strlen(item->valuestring);
-			void* p = plg_LvmMallocForBuf(item->valuestring, len, LUA_TSTRING);
-			len += 1;
-			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), p, len);
+
+			unsigned rtype = 0;
+			rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
+			if (rtype != TT_String) {
+				elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+			}
+
+			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), &item->valuestring, strlen(item->valuestring) + 1);
 		} else if (pJson_Number == item->type) {
+
+			unsigned rtype = 0;
+			rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_Double);
+			if (rtype != TT_Double) {
+				elog(log_warn, "LRand Current table %s type is %s to TT_Double", t, plg_TT2String(rtype));
+			}
+
 			int len = sizeof(item->valuedouble);
-			void* p = plg_LvmMallocForBuf(item->valuestring, len, LUA_TNUMBER);
-			len += 1;
-			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), p, len);
+			plg_DictExtenAdd(pDictExten, item->string, strlen(item->string), &item->valuedouble, len);
 		}
 	}
 
@@ -923,9 +1002,16 @@ static int LDel2(lua_State* L) {
 static int LSetIfNoExit2(lua_State* L) {
 
 	size_t tLen, kLen, vLen;
+	unsigned short tt;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
-	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
+	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen, &tt);
+
+	unsigned rtype = 0;
+	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, tt);
+	if (rtype != tt) {
+		elog(log_warn, "LRand Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
+	}
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 	return 1;
@@ -954,18 +1040,23 @@ static int LRename2(lua_State* L) {
 static int LGet2(lua_State* L) {
 
 	size_t tLen, kLen;
-	unsigned int pLen;
+	unsigned int valueLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
-	if (p[0] == LUA_TNUMBER) {
+	const char* pValue = plg_JobGet((void*)t, tLen, (void*)k, kLen, &valueLen);
+	if (rtype == TT_Double) {
 		lua_Number v;
-		memcpy(&v, SHELLING(p), SHELLING(pLen));
+		memcpy(&v, pValue, valueLen);
 		plg_Lvmpushnumber(_plVMHandle, L, v);
-	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
+	} else if (rtype == TT_String) {
+		plg_Lvmpushlstring(_plVMHandle, L, pValue, valueLen);
 	} 
 	
 	return 1;
@@ -998,6 +1089,12 @@ static int LLimite2(lua_State* L) {
 	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 4);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1007,13 +1104,13 @@ static int LLimite2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*) SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*) pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING && valueLen != 0) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String && valueLen != 0) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1037,6 +1134,12 @@ static int LOrder2(lua_State* L) {
 	lua_Integer o = plg_Lvmcheckinteger(_plVMHandle, L, 2);
 	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 3);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1046,13 +1149,13 @@ static int LOrder2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1076,6 +1179,12 @@ static int LRang2(lua_State* L) {
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1085,13 +1194,13 @@ static int LRang2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1116,6 +1225,12 @@ static int LPattern2(lua_State* L) {
 	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 3, &keLen);
 	const char* p = plg_Lvmchecklstring(_plVMHandle, L, 4, &pLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1125,13 +1240,13 @@ static int LPattern2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1153,6 +1268,12 @@ static int LMultiGet2(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1180,13 +1301,13 @@ static int LMultiGet2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1210,14 +1331,19 @@ static int LRand2(lua_State* L) {
 	unsigned int pLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
-	const char* p = plg_JobRand((void*)t, tLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
-	if (p[0] == LUA_TNUMBER) {
+	const char* pValue = plg_JobRand((void*)t, tLen, &pLen);
+	if (rtype == TT_Double) {
 		lua_Number v;
-		memcpy(&v, SHELLING(p), SHELLING(pLen));
+		memcpy(&v, pValue, pLen);
 		plg_Lvmpushnumber(_plVMHandle, L, v);
-	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
+	} else if (rtype == TT_String) {
+		plg_Lvmpushlstring(_plVMHandle, L, pValue, pLen);
 	}
 
 	return 1;
@@ -1228,7 +1354,7 @@ static int LSetAdd2(lua_State* L) {
 	size_t tLen, kLen, vLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
-	char* v = plg_LvmMallocWithType(_plVMHandle, L, 3, &vLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
 
@@ -1255,14 +1381,20 @@ static int LSetPop2(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	const char* p = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
-	if (p[0] == LUA_TNUMBER) {
+	const char* pValue = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
+
+	if (rtype == TT_Double) {
 		lua_Number v;
-		memcpy(&v, SHELLING(p), SHELLING(pLen));
+		memcpy(&v, pValue, pLen);
 		plg_Lvmpushnumber(_plVMHandle, L, v);
-	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
+	} else if (rtype == TT_String) {
+		plg_Lvmpushlstring(_plVMHandle, L, pValue, pLen);
 	}
 	return 1;
 }
@@ -1387,6 +1519,12 @@ static int LSetRang2(lua_State* L) {
 	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
 	const char* ke = plg_Lvmchecklstring(_plVMHandle, L, 4, &keLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1396,13 +1534,13 @@ static int LSetRang2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1428,6 +1566,12 @@ static int LSetLimite2(lua_State* L) {
 	lua_Integer l = plg_Lvmcheckinteger(_plVMHandle, L, 4);
 	lua_Integer r = plg_Lvmcheckinteger(_plVMHandle, L, 5);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1437,13 +1581,13 @@ static int LSetLimite2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1487,6 +1631,12 @@ static int LSetMembers2(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
+
 	void* pDictExten = plg_DictExtenCreate();
 	pJSON* root = pJson_CreateObject();
 
@@ -1496,13 +1646,13 @@ static int LSetMembers2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1526,14 +1676,20 @@ static int LSetRand2(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
-	if (p[0] == LUA_TNUMBER) {
+	const char* pValue = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
+
+	if (rtype == TT_Double) {
 		lua_Number v;
-		memcpy(&v, SHELLING(p), SHELLING(pLen));
+		memcpy(&v, pValue, pLen);
 		plg_Lvmpushnumber(_plVMHandle, L, v);
-	} else if (p[0] == LUA_TSTRING) {
-		plg_Lvmpushlstring(_plVMHandle, L, SHELLING(p), SHELLING(pLen));
+	} else if (rtype == TT_String) {
+		plg_Lvmpushlstring(_plVMHandle, L, pValue, pLen);
 	}
 	return 1;
 }
@@ -1555,6 +1711,12 @@ static int LSetUion2(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1582,13 +1744,13 @@ static int LSetUion2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1611,6 +1773,12 @@ static int LSetInter2(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1638,13 +1806,13 @@ static int LSetInter2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}
@@ -1667,6 +1835,12 @@ static int LSetDiff2(lua_State* L) {
 	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* json = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
+
+	unsigned rtype = 0;
+	rtype = plg_JobGetTableType((void*)t, tLen);
+	if (rtype != TT_Double || rtype != TT_String) {
+		elog(log_warn, "LRand Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+	}
 
 	pJSON * root = pJson_Parse(json);
 	if (!root) {
@@ -1694,13 +1868,13 @@ static int LSetDiff2(lua_State* L) {
 	void* dictNode;
 	while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 		unsigned int keyLen=0, valueLen=0;
-		char* p = plg_DictExtenValue(dictNode, &valueLen);
-		if (p[0] == LUA_TNUMBER) {
+		char* pValue = plg_DictExtenValue(dictNode, &valueLen);
+		if (rtype == TT_Double) {
 			lua_Number v;
-			memcpy((char*)&v, (char*)SHELLING(p), SHELLING(valueLen));
+			memcpy((char*)&v, (char*)pValue, valueLen);
 			pJson_AddNumberToObject(root, plg_DictExtenKey(dictNode, &keyLen), v);
-		} else if (p[0] == LUA_TSTRING) {
-			sds s = plg_sdsNewLen(SHELLING(p), SHELLING(valueLen));
+		} else if (rtype == TT_String) {
+			sds s = plg_sdsNewLen(pValue, valueLen);
 			pJson_AddStringToObject(root, plg_DictExtenKey(dictNode, &keyLen), s);
 			plg_sdsFree(s);
 		}

@@ -819,7 +819,6 @@ static void plg_DiskaddDirtyTable(void* pvDiskHandle, sds table) {
 	dictAddWithUint(pDiskHandle->pageDirty, 0, NULL);
 }
 
-SDS_TYPE
 void* plg_DiskfindTableInFile(void* pvDiskHandle, sds table, void* tableInFile) {
 	NOTUSED(table);
 	NOTUSED(pvDiskHandle);
@@ -876,6 +875,8 @@ pManage:PManage
 filePath:打开文件名
 pDiskHandle:返回的句柄
 */
+
+SDS_TYPE
 unsigned int plg_DiskFileOpen(void* pManageEqueue, char* filePath, void** pDiskHandle, char isNew, char noSave) {
 
 	PDiskHandle pdiskHandle = 0;

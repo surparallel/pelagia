@@ -27,6 +27,14 @@
 
 #include "papidefine.h"
 
+//for script and json output format and input check
+enum TableType {
+	TT_Byte = 0,
+	TT_Double,
+	TT_String,
+	TT_Set
+};
+
 //user manage API
 PELAGIA_API void* plg_MngCreateHandle(char* dbPath, short dbPahtLen);
 PELAGIA_API void* plg_MngCreateHandleWithJson(const char* jsonFile);
@@ -71,6 +79,9 @@ PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, shor
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
 PELAGIA_API void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
+PELAGIA_API unsigned short plg_JobGetTableType(void* table, short tableLen);
+PELAGIA_API unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short tableType);
+PELAGIA_API unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned short tableType);
 
 //namorl db
 PELAGIA_API unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen);

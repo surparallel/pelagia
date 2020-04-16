@@ -43,6 +43,7 @@ void plg_JobSendOrder(void* eQueue, char* order, char* value, short valueLen);
 void plg_JobAddAdmOrderProcess(void* pJobHandle, char* nevent, void* process);
 char plg_JobCheckIsType(enum ThreadType threadType);
 char plg_JobCheckUsingThread();
+char* plg_TT2String(unsigned short tt);
 
 void plg_JobPrintStatus(void* pJobHandle);
 void plg_JobPrintDetails(void* pJobHandle);

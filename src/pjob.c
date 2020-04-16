@@ -151,11 +151,24 @@ typedef struct _JobHandle
 
 } *PJobHandle, JobHandle;
 
-SDS_TYPE
+static char* TString[] = {
+	"TT_Byte",
+	"TT_Double",
+	"TT_String",
+	"TT_Set",
+};
+
+char* plg_TT2String(unsigned short tt) {
+
+	if (tt >= TT_Byte && tt <= TT_Set) {
+		return TString[tt];
+	} else {
+		return "unknown type";
+	}
+}
+
 void* plg_JobCreateFunPtr(RoutingFun funPtr) {
 
-	long long ss = ll;
-	ss = ss * 0;
 	PEventPorcess pEventPorcess = malloc(sizeof(EventPorcess));
 	pEventPorcess->scriptType = ST_PTR;
 	pEventPorcess->functionPoint = funPtr;
@@ -353,6 +366,7 @@ void* plg_JobGetPrivate() {
 	return pJobHandle->privateData;
 }
 
+SDS_TYPE
 void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaPath, char* luaDllPath, char* dllPath) {
 
 	PJobHandle pJobHandle = malloc(sizeof(JobHandle));
@@ -851,6 +865,73 @@ void plg_JobPrintOrder(void* pvJobHandle) {
 	plg_dictReleaseIterator(dictIter);
 }
 
+unsigned short plg_JobGetTableType(void* table, short tableLen) {
+
+	CheckUsingThread(0);
+	unsigned short r = 0;
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		r = plg_CacheGetTableType(dictGetVal(valueEntry), sdsTable, job_IsTableAllowWrite(pJobHandle, sdsTable));
+	} else {
+		elog(log_error, "plg_JobGetTableType.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+
+	return r;
+}
+
+
+unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short tableType) {
+
+	CheckUsingThread(0);
+	unsigned int r = 0;
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
+			r = plg_CacheSetTableType(dictGetVal(valueEntry), sdsTable, tableType);
+			if (r == tableType) {
+				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
+			}
+		} else {
+			elog(log_error, "plg_JobSetTableType.No permission to table <%s>!", sdsTable);
+		}
+
+	} else {
+		elog(log_error, "plg_JobSetTableType.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+
+	return r;
+}
+
+unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned short tableType) {
+
+	CheckUsingThread(0);
+	unsigned int r = 0;
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		if (job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)) && job_IsTableAllowWrite(pJobHandle, sdsTable)) {
+			r = plg_CacheSetTableType(dictGetVal(valueEntry), sdsTable, tableType);
+			if (r == tableType) {
+				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
+			}
+		} else {
+			elog(log_error, "plg_JobSetTableType.No permission to table <%s>!", sdsTable);
+		}
+
+	} else {
+		elog(log_error, "plg_JobSetTableType.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+
+	return r;
+}
 
 /*
 First check the running cache
@@ -1574,6 +1655,7 @@ char** plg_JobTableName(short* tableLen) {
 
 	return plg_MngOrderAllTable(pManage, orderName, orderLen, tableLen);
 }
+
 
 #undef NORET
 #undef CheckUsingThread

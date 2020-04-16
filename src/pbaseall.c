@@ -655,8 +655,6 @@ void plg_BaseAll() {
 	//Because it is not a thread created by ptw32, ptw32 new cannot release memory leak
 	plg_EventWait(pEvent);
 
-	sleep(3);
-
 	unsigned int eventLen;
 	void * ptr = plg_EventRecvAlloc(pEvent, &eventLen);
 	plg_EventFreePtr(ptr);

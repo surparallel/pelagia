@@ -1003,7 +1003,6 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 
 	plg_LocksCreate();
 	plg_LogInit();
-	elog(log_warn, "--------Welcome to pelgia!--------");
 
 	PManage pManage = malloc(sizeof(Manage));
 	pManage->mutexHandle = plg_MutexCreateHandle(LockLevel_1);
@@ -1317,6 +1316,7 @@ typedef struct _Param
 	void* pManage;
 	pJSON* fromJson;
 	short endFlg;
+	short tbaleType;
 }*PParam, Param;
 
 static int OutJsonRouting(char* value, short valueLen) {
@@ -1366,7 +1366,7 @@ void plg_MngOutJson(char* fileName, char* outJson) {
 	plg_MngFreeJob(pManage);
 
 	char order[10] = { 0 };
-	sprintf(order, "order");
+	strcpy(order, "order");
 	plg_MngAddOrder(pManage, order, strlen(order), plg_JobCreateFunPtr(OutJsonRouting));
 
 	plg_MngInterAllocJob(pManage, 1, fileName);
@@ -1380,7 +1380,6 @@ void plg_MngOutJson(char* fileName, char* outJson) {
 
 	//Because it is not a thread created by ptw32, ptw32 new cannot release memory leak
 	plg_EventWait(pEvent);
-	sleep(2);
 
 	unsigned int eventLen;
 	void * ptr = plg_EventRecvAlloc(pEvent, &eventLen);
@@ -1388,7 +1387,6 @@ void plg_MngOutJson(char* fileName, char* outJson) {
 
 	plg_EventDestroyHandle(pEvent);
 	plg_MngDestoryHandle(pManage);
-	sleep(2);
 }
 
 static int FromJsonRouting(char* value, short valueLen) {
@@ -1396,14 +1394,22 @@ static int FromJsonRouting(char* value, short valueLen) {
 	//routing
 	NOTUSED(valueLen);
 	PParam pParam = (PParam)value;
+	short tableType = pParam->tbaleType;
 	
 	for (int i = 0; i < pJson_GetArraySize(pParam->fromJson); i++)
 	{
 		pJSON * item = pJson_GetArrayItem(pParam->fromJson, i);
-		if (pJson_String == item->type) {
+		if (pJson_String == item->type && tableType == TT_Byte) {
 			unsigned int outLen;
 			unsigned char* pValue = plg_B64DecodeEx(item->valuestring, strlen(item->valuestring), &outLen);
-			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->valuestring, strlen(item->valuestring), pValue, outLen);
+			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), pValue, outLen);
+		} else if (pJson_String == item->type && (tableType == TT_String || tableType == -1)) {
+			unsigned int outLen;
+			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), item->valuestring, strlen(item->valuestring) + 1);
+			tableType = TT_String;
+		} else if (pJson_Number == item->type && (tableType == TT_Double || tableType == -1)) {			
+			plg_JobSet(pParam->fromJson->string, strlen(pParam->fromJson->string), item->string, strlen(item->string), &item->valuedouble, sizeof(double));
+			tableType = TT_Double;
 		}
 	}
 
@@ -1454,6 +1460,12 @@ void plg_MngFromJson(char* fromJson) {
 		return;
 	}
 
+	short tbaleType = -1;
+	pJSON * item = pJson_GetObjectItem(root, "tableType");
+	if (item) {
+		tbaleType  = (short)item->valuedouble;
+	}
+
 	for (int i = 0; i < pJson_GetArraySize(root); i++)
 	{
 		pJSON * item = pJson_GetArrayItem(root, i);
@@ -1474,6 +1486,7 @@ void plg_MngFromJson(char* fromJson) {
 			param.pEvent = pEvent;
 			param.pManage = pManage;
 			param.endFlg = (i == pJson_GetArraySize(root)) ? 1 : 0;
+			param.tbaleType = tbaleType;
 			plg_MngRemoteCall(pManage, order, strlen(order), (char*)&param, sizeof(Param));
 		}
 	}
@@ -1481,7 +1494,6 @@ void plg_MngFromJson(char* fromJson) {
 	
 	//Because it is not a thread created by ptw32, ptw32 new cannot release memory leak
 	plg_EventWait(pEvent);
-	sleep(0);
 
 	unsigned int eventLen;
 	void * ptr = plg_EventRecvAlloc(pEvent, &eventLen);

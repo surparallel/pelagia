@@ -117,7 +117,8 @@ Tablepagehead: leave a placeholder when deleting a table
 Tableusingpage: is an array page of page usage under the table.
 Value page: the first page address of the value page.
 Value using page: the first page of value using page is used to quickly find the usage of value page.
-Issethead: 1 flag is set
+Issethead: 1 flag is set;Because it is in function nesting, it does not need to be updated again, which will result in data loss
+tableType: 0 byte 1 long long 2 double 4 string 5 set . Tabletype will be ignored by C.
 */
 typedef struct _TableInFile
 {
@@ -127,6 +128,7 @@ typedef struct _TableInFile
 	unsigned int valuePage;
 	unsigned int valueUsingPage;
 	unsigned short isSetHead;
+	unsigned short tableType;
 }*PTableInFile, TableInFile;
 
 /*

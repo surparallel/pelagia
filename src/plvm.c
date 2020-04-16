@@ -25,6 +25,7 @@
 #include "plualib.h"
 #include "plua.h"
 #include "plapi.h"
+#include "pelagia.h"
 
 enum LuaVersion {
 	lua5_1 = 1,
@@ -363,70 +364,33 @@ int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short
 	return ret;
 }
 
-void* plg_LvmMallocForBuf(void* p, int len, char type) {
-	char* r = 0;
-	r = malloc(len + 1);
-	r[0] = type;
-	memcpy((r + 1), p, len);
-	return r;
-}
-
-void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len) {
+void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len, unsigned short *tt) {
 
 	int t = plg_Lvmtype(plVMHandle, L, nArg);
 	char* p = 0;
 
 	if (t == LUA_TNUMBER) {
-		*len = sizeof(lua_Number) + 1;
+		*len = sizeof(lua_Number);
 		p = malloc(*len);
 		lua_Number r = plg_Lvmchecknumber(plVMHandle, L, nArg);
-		memcpy((p + 1), (char*)&r, sizeof(lua_Number));
-		p[0] = LUA_TNUMBER;
+		memcpy(p, (char*)&r, sizeof(lua_Number));
+		*tt = TT_Double;
 
 		return p;
 	} else if (t == LUA_TSTRING) {
 		size_t sLen;
 		const char* s = plg_Lvmchecklstring(plVMHandle, L, nArg, &sLen);
-		*len = sLen + 1;
+		*len = sLen;
 		p = malloc(*len);
 
-		memcpy((p + 1), s, sLen);
-		p[0] = LUA_TSTRING;
+		memcpy(p, s, sLen);
+		*tt = TT_String;
 
 		return p;
 	}
 
 	return 0;
 }
-
-void* plg_LvmMallocForKey(void* plVMHandle, void* L, int nArg, size_t* len) {
-
-	int t = plg_Lvmtype(plVMHandle, L, nArg);
-	char* p = 0;
-
-	if (t == LUA_TINTEGER) {
-		*len = sizeof(lua_Integer) + 1;
-		p = malloc(*len);
-		lua_Integer r = plg_Lvmchecknumber(plVMHandle, L, nArg);
-		memcpy((p + 1), (char*)&r, sizeof(lua_Integer));
-		p[0] = LUA_TINTEGER;
-
-		return p;
-	} else if (t == LUA_TSTRING) {
-		size_t sLen;
-		const char* s = plg_Lvmchecklstring(plVMHandle, L, nArg, &sLen);
-		*len = sLen + 1;
-		p = malloc(*len);
-
-		memcpy((p + 1), s, sLen);
-		p[0] = LUA_TSTRING;
-
-		return p;
-	}
-
-	return 0;
-}
-
 
 #undef FillFun
 #undef NORET

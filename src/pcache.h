@@ -24,6 +24,9 @@ void* plg_CacheCreateHandle(void* pDiskHandle);
 void plg_CacheDestroyHandle(void* pvCacheHandle);
 
 //safe api for run
+unsigned short plg_CacheGetTableType(void* pvCacheHandle, sds sdsTable, short recent);
+unsigned short plg_CacheSetTableType(void* pvCacheHandle, sds sdsTable, unsigned short tableType);
+unsigned short plg_CacheSetTableTypeIfByte(void* pvCacheHandle, sds sdsTable, unsigned short tableType);
 unsigned int plg_CacheTableAdd(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* value, unsigned int length);
 unsigned int plg_CacheTableDel(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen);
 int plg_CacheTableFind(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* pDictExten, short recent);

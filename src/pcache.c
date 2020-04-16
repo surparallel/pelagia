@@ -560,6 +560,49 @@ static void* cahce_GetTableHandle(void* pvCacheHandle, sds sdsTable) {
 	return 0;
 }
 
+unsigned short plg_CacheGetTableType(void* pvCacheHandle, sds sdsTable, short recent) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	pCacheHandle->recent = recent;
+	int r = 0;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+		r = plg_TableGetTableType(pTableHandle);
+	}
+	pCacheHandle->recent = 1;
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	return r;
+}
+
+unsigned short plg_CacheSetTableType(void* pvCacheHandle, sds sdsTable, unsigned short tableType) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	unsigned short r = 0;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+
+		r = plg_TableSetTableType(pTableHandle, tableType);
+	}
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	return r;
+}
+
+unsigned short plg_CacheSetTableTypeIfByte(void* pvCacheHandle, sds sdsTable, unsigned short tableType) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	unsigned short r = 0;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+
+		r = plg_TableSetTableTypeIfByte(pTableHandle, tableType);
+	}
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	return r;
+}
+
 unsigned int plg_CacheTableAdd(void* pvCacheHandle, sds sdsTable, void* vKey, short keyLen, void* value, unsigned int length) {
 	
 	PCacheHandle pCacheHandle = pvCacheHandle;

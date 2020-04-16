@@ -552,6 +552,46 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 	} while (1);
 }
 
+unsigned short plg_TableGetTableType(void* pvTableHandle) {
+
+	PTableHandle pTableHandle = pvTableHandle;
+	PTableInFile pTableInFile;
+	if (pTableHandle->pTableInFile->isSetHead) {
+		return TT_Set;
+	} else {
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		return pTableInFile->tableType;
+	}
+}
+
+unsigned short plg_TableSetTableType(void* pvTableHandle, unsigned short tableType) {
+
+	PTableHandle pTableHandle = pvTableHandle;
+	PTableInFile pTableInFile;
+	if (pTableHandle->pTableInFile->isSetHead) {
+		return TT_Set;
+	} else {
+		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile->tableType = tableType;
+		return pTableInFile->tableType;
+	}
+}
+
+unsigned short plg_TableSetTableTypeIfByte(void* pvTableHandle, unsigned short tableType) {
+
+	PTableHandle pTableHandle = pvTableHandle;
+	PTableInFile pTableInFile;
+	if (pTableHandle->pTableInFile->isSetHead) {
+		return TT_Set;
+	} else {
+		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		if (pTableInFile->tableType == TT_Byte) {
+			pTableInFile->tableType = tableType;
+		}
+		return pTableInFile->tableType;
+	}
+}
+
 /*
 Inverse function of table_GetTablePage Up to 6 pages
 The deleted page must be modified with the data of other pages
@@ -893,16 +933,13 @@ typedef struct TailPoint
 	unsigned short offset;
 }PTailPoint, TailPoint;
 
-SDS_TYPE
 void* plg_TablePTableInFile(void* pvTableHandle) {
 
 	PTableHandle pTableHandle = pvTableHandle;
-	long long ss = ll;
-	ss = ss * 0;
 	return pTableHandle->pTableInFile;
 }
 
-
+SDS_TYPE
 static void table_CheckIterator(void* pvTableHandle, PTableIterator pDiskIterator) {
 
 	PTableHandle pTableHandle = pvTableHandle;
@@ -1703,13 +1740,6 @@ unsigned int plg_InsideTableAlterFroSet(void* pvTableHandle, char* key, short ke
 	return table_InsideAlterFroSet(pTableHandle, key, keyLen, &skipListPoint, valueType, value, length);
 }
 
-unsigned int plg_InsideTableAlterFroSetWrap(void* pvTableHandle, void* vKey, short keyLen, char valueType, void* value, unsigned short length) {
-
-	//add new
-	PTableHandle pTableHandle = pvTableHandle;
-	return plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, valueType, value, length);
-}
-
 /*
 成功是1个页面
 */
@@ -1982,25 +2012,6 @@ unsigned int plg_TableAdd(void* pvTableHandle, void* vKey, short keyLen, void* v
 注意这里只是table的删除，不包括cache的删除。
 没有删除cahce就删除table将导致cache无法删除
 */
-unsigned int plg_TableDelForSet(void* pvTableHandle, void* vKey, short keyLen) {
-
-	//find skip list point
-	PTableHandle pTableHandle = pvTableHandle;
-	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = { { 0 } };
-	if (plg_TableFindWithName(pTableHandle, vKey, keyLen, &skipListPoint, plg_TablePrevFindCmpFun) == 0) {
-		return 0;
-	}
-
-	if (table_InsideDel(pTableHandle, vKey, keyLen, &skipListPoint, 1) == 0) {
-		return 0;
-	}
-	return 1;
-}
-
-/*
-注意这里只是table的删除，不包括cache的删除。
-没有删除cahce就删除table将导致cache无法删除
-*/
 unsigned int plg_TableDel(void* pvTableHandle, void* vKey, short keyLen) {
 
 	//find skip list point
@@ -2011,21 +2022,6 @@ unsigned int plg_TableDel(void* pvTableHandle, void* vKey, short keyLen) {
 	}
 
 	if (table_InsideDel(pTableHandle, vKey, keyLen, &skipListPoint, 0) == 0) {
-		return 0;
-	}
-	return 1;
-}
-
-static unsigned int table_DelWithLen(void* pvTableHandle, char* key, short keyLen) {
-
-	//find skip list point
-	PTableHandle pTableHandle = pvTableHandle;
-	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = {{ 0 }};
-	if (plg_TableFindWithName(pTableHandle, key, keyLen, &skipListPoint, plg_TablePrevFindCmpFun) == 0) {
-		return 0;
-	}
-
-	if (table_InsideDel(pTableHandle, key, keyLen, &skipListPoint, 0) == 0) {
 		return 0;
 	}
 	return 1;
@@ -2110,91 +2106,6 @@ int plg_TableFind(void* pvTableHandle, void* vKey, short keyLen, void* pDictExte
 	return 1;
 }
 
-static int table_InsideFind(void* pvTableHandle, char* key, short keyLen, void* pDictExten, short isSet) {
-
-	//find skip list point
-	PTableHandle pTableHandle = pvTableHandle;
-	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = {{ 0 }};
-	if (plg_TableFindWithName(pTableHandle, key, keyLen, &skipListPoint, plg_TableTailFindCmpFun) == 0) {
-		return -1;
-	}
-
-	if (skipListPoint[0].skipListAddr == 0) {
-		return -1;
-	}
-
-	//load table page retrun PDiskTableKey
-	void *prevPage = skipListPoint[0].page;
-
-	//get PDiskTableKey
-	PDiskTableElement pDiskTableElement = skipListPoint[0].pDiskTableElement;
-	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(prevPage, pDiskTableElement->keyOffset);
-	void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
-
-	//copy value
-	int strSize = 0;
-	if (keyLen < pDiskTableKey->keyStrSize) {
-		strSize = keyLen;
-	} else {
-		strSize = pDiskTableKey->keyStrSize;
-	}
-
-	//check
-	if (memcmp(pDiskTableKey->keyStr, key, strSize) != 0) {
-		return 0;
-	}
-
-	if (pDiskTableKey->valueSize != 0 && pDictExten) {
-		assert(pDiskTableKey->valueType);
-		if (pDiskTableKey->valueType == VALUE_NORMAL && !isSet) {
-			plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
-			return pDiskTableKey->valueSize;
-		} else if (pDiskTableKey->valueType == VALUE_SETHEAD && isSet) {
-			plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
-			return pDiskTableKey->valueSize;
-		} else if (pDiskTableKey->valueType == VALUE_BIGVALUE && !isSet) {
-			PDiskKeyBigValue pDiskKeyBigValue = (PDiskKeyBigValue)vluePtr;
-			void* bigValuePtr = table_GetBigValue(pTableHandle, pDiskKeyBigValue);
-
-			if (bigValuePtr == 0) {
-				return -1;
-			}
-			plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, bigValuePtr, pDiskKeyBigValue->allSize);
-			free(bigValuePtr);
-			return pDiskKeyBigValue->allSize;
-		} else {
-			//thanks to redis
-			elog(log_error, "WRONGTYPE Operation against a key holding the wrong kind of value!");
-			return -1;
-		}
-	}
-
-	return 1;
-}
-
-//Keep only one correct add
-unsigned int plg_TableAddWithAlter(void* pvTableHandle, void* vKey, short keyLen, char valueType, void* value, unsigned short length) {
-
-	//find skip list point
-	PTableHandle pTableHandle = pvTableHandle;
-	SkipListPoint skipListPoint[SKIPLIST_MAXLEVEL] = {{ 0 }};
-	if (plg_TableFindWithName(pTableHandle,vKey, keyLen, &skipListPoint, plg_TablePrevFindCmpFun) == 0) {
-		return 0;
-	}
-
-	if (table_InsideAlter(pTableHandle,vKey, keyLen, &skipListPoint, valueType, value, length) == 1) {
-		return 1;
-	}
-
-	//del
-	if (table_InsideDel(pTableHandle,vKey, keyLen, &skipListPoint, 0) == 0) {
-		return 0;
-	}
-
-	//add new
-	return table_InsideNew(pTableHandle,vKey, keyLen, valueType, value, length, &skipListPoint);
-}
-
 //Keep only one correct add
 unsigned int table_InsideAddWithAlter(void* pvTableHandle, char* Key, short keyLen, char valueType, void* value, unsigned short length) {
 
@@ -2216,6 +2127,11 @@ unsigned int table_InsideAddWithAlter(void* pvTableHandle, char* Key, short keyL
 
 	//add new
 	return table_InsideNew(pTableHandle, Key, keyLen, valueType, value, length, &skipListPoint);
+}
+
+//Keep only one correct add
+unsigned int plg_TableAddWithAlter(void* pvTableHandle, void* vKey, short keyLen, char valueType, void* value, unsigned short length) {
+	return table_InsideAddWithAlter(pvTableHandle, vKey, keyLen, valueType, value, length);
 }
 
 //Keep only one correct add
@@ -2570,7 +2486,7 @@ void plg_TableMultiFind(void* pvTableHandle, void* pKeyDictExten, void* pValueDi
 		unsigned int keyLen;
 		char* pKey = plg_DictExtenKey(dictNode, &keyLen);
 
-		table_InsideFind(pTableHandle, pKey, keyLen, pValueDictExten, 0);
+		plg_TableFind(pTableHandle, pKey, keyLen, pValueDictExten, 0);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 
@@ -2586,7 +2502,7 @@ static void table_MultiDel(void* pvTableHandle, void* pDictExten) {
 		unsigned int keyLen;
 		char* pKey = plg_DictExtenKey(dictNode, &keyLen);
 	
-		table_DelWithLen(pTableHandle, pKey, keyLen);
+		plg_TableDel(pTableHandle, pKey, keyLen);
 	}
 	plg_DictExtenReleaseIterator(dictIter);
 
@@ -2700,7 +2616,7 @@ unsigned int table_Pop(void* pvTableHandle, void* pDictExten) {
 	}
 
 	plg_TableReleaseIterator(iter);
-	table_DelWithLen(pTableHandle, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
+	plg_TableDel(pTableHandle, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
 	return r;
 }
 
@@ -2859,7 +2775,7 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 					ret = 1;
 					if (memcmp(&tableInFile, &oldTableInFile, entryValueLen) != 0) {
 						pTableHandle->pTableInFile = pTableInFile;
-						if (0 == plg_InsideTableAlterFroSetWrap(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
+						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
 							ret = 0;
 						}
 					}
@@ -2874,6 +2790,7 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 
 		plg_TableInitTableInFile(&tableInFile);
 		tableInFile.isSetHead = 1;
+		tableInFile.tableType = TT_Set;
 
 		pTableHandle->pTableInFile = &tableInFile;
 		if (0 == plg_InsideTableAdd(pTableHandle, vValue, valueLen, VALUE_NORMAL, NULL, 0)) {
@@ -2881,65 +2798,6 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 		} else {
 			pTableHandle->pTableInFile = pTableInFile;
 			if (0 == plg_InsideTableAdd(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
-				ret = 0;
-			}
-			ret = 1;
-		}
-	}
-
-	pTableHandle->pTableInFile = pTableInFile;
-	return ret;
-}
-
-unsigned int table_InsideSetAdd(void* pvTableHandle, char* key, short keyLen, char* value, short valueLen) {
-
-	PTableHandle pTableHandle = pvTableHandle;
-	short ret = 0, find = 0;
-	TableInFile tableInFile;
-	memset(&tableInFile, 0, sizeof(TableInFile));
-	TableInFile oldTableInFile;
-	memset(&oldTableInFile, 0, sizeof(TableInFile));
-	PTableInFile pTableInFile = pTableHandle->pTableInFile;
-	void* pDictExten = plg_DictExtenCreate();
-
-	//find
-	if (0 < table_InsideFind(pTableHandle, key, keyLen, pDictExten, 1)) {
-		find = 1;
-		if (plg_DictExtenSize(pDictExten)) {
-			void* entry = plg_DictExtenGetHead(pDictExten);
-			unsigned int entryValueLen;
-			void* valuePtr = plg_DictExtenValue(entry, &entryValueLen);
-			if (entryValueLen) {
-				memcpy(&tableInFile, valuePtr, entryValueLen);
-				memcpy(&oldTableInFile, valuePtr, entryValueLen);
-
-				pTableHandle->pTableInFile = &tableInFile;
-				if (1 == table_InsideAddWithAlter(pTableHandle, value, valueLen, VALUE_NORMAL, NULL, 0)){
-					ret = 1;
-					if (memcmp(&tableInFile, &oldTableInFile, entryValueLen) != 0) {
-						pTableHandle->pTableInFile = pTableInFile;
-						if (0 == plg_InsideTableAlterFroSet(pTableHandle, key, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
-							ret = 0;
-						}
-					}
-				}
-			}
-		}
-	}
-	plg_DictExtenDestroy(pDictExten);
-
-	//no find new set
-	if (!find) {
-
-		plg_TableInitTableInFile(&tableInFile);
-		tableInFile.isSetHead = 1;
-
-		pTableHandle->pTableInFile = &tableInFile;
-		if (0 == table_InsideAddWithAlter(pTableHandle, value, valueLen, VALUE_NORMAL, NULL, 0)) {
-			ret = 0;
-		} else {
-			pTableHandle->pTableInFile = pTableInFile;
-			if (0 == table_InsideAddWithAlter(pTableHandle, key, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
 				ret = 0;
 			}
 			ret = 1;
@@ -3132,11 +2990,11 @@ void plg_TableSetDel(void* pvTableHandle, void* vKey, short keyLen, void* pValue
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSetWrap(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
+						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}
@@ -3175,11 +3033,11 @@ static void table_InsideSetDel(void* pvTableHandle, void* vKey, short keyLen, vo
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSetWrap(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
+						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}
@@ -3218,11 +3076,11 @@ unsigned int plg_TableSetPop(void* pvTableHandle, void* vKey, short keyLen, void
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSetWrap(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
+						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
 							assert(0);
 						}
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
+						if (0 == plg_TableDel(pTableHandle, vKey, keyLen)) {
 							assert(0);
 						}
 					}
@@ -3278,7 +3136,7 @@ void plg_TableSetUion(void* pvTableHandle, void* pSetDictExten, void* pKeyDictEx
 		PTableInFile pTableInFile = pTableHandle->pTableInFile;
 		void* pDictExten = plg_DictExtenCreate();
 
-		if (0 < table_InsideFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
+		if (0 < plg_TableFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				unsigned int retValueLen;
@@ -3311,7 +3169,7 @@ void plg_TableSetUionStore(void* pvTableHandle, void* pSetDictExten, void* vKey,
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 			unsigned int retKeyLen = 0;
 			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
-			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
+			plg_TableSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
@@ -3334,7 +3192,7 @@ void plg_TableSetInter(void* pvTableHandle, void* pSetDictExten, void* pKeyDictE
 		PTableInFile pTableInFile = pTableHandle->pTableInFile;
 		void* pDictExten = plg_DictExtenCreate();
 
-		if (0 < table_InsideFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
+		if (0 < plg_TableFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				unsigned int retValueLen = 0;
@@ -3353,7 +3211,7 @@ void plg_TableSetInter(void* pvTableHandle, void* pSetDictExten, void* pKeyDictE
 
 							unsigned int interKeyLen;
 							char* interKey = plg_DictExtenKey(dictInterNode, &interKeyLen);
-							if (1 > table_InsideFind(pTableHandle, interKey, interKeyLen, 0, 1)) {
+							if (1 > plg_TableFind(pTableHandle, interKey, interKeyLen, 0, 1)) {
 								plg_DictExtenDel(pKeyDictExten, interKey, interKeyLen);
 							}
 						}
@@ -3383,7 +3241,7 @@ void plg_TableSetInterStore(void* pvTableHandle, void* pSetDictExten, void* vKey
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 			unsigned int retKeyLen = 0;
 			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
-			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
+			plg_TableSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
@@ -3406,7 +3264,7 @@ void plg_TableSetDiff(void* pvTableHandle, void* pSetDictExten, void* pKeyDictEx
 		PTableInFile pTableInFile = pTableHandle->pTableInFile;
 		void* pDictExten = plg_DictExtenCreate();
 
-		if (0 != table_InsideFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
+		if (0 != plg_TableFind(pTableHandle, pKey, keyLen, pDictExten, 1)) {
 			if (plg_DictExtenSize(pDictExten)) {
 				void* entry = plg_DictExtenGetHead(pDictExten);
 				unsigned int retValueLen = 0;
@@ -3425,7 +3283,7 @@ void plg_TableSetDiff(void* pvTableHandle, void* pSetDictExten, void* pKeyDictEx
 
 							unsigned int interKeyLen;
 							char* interKey = plg_DictExtenKey(dictInterNode, &interKeyLen);
-							if (0 < table_InsideFind(pTableHandle, interKey, interKeyLen, 0, 1)) {
+							if (0 < plg_TableFind(pTableHandle, interKey, interKeyLen, 0, 1)) {
 								plg_DictExtenDel(pKeyDictExten, interKey, interKeyLen);
 							}
 						}
@@ -3455,7 +3313,7 @@ void plg_TableSetDiffStore(void* pvTableHandle, void* pSetDictExten, void* vKey,
 		while ((dictNode = plg_DictExtenNext(dictIter)) != NULL) {
 			unsigned int retKeyLen = 0;
 			void* keyPtr = plg_DictExtenKey(dictNode, &retKeyLen);
-			table_InsideSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
+			plg_TableSetAdd(pTableHandle, vKey, keyLen, keyPtr, retKeyLen);
 		}
 		plg_DictExtenReleaseIterator(dictIter);
 	}
@@ -3479,13 +3337,22 @@ void plg_TableMembersWithJson(void* pvTableHandle, void* vjsonRoot) {
 
 		void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
 		if (pDiskTableKey->valueType == VALUE_NORMAL) {
+			if (pTableHandle->pTableInFile->tableType == TT_Byte) {
+				sds key = plg_sdsNewLen(pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
+				char* value = plg_B64Encode(vluePtr, pDiskTableKey->valueSize);
+				pJson_AddStringToObject(jsonRoot, key, value);
+				free(value);
+				plg_sdsFree(key);
+			} else if (pTableHandle->pTableInFile->tableType == TT_String) {
+				pJson_AddStringToObjectWithLen(jsonRoot, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
+			} else if (pTableHandle->pTableInFile->tableType == TT_Double) {
+				sds key = plg_sdsNewLen(pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
 
-			sds key = plg_sdsNewLen(pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
-			char* value = plg_B64Encode(vluePtr, pDiskTableKey->valueSize);
-			pJson_AddStringToObject(jsonRoot, key, value);
-			plg_sdsFree(key);
-			free(value);
-
+				double num = 0;
+				memcpy(&num, vluePtr, sizeof(double));
+				pJson_AddNumberToObject(jsonRoot, key, num);
+				plg_sdsFree(key);
+			}
 		} else if (pDiskTableKey->valueType == VALUE_BIGVALUE) {
 			PDiskKeyBigValue pDiskKeyBigValue = (PDiskKeyBigValue)vluePtr;
 			void* bigValuePtr = table_GetBigValue(pTableHandle, pDiskKeyBigValue);
@@ -3494,11 +3361,15 @@ void plg_TableMembersWithJson(void* pvTableHandle, void* vjsonRoot) {
 				continue;
 			}
 
-			sds key = plg_sdsNewLen(pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
-			char* value = plg_B64Encode(bigValuePtr, pDiskKeyBigValue->allSize);
-			pJson_AddStringToObject(jsonRoot, key, value);
-			plg_sdsFree(key);
-			free(value);
+			if (pTableHandle->pTableInFile->tableType == TT_Byte) {
+				sds key = plg_sdsNewLen(pDiskTableKey->keyStr, pDiskTableKey->keyStrSize);
+				char* value = plg_B64Encode(vluePtr, pDiskTableKey->valueSize);
+				pJson_AddStringToObject(jsonRoot, key, value);
+				free(value);
+				plg_sdsFree(key);
+			} else if (pTableHandle->pTableInFile->tableType == TT_String) {
+				pJson_AddStringToObjectWithLen(jsonRoot, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
+			}
 
 			free(bigValuePtr);
 		} else if (pDiskTableKey->valueType == VALUE_SETHEAD) {

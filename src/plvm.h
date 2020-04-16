@@ -21,7 +21,6 @@
 
 #include "plauxlib.h"
 
-#define SHELLING(n) (n - 1)
 #define FillFun(h, n, r)n p##n = plg_LvmCheckSym(h, #n);if (!p##n) {return r;}
 
 void* plg_LvmLoad(const char *path);
@@ -30,14 +29,12 @@ int plg_LvmCallFile(void* plVMHandle, char* file, char* fun, void* value, short 
 void* plg_LvmCheckSym(void *lib, const char *sym);
 void* plg_LvmGetInstance(void* plVMHandle);
 void* plg_LvmGetL(void* plVMHandle);
-void* plg_LvmMallocForBuf(void* p, int len, char type);
 void plg_LvmSetL(void* pvlVMHandle, void* L);
 void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL_Reg *l);
 short plg_LvmGetV(void* plVMHandle);
 
 //lua api
-void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len);
-void* plg_LvmMallocForKey(void* plVMHandle, void* L, int nArg, size_t* len);
+void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len, unsigned short *tt);
 void plg_Lvmgetfield(void* pvlVMHandle, void* L, int idx, const char *k);
 int plg_Lvmloadfile(void* pvlVMHandle, void* L, const char *filename);
 int plg_Lvmpcall(void* pvlVMHandle, void* L, int nargs, int nresults, int errfunc);
