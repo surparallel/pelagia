@@ -357,7 +357,7 @@ static int LRang(lua_State* L) {
 
 static int LPoint(lua_State* L) {
 
-	size_t tLen, kLen, keLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	unsigned int dirtction = plg_Lvmcheckinteger(_plVMHandle, L, 3);
@@ -1695,7 +1695,7 @@ static int LSetRang2(lua_State* L) {
 
 static int LSetPoint2(lua_State* L) {
 
-	size_t tLen, kLen, kbLen, keLen;
+	size_t tLen, kLen, kbLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 	const char* kb = plg_Lvmchecklstring(_plVMHandle, L, 3, &kbLen);
