@@ -111,6 +111,8 @@ static void EnumJson(pJSON * root, void* pManage)
 				plg_MngSetLuaDllPath(pManage, item->valuestring);
 			} else 	if (strcmp(item->string, "DllPath") == 0) {
 				plg_MngSetDllPath(pManage, item->valuestring);
+			} else 	if (strcmp(item->string, "LuaHot") == 0) {
+				plg_MngSetLuaHot(pManage, item->valueint);
 			}
 		}
 	}
@@ -170,7 +172,7 @@ void* plg_MngCreateHandleWithJson(const char* jsonFile) {
 		cFile = fopen_t(filePath, "rb");
 		plg_sdsFree(filePath);
 		if (!cFile) {
-			elog(log_warn, "plg_MngCreateHandleWithJson.fopen_t.rb!");
+			elog(log_error, "plg_MngCreateHandleWithJson.fopen_t.rb!");
 			return 0;
 		}
 	}

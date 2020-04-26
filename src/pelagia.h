@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"24"
+#define VERSION_MINOR	"25"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	24
+#define VERSION_NUMMINOR	25
 
 #include "papidefine.h"
 
@@ -51,6 +51,7 @@ PELAGIA_API int plg_MngSetNoSave(void* pManage, char* nameTable, short nameTable
 PELAGIA_API void plg_MngSetLuaPath(void* pManage, char* newLuaPath);
 PELAGIA_API void plg_MngSetLuaDllPath(void* pManage, char* newLuaDllPath);
 PELAGIA_API void plg_MngSetDllPath(void* pManage, char* newDllPath);
+PELAGIA_API void plg_MngSetLuaHot(void* pvManage, short luaHot);
 
 
 PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
@@ -98,6 +99,7 @@ PELAGIA_API unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* ke
 PELAGIA_API void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigned int left, unsigned int right, void* pDictExten);
 PELAGIA_API void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite, void* pDictExten);
 PELAGIA_API void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pDictExten);
+PELAGIA_API void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten);
 PELAGIA_API void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten);
 PELAGIA_API void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten);
 PELAGIA_API void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen);
@@ -112,6 +114,7 @@ PELAGIA_API void plg_JobSInterStore(void* table, short tableLen, void* pSetDictE
 PELAGIA_API void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen);
 
 PELAGIA_API void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen, void* pDictExten);
+PELAGIA_API void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pDictExten);
 PELAGIA_API void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen, unsigned int left, unsigned int right, void* pDictExten);
 PELAGIA_API unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen);
 PELAGIA_API unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);

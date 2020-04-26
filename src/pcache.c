@@ -808,6 +808,19 @@ void plg_CacheTableRang(void* pvCacheHandle, sds sdsTable, void* beginKey, short
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 }
 
+void plg_CacheTablePoint(void* pvCacheHandle, sds sdsTable, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten, short recent) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	pCacheHandle->recent = recent;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+		plg_TablePoint(pTableHandle, beginKey, beginKeyLen, direction, offset, pDictExten);
+	}
+	pCacheHandle->recent = 1;
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+}
+
 void plg_CacheTablePattern(void* pvCacheHandle, sds sdsTable, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten, short recent) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
@@ -853,6 +866,19 @@ void plg_CacheTableSetRang(void* pvCacheHandle, sds sdsTable, void* vKey, short 
 	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
 	if (pTableHandle != 0) {
 		plg_TableSetRang(pTableHandle, vKey, keyLen, beginValue, beginValueLen, endValue, endValueLen, pDictExten);
+	}
+	pCacheHandle->recent = 1;
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+}
+
+void plg_CacheTableSetPoint(void* pvCacheHandle, sds sdsTable, void* vKey, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pDictExten, short recent) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	pCacheHandle->recent = recent;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+		plg_TableSetPoint(pTableHandle, vKey, keyLen, beginValue, beginValueLen, direction, offset, pDictExten);
 	}
 	pCacheHandle->recent = 1;
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);

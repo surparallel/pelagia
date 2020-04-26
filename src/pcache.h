@@ -42,10 +42,12 @@ unsigned int plg_CacheTableMultiAdd(void* pvCacheHandle, char* sdsTable, void* p
 void plg_CacheTableMultiFind(void* pvCacheHandle, char* sdsTable, void* pKeyDictExten, void* pValueDictExten, short recent);
 unsigned int plg_CacheTableRand(void* pvCacheHandle, char* sdsTable, void* pDictExten, short recent);
 void plg_CacheTableClear(void* pvCacheHandle, char* sdsTable);
+void plg_CacheTablePoint(void* pvCacheHandle, sds sdsTable, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten, short recent);
 
 //set
 unsigned int plg_CacheTableSetAdd(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* vValue, short valueLen);
 void plg_CacheTableSetRang(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen, void* pDictExten, short recent);
+void plg_CacheTableSetPoint(void* pvCacheHandle, sds sdsTable, void* vKey, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pDictExten, short recent);
 void plg_CacheTableSetLimite(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* vValue, short valueLen, unsigned int left, unsigned int right, void* pDictExten, short recent);
 unsigned int plg_CacheTableSetLength(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, short recent);
 unsigned int plg_CacheTableSetIsKeyExist(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* vValue, short valueLen, short recent);

@@ -100,6 +100,7 @@ typedef struct _Manage
 	sds luaDllPath;
 	sds luaPath;
 	sds dllPath;
+	short luaHot;
 
 	//event for exit;
 	void* pEvent;
@@ -435,7 +436,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
-		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath);
+		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath, pManage->luaHot);
 		plg_JobSetPrivate(pJobHandle, pvManage);
 		plg_listAddNodeHead(pManage->listJob, pJobHandle);
 	}
@@ -1035,7 +1036,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->order_equeue = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pManage->dbPath = plg_sdsNewLen(dbPath, dbPahtLen);
 	pManage->objName = plg_sdsNew("manage");
-	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, 0, 0, 0);
+	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, 0, 0, 0, 0);
 	plg_JobSetPrivate(pManage->pJobHandle, pManage);
 
 	pManage->fileCount = 0;
@@ -1046,6 +1047,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->luaDllPath = plg_sdsEmpty();
 	pManage->luaPath = plg_sdsEmpty();
 	pManage->dllPath = plg_sdsEmpty();
+	pManage->luaHot = 0;
 
 	//event process
 	plg_JobAddAdmOrderProcess(pManage->pJobHandle, "destroycount", plg_JobCreateFunPtr(OrderDestroyCount));
@@ -1062,6 +1064,11 @@ void plg_MngSetLuaDllPath(void* pvManage, char* newLuaDllPath) {
 	PManage pManage = pvManage;
 	plg_sdsFree(pManage->luaDllPath);
 	pManage->luaDllPath = plg_sdsNew(newLuaDllPath);
+}
+
+void plg_MngSetLuaHot(void* pvManage, short luaHot) {
+	PManage pManage = pvManage;
+	pManage->luaHot = luaHot;
 }
 
 void plg_MngSetLuaPath(void* pvManage, char* newLuaPath) {

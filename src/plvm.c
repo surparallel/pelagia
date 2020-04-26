@@ -26,6 +26,36 @@
 #include "plua.h"
 #include "plapi.h"
 #include "pelagia.h"
+#include "pdict.h"
+#include "psds.h"
+
+static void sdsFreeCallback(void *privdata, void *val) {
+	DICT_NOTUSED(privdata);
+	plg_sdsFree(val);
+}
+
+static int sdsCompareCallback(void *privdata, const void *key1, const void *key2) {
+	int l1, l2;
+	NOTUSED(privdata);
+
+	l1 = plg_sdsLen((sds)key1);
+	l2 = plg_sdsLen((sds)key2);
+	if (l1 != l2) return 0;
+	return memcmp(key1, key2, l1) == 0;
+}
+
+static unsigned long long sdsHashCallback(const void *key) {
+	return plg_dictGenHashFunction((unsigned char*)key, plg_sdsLen((char*)key));
+}
+
+static dictType SdsDictType = {
+	sdsHashCallback,
+	NULL,
+	NULL,
+	sdsCompareCallback,
+	sdsFreeCallback,
+	NULL
+};
 
 enum LuaVersion {
 	lua5_1 = 1,
@@ -37,6 +67,8 @@ typedef struct _lVMHandle
 	void* hInstance;//dll handle
 	lua_State *luaVM;//lua handle
 	short luaVersion;
+	short luaHot;
+	dict* lua_file;
 }*PlVMHandle, lVMHandle;
 
 short plg_LvmSetLuaVersion(void* hInstance) {
@@ -265,7 +297,7 @@ void plg_LvmRequiref(void* pvlVMHandle, const char *modname, lua_CFunction openf
 	}
 }
 
-void* plg_LvmLoad(const char *path) {
+void* plg_LvmLoad(const char *path, short luaHot) {
 
 	void* hInstance = plg_SysLibLoad(path, 1);
 	if (hInstance == NULL) {
@@ -301,7 +333,9 @@ void* plg_LvmLoad(const char *path) {
 	plVMHandle->hInstance = hInstance;
 	plVMHandle->luaVM = luaVM;
 	plVMHandle->luaVersion = version;
-	
+	plVMHandle->lua_file = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	plVMHandle->luaHot = luaHot;
+
 	plg_lualapilib(plVMHandle);
 	return plVMHandle;
 }
@@ -321,23 +355,45 @@ void plg_LvmDestory(void* pvlVMHandle) {
 	funClose(plVMHandle->luaVM);
 
 	plg_SysLibUnload(plVMHandle->hInstance);
+	plg_dictRelease(plVMHandle->lua_file);
 	free(plVMHandle);
 }
 
-int plg_LvmCallFile(void* pvlVMHandle, char* file, char* fun, void* value, short len) {
+int plg_LvmCallFile(void* pvlVMHandle, char* sdsFile, char* fun, void* value, short len) {
 
 	PlVMHandle plVMHandle = pvlVMHandle;
-	if (plg_Lvmloadfile(plVMHandle, plVMHandle->luaVM, file)){
-		elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
-		plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
-		return 0;
-	}
 
-	//load fun
-	if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 0, LUA_MULTRET, 0)) {
-		elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", file, plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
-		plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
-		return 0;
+	if (plVMHandle->luaHot) {
+		if (plg_Lvmloadfile(plVMHandle, plVMHandle->luaVM, sdsFile)){
+			elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+			plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
+			return 0;
+		}
+
+		//load fun
+		if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 0, LUA_MULTRET, 0)) {
+			elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", sdsFile, plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+			plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
+			return 0;
+		}
+	} else {
+		dictEntry* entry = plg_dictFind(plVMHandle->lua_file, sdsFile);
+		if (!entry) {
+			if (plg_Lvmloadfile(plVMHandle, plVMHandle->luaVM, sdsFile)){
+				elog(log_error, "plg_LvmCallFile.pluaL_loadfilex:%s", plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+				plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
+				return 0;
+			}
+
+			//load fun
+			if (plg_Lvmpcall(pvlVMHandle, plVMHandle->luaVM, 0, LUA_MULTRET, 0)) {
+				elog(log_error, "plg_LvmCallFile.plua_pcall:%s lua:%s", sdsFile, plg_Lvmtolstring(pvlVMHandle, plVMHandle->luaVM, -1, NULL));
+				plg_Lvmsettop(plVMHandle, plVMHandle->luaVM, 0);
+				return 0;
+			}
+			sds newFile = plg_sdsNew(sdsFile);
+			plg_dictAdd(plVMHandle->lua_file, newFile, 0);
+		}
 	}
 
 	//call fun

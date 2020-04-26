@@ -373,7 +373,7 @@ void* plg_JobGetPrivate() {
 }
 
 SDS_TYPE
-void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaPath, char* luaDllPath, char* dllPath) {
+void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaPath, char* luaDllPath, char* dllPath, short luaHot) {
 
 	PJobHandle pJobHandle = malloc(sizeof(JobHandle));
 	pJobHandle->eQueue = plg_eqCreate();
@@ -413,7 +413,7 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	}
 
 	if (luaDllPath && plg_sdsLen(luaDllPath)) {
-		pJobHandle->luaHandle = plg_LvmLoad(luaDllPath);
+		pJobHandle->luaHandle = plg_LvmLoad(luaDllPath, luaHot);
 	} else {
 		pJobHandle->luaHandle = 0;
 	}
@@ -1151,6 +1151,21 @@ void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen,
 
 }
 
+void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten) {
+
+	CheckUsingThread(NORET);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		plg_CacheTablePoint(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, direction, offset, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+	} else {
+		elog(log_error, "plg_JobRang.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+
+}
+
 void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
@@ -1292,6 +1307,21 @@ void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* be
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
 		plg_CacheTableSetRang(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, endValue, endValueLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+	} else {
+		elog(log_error, "plg_JobSRang.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+}
+
+void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pDictExten) {
+
+	CheckUsingThread(NORET);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		plg_CacheTableSetPoint(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, direction, offset, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
 		elog(log_error, "plg_JobSRang.Cannot access table <%s>!", sdsTable);
 	}

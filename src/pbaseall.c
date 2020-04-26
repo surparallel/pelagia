@@ -312,6 +312,29 @@ static int TestRouting(char* value, short valueLen) {
 		return 1;
 	}
 
+	//mulitiset and point
+	error = 1;
+	pDictExten = plg_DictExtenCreate();
+	plg_JobPoint("t0", 2, "c3", 2, 1, 1, pDictExten);
+
+	if (plg_DictExtenSize(pDictExten)) {
+		unsigned int valueLen;
+		void* entry = plg_DictExtenGetHead(pDictExten);
+		void* valuePtr = plg_DictExtenValue(entry, &valueLen);
+		if (valueLen) {
+			if (memcmp(valuePtr, "b", 1) == 0) {
+				error = 0;
+			}
+		}
+	}
+	plg_DictExtenDestroy(pDictExten);
+
+	if (error) {
+		printf("fail MultiSet and Point!\n");
+		plg_EventSend(pEvent, NULL, 0);
+		return 1;
+	}
+
 	//set////////////////////////////////////////////////////////////////////////
 
 	//multiset and table clear
@@ -339,7 +362,7 @@ static int TestRouting(char* value, short valueLen) {
 		unsigned int keyLen;
 		void* entry = plg_DictExtenGetHead(pDictExten);
 		void* keyPtr = plg_DictExtenKey(entry, &keyLen);
-		if (valueLen) {
+		if (keyLen) {
 			if (memcmp(keyPtr, "b", 1) == 0) {
 				error = 0;
 			}
@@ -614,6 +637,29 @@ static int TestRouting(char* value, short valueLen) {
 	plg_DictExtenDestroy(pDictKeyExten);
 	if (error) {
 		printf("fail SetAdd and SetDiffStore!\n");
+		plg_EventSend(pEvent, NULL, 0);
+		return 1;
+	}
+
+	//SetAdd and SetPoint
+	error = 1;
+	pDictExten = plg_DictExtenCreate();
+	plg_JobSPoint("t1", 2, "a", 1, "b", 1, 1, 1, pDictExten);
+
+	if (plg_DictExtenSize(pDictExten)) {
+		unsigned int keyLen;
+		void* entry = plg_DictExtenGetHead(pDictExten);
+		void* keyPtr = plg_DictExtenKey(entry, &keyLen);
+		if (keyLen) {
+			if (memcmp(keyPtr, "e", 1) == 0) {
+				error = 0;
+			}
+		}
+	}
+	plg_DictExtenDestroy(pDictExten);
+
+	if (error) {
+		printf("fail setadd and rang!\n");
 		plg_EventSend(pEvent, NULL, 0);
 		return 1;
 	}

@@ -73,6 +73,7 @@ void plg_TableMultiFind(void* pTableHandle, void* pKeyDictExten, void* pValueDic
 unsigned int plg_TableRand(void* pTableHandle, void* pDictExten);
 void plg_TableClear(void* pTableHandle, short recursive);
 unsigned short plg_TableBigValueSize();
+void plg_TablePoint(void* pvTableHandle, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten);
 
 //set
 unsigned int plg_TableSetAdd(void* pTableHandle, void* vKey, short keyLen, void* vValue, short valueLen);
@@ -92,6 +93,7 @@ void plg_TableSetInterStore(void* pTableHandle, void* pSetDictExten, void* vKey,
 void plg_TableSetDiff(void* pTableHandle, void* pSetDictExten, void* pKeyDictExten);
 void plg_TableSetDiffStore(void* pTableHandle, void* pSetDictExten, void* vKey, short keyLen);
 void plg_TableSetMove(void* pvTableHandle, void* vSrcKey, short  srcKeyLen, void* vDesKey, short desKeyLen, void* vValue, short valueLen);
+void plg_TableSetPoint(void* pvTableHandle, void* vKey, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pInDictExten);
 
 //iter return pTableIterator
 void* plg_TableGetIteratorToTail(void* pTableHandle);

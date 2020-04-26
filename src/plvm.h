@@ -23,9 +23,9 @@
 
 #define FillFun(h, n, r)n p##n = plg_LvmCheckSym(h, #n);if (!p##n) {return r;}
 
-void* plg_LvmLoad(const char *path);
+void* plg_LvmLoad(const char *path, short luaHot);
 void plg_LvmDestory(void* plVMHandle);
-int plg_LvmCallFile(void* plVMHandle, char* file, char* fun, void* value, short len);
+int plg_LvmCallFile(void* plVMHandle, char* sdsFile, char* fun, void* value, short len);
 void* plg_LvmCheckSym(void *lib, const char *sym);
 void* plg_LvmGetInstance(void* plVMHandle);
 void* plg_LvmGetL(void* plVMHandle);

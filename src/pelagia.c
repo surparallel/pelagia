@@ -101,6 +101,9 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 
 		if (argc == 2) {
 			_pManage = plg_MngCreateHandle(argv[1], strlen(argv[1]));
+			if (!_pManage){
+				printf("Manage initialization failed\n");
+			}
 		} else {
 			printf("Parameter does not meet the requirement\n");
 		}
@@ -112,6 +115,9 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 
 		if (argc == 2) {
 			_pManage = plg_MngCreateHandleWithJson(argv[1]);
+			if (!_pManage){
+				printf("Manage initialization failed\n");
+			}
 		} else {
 			printf("Parameter does not meet the requirement\n");
 		}
@@ -121,17 +127,23 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 		if (_pManage != 0) {
 			plg_MngDestoryHandle(_pManage);
 			_pManage = 0;
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "star")) {
 		if (_pManage != 0) {
 			plg_MngStarJob(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 	}
 	else if (!strcasecmp(command, "stop")) {
 		if (_pManage != 0) {
 			plg_MngStopJob(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -142,6 +154,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -152,6 +166,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -162,6 +178,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -172,6 +190,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -182,6 +202,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -192,6 +214,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -202,6 +226,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -212,6 +238,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -222,6 +250,8 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
@@ -233,36 +263,48 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 			} else {
 				printf("Parameter does not meet the requirement\n");
 			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "pas")) {
 		if (_pManage != 0) {
 			plg_MngPrintAllStatus(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "pajs")) {
 		if (_pManage != 0) {
 			plg_MngPrintAllJobStatus(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "pajd")) {
 		if (_pManage != 0) {
 			plg_MngPrintAllJobDetails(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "ppa")) {
 		if (_pManage != 0) {
 			plg_MngPrintPossibleAlloc(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "pajo")) {
 		if (_pManage != 0) {
 			plg_MngPrintAllJobOrder(_pManage);
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
 		return 1;
 	}

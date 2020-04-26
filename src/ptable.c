@@ -2352,7 +2352,7 @@ void plg_TableOrder(void* pvTableHandle, short order, unsigned int limite, void*
 }
 
 /*
-如果plg_TableGetIteratorWithKey搜索失败是否会返回无效的结果呢?
+If the PLG_Tablegetiteratorwithkey search fails, will it return invalid results?
 */
 void plg_TableRang(void* pvTableHandle, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pDictExten) {
 
@@ -2379,6 +2379,57 @@ void plg_TableRang(void* pvTableHandle, void* beginKey, short beginKeyLen, void*
 			break;
 		}
 	};
+	plg_TableReleaseIterator(iter);
+}
+
+void plg_TablePoint(void* pvTableHandle, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten) {
+
+	PTableHandle pTableHandle = pvTableHandle;
+	void* iter = plg_TableGetIteratorWithKey(pTableHandle, beginKey, beginKeyLen);
+	PDiskTableKey pDiskTableKey;
+	unsigned int count = 0;
+
+	if (direction) {
+		while ((pDiskTableKey = plg_TableNextIterator(iter)) != NULL) {
+
+			if (count++ == offset) {
+				void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
+				if (pDiskTableKey->valueType == VALUE_NORMAL) {
+					plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
+				} else if (pDiskTableKey->valueType == VALUE_BIGVALUE) {
+					PDiskKeyBigValue pDiskKeyBigValue = (PDiskKeyBigValue)vluePtr;
+					void* bigValuePtr = table_GetBigValue(pTableHandle, pDiskKeyBigValue);
+
+					if (bigValuePtr == 0) {
+						continue;
+					}
+					plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, bigValuePtr, pDiskKeyBigValue->allSize);
+					free(bigValuePtr);
+				}
+				break;
+			}
+		}
+	} else {
+		while ((pDiskTableKey = plg_TablePrevIterator(iter)) != NULL) {
+
+			if (count++ == offset) {
+				void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
+				if (pDiskTableKey->valueType == VALUE_NORMAL) {
+					plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
+				} else if (pDiskTableKey->valueType == VALUE_BIGVALUE) {
+					PDiskKeyBigValue pDiskKeyBigValue = (PDiskKeyBigValue)vluePtr;
+					void* bigValuePtr = table_GetBigValue(pTableHandle, pDiskKeyBigValue);
+
+					if (bigValuePtr == 0) {
+						continue;
+					}
+					plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, bigValuePtr, pDiskKeyBigValue->allSize);
+					free(bigValuePtr);
+				}
+				break;
+			}
+		}
+	}
 	plg_TableReleaseIterator(iter);
 }
 
@@ -2766,7 +2817,6 @@ unsigned int plg_TableSetAdd(void* pvTableHandle, void* vKey, short keyLen, void
 	memset(&tableInFile, 0, sizeof(TableInFile));
 	TableInFile oldTableInFile;
 	memset(&oldTableInFile, 0, sizeof(TableInFile));
-	plg_TableSetTableType(pTableHandle, TT_Set);
 	PTableInFile pTableInFile = pTableHandle->pTableInFile;
 	void* pDictExten = plg_DictExtenCreate();
 
@@ -2835,6 +2885,31 @@ void plg_TableSetRang(void* pvTableHandle, void* vKey, short keyLen, void* begin
 
 				pTableHandle->pTableInFile = &tableInFile;
 				plg_TableRang(pTableHandle, beginValue, beginValueLen, endValue, endValueLen, pInDictExten);
+			}
+		}
+	}
+	plg_DictExtenDestroy(pDictExten);
+	pTableHandle->pTableInFile = pTableInFile;
+}
+
+void plg_TableSetPoint(void* pvTableHandle, void* vKey, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pInDictExten) {
+
+	PTableHandle pTableHandle = pvTableHandle;
+	TableInFile tableInFile;
+	memset(&tableInFile, 0, sizeof(TableInFile));
+	PTableInFile pTableInFile = pTableHandle->pTableInFile;
+	void* pDictExten = plg_DictExtenCreate();
+
+	if (0 < plg_TableFind(pTableHandle, vKey, keyLen, pDictExten, 1)) {
+		if (plg_DictExtenSize(pDictExten)) {
+			void* entry = plg_DictExtenGetHead(pDictExten);
+			unsigned int retValueLen;
+			void* valuePtr = plg_DictExtenValue(entry, &retValueLen);
+			if (retValueLen) {
+				memcpy(&tableInFile, valuePtr, retValueLen);
+
+				pTableHandle->pTableInFile = &tableInFile;
+				plg_TablePoint(pTableHandle, beginValue, beginValueLen, direction, offset, pInDictExten);
 			}
 		}
 	}
