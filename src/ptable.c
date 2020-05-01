@@ -248,7 +248,8 @@ int plg_TableHandleCmpFun(void* left, void* right) {
 }
 
 int plg_TableCheckSpace(void* page) {
-	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
+	NOTUSED(page);
+	//PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 	//unsigned short r = plg_crc16((unsigned char*)page + pDiskTablePage->spaceAddr, pDiskTablePage->spaceLength);
 	//assert(!r);
 	//return !r;
@@ -493,7 +494,6 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 					int r = pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTableUsingPage->element[cur].pageAddr, page);
 					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
 
-					PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)*page);
 					PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)*page + sizeof(DiskPageHead));
 					assert(pDiskTablePage->spaceLength == pDiskTableUsingPage->element[cur].spaceLength);
 					return r;
@@ -789,7 +789,6 @@ static void table_CheckElementPrev(void* pvTableHandle, PDiskTableElement pZeroE
 	PTableHandle pTableHandle = pvTableHandle;
 	unsigned int prevPage = pZeroElement->nextElementPage;
 	unsigned short prevOffset = pZeroElement->nextElementOffset;
-	unsigned short keyOffset;
 	PDiskTableKey pDiskTableKey;
 	for (int i = 0; i < count; i++) {
 
@@ -804,7 +803,6 @@ static void table_CheckElementPrev(void* pvTableHandle, PDiskTableElement pZeroE
 
 		PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(page, prevOffset);
 		assert(pDiskTableElement->keyOffset);
-		keyOffset = pDiskTableElement->keyOffset;
 		pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 		prevPage = pDiskTableKey->prevElementPage;
 		prevOffset = pDiskTableKey->prevElementOffset;
@@ -1956,7 +1954,6 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 	//init for loop
 	PTableHandle pTableHandle = pvTableHandle;
 	TailPoint tailPoint[SKIPLIST_MAXLEVEL] = { { 0 } };
-	TailPoint zeroPoint[SKIPLIST_MAXLEVEL] = { { 0 } };
 	int tailLevel = -1;
 	unsigned int isBreak = 0;
 	//del element and find tail point
@@ -2070,8 +2067,6 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 				tailLevel = pHighElement->currentLevel;
 			}
 
-			zeroPoint[tailLevel].addr = nextElementPage;
-			zeroPoint[tailLevel].offset = highElementOffset;
 			tailPoint[pHighElement->currentLevel].addr = pHighElement->nextElementPage;
 			tailPoint[pHighElement->currentLevel].offset = pHighElement->nextElementOffset;
 			
