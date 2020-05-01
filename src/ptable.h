@@ -110,6 +110,6 @@ unsigned int plg_TableNewBigValue(void* pTableHandle, char* value, unsigned int 
 void plg_TableArrangmentBigValue(unsigned int pageSize, void* page);
 
 void plg_TableMembersWithJson(void* pTableHandle, void* jsonRoot);
-
 void plg_TableInitTableInFile(void* pTableInFile);
+int plg_TableCheckSpace(void* page);
 #endif

@@ -104,6 +104,9 @@ typedef struct _Manage
 
 	//event for exit;
 	void* pEvent;
+
+	//noSave
+	short noSave;
 } *PManage, Manage;
 
 static void listSdsFree(void *ptr) {
@@ -189,7 +192,7 @@ static void manage_InitLoadFile(void* pvManage) {
 			break;
 		}
 
-		if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 0, 0)) {
+		if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 0, pManage->noSave)) {
 			plg_listAddNodeHead(pManage->listDisk, pDiskHandle);
 		} else {
 			plg_sdsFree(fullPath);
@@ -251,7 +254,7 @@ static void manage_AddTableToDisk(void* pvManage, PTableName pTableName, sds tab
 		if (noSaveCount > pManage->maxTableWeight) {
 			sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%spnosave", pManage->dbPath);
 			void* pDiskHandle;
-			if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 1, 1)) {
+			if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 1, pTableName->noSave)) {
 				plg_listAddNodeHead(pManage->listDisk, pDiskHandle);
 				plg_DiskAddTableWeight(pDiskHandle, pTableName->weight);
 				plg_dictAdd(pManage->tableName_diskHandle, tableName, pDiskHandle);
@@ -266,7 +269,7 @@ static void manage_AddTableToDisk(void* pvManage, PTableName pTableName, sds tab
 			plg_MkDirs(pManage->dbPath);
 			sds fullPath = plg_sdsCatFmt(plg_sdsEmpty(), "%sp%i", pManage->dbPath, listLength(pManage->listDisk));
 			void* pDiskHandle;
-			if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 1, 0)) {
+			if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 1, pTableName->noSave)) {
 				plg_listAddNodeHead(pManage->listDisk, pDiskHandle);
 				plg_DiskAddTableWeight(pDiskHandle, pTableName->weight);
 				plg_dictAdd(pManage->tableName_diskHandle, tableName, pDiskHandle);
@@ -287,7 +290,7 @@ static void pFillTableNameCB(void* pDiskHandle, void* ptr, char* tableName) {
 	pTableName->sdsParent = 0;
 	pTableName->weight = 1;
 	pTableName->noShare = 0;
-	pTableName->noSave = 0;
+	pTableName->noSave = pManage->noSave;
 	plg_dictAdd(pManage->dictTableName, tableName, pTableName);
 	plg_dictAdd(pManage->tableName_diskHandle, tableName, pDiskHandle);
 
@@ -314,7 +317,7 @@ static void manage_CreateDiskWithFileName(void* pvManage,char* FileName) {
 		return;
 	}
 
-	if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 0, 0)) {
+	if (1 == plg_DiskFileOpen(plg_JobEqueueHandle(pManage->pJobHandle), fullPath, &pDiskHandle, 0, pManage->noSave)) {
 		plg_listAddNodeHead(pManage->listDisk, pDiskHandle);
 	} else {
 		elog(log_error, "manage_CreateDiskWithFileName.plg_DiskFileOpen:%s", fullPath);
@@ -624,7 +627,7 @@ int plg_MngAddTable(void* pvManage, char* nameOrder, short nameOrderLen, char* n
 		pTableName->sdsParent = 0;
 		pTableName->weight = 1;
 		pTableName->noShare = 0;
-		pTableName->noSave = 0;
+		pTableName->noSave = pManage->noSave;
 		plg_dictAdd(pManage->dictTableName, sdsTableName, pTableName);
 
 		if (!plg_DictSetIn(pManage->order_tableName, sdsnameOrder, sdsTableName)) {
@@ -1048,6 +1051,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->luaPath = plg_sdsEmpty();
 	pManage->dllPath = plg_sdsEmpty();
 	pManage->luaHot = 0;
+	pManage->noSave = 0;
 
 	//event process
 	plg_JobAddAdmOrderProcess(pManage->pJobHandle, "destroycount", plg_JobCreateFunPtr(OrderDestroyCount));
@@ -1069,6 +1073,11 @@ void plg_MngSetLuaDllPath(void* pvManage, char* newLuaDllPath) {
 void plg_MngSetLuaHot(void* pvManage, short luaHot) {
 	PManage pManage = pvManage;
 	pManage->luaHot = luaHot;
+}
+
+void plg_MngSetAllNoSave(void* pvManage, short noSave) {
+	PManage pManage = pvManage;
+	pManage->noSave = noSave;
 }
 
 void plg_MngSetLuaPath(void* pvManage, char* newLuaPath) {
@@ -1353,7 +1362,7 @@ static int OutJsonRouting(char* value, short valueLen) {
 		pJson_AddItemToObject(root, dictGetKey(tableNameNode), tableObj);
 		plg_JobTableMembersWithJson(dictGetKey(tableNameNode), plg_sdsLen(dictGetKey(tableNameNode)), tableObj);
 
-		sds fileName = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s", pParam->outJson, dictGetKey(tableNameNode));
+		sds fileName = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s.json", pParam->outJson, dictGetKey(tableNameNode));
 		//open file
 		FILE *outputFile;
 		outputFile = fopen_t(fileName, "wb");

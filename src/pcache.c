@@ -194,7 +194,6 @@ unsigned int cache_LoadPageFromFile(void* pvCacheHandle, unsigned int pageAddr, 
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
 	if (plg_DiskIsNoSave(pCacheHandle->pDiskHandle)) {
-		elog(log_error, "cache_LoadPageFromFile.plg_DiskIsNoSave");
 		return 0;
 	}
 
@@ -298,8 +297,13 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 			*page = plg_ListDictGetVal(findTranPageEntry);
 
 			PDiskPageHead leftPage = *page;
+			if (leftPage->type == TABLEPAGE) {
+				assert(plg_TableCheckSpace(leftPage));
+			}
 			leftPage->hitStamp = plg_GetCurrentSec();
 			return 1;
+		} else {
+			elog(log_details, "cache_FindPage.transaction_listDictPageCache.miss:%i", pageAddr);
 		}
 	}
 
@@ -307,6 +311,7 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 	if (findPageEntry == 0) {
 		*page = plg_MemListPop(pCacheHandle->memoryListPage);
 		if (0 == cache_LoadPageFromFile(pCacheHandle, pageAddr, *page)) {
+			assert(0);
 			elog(log_error, "cache_FindPage.disk load page %i!", pageAddr);
 			plg_MemListPush(pCacheHandle->memoryListPage, *page);
 			return 0;
@@ -320,8 +325,10 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 	}
 
 	PDiskPageHead leftPage = *page;
+	if (leftPage->type == TABLEPAGE) {
+		assert(plg_TableCheckSpace(leftPage));
+	}
 	leftPage->hitStamp = plg_GetCurrentSec();
-
 	return 1;
 }
 
@@ -395,13 +402,26 @@ static void* cache_pageCopyOnWrite(void* pvCacheHandle, unsigned int pageAddr, v
 	
 	elog(log_fun, "cache_pageCopyOnWrite.pageAddr:%i", pageAddr);
 	PCacheHandle pCacheHandle = pvCacheHandle;
+
+	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
+	if (pDiskPageHead->type == TABLEPAGE) {
+		assert(plg_TableCheckSpace(page));
+	}
+
 	dictEntry* entry = plg_dictFind(plg_ListDictDict(pCacheHandle->transaction_listDictPageCache), &pageAddr);
 	if (entry) {
-		return plg_ListDictGetVal(entry);
+		PDiskPageHead pDiskPageHead = (PDiskPageHead)plg_ListDictGetVal(entry);
+		if (pDiskPageHead->type == TABLEPAGE) {
+			assert(plg_TableCheckSpace(pDiskPageHead));
+		}
+		return pDiskPageHead;
 	} else {
 		void* copyPage = plg_MemListPop(pCacheHandle->memoryListPage);
 		memcpy(copyPage, page, FULLSIZE(pCacheHandle->pageSize));
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)copyPage;
+		if (pDiskPageHead->type == TABLEPAGE) {
+			assert(plg_TableCheckSpace(copyPage));
+		}
 		plg_ListDictAdd(pCacheHandle->transaction_listDictPageCache, &pDiskPageHead->addr, copyPage);
 		return copyPage;
 	}
@@ -701,14 +721,13 @@ unsigned int plg_CacheTableDel(void* pvCacheHandle, sds sdsTable, void* vKey, sh
 }
 
 /*
-int Recent:是否搜索最新的数据。因为cachehandle会被分发到各个线程,
-当前任务只有检索其所拥有数据时才能获取最新数据,其检索非拥有数据时要返回已经提交的数据.
-因为cache本身并不能分辨当前任务是否拥有数据,需要在任务接口进行判断.
-
-recent:指示page层使用最新的缓存数据或不。如果数据使用期间不产生写入，那么数据是不需要锁的。
-基于以上，只读数据是可以不需要锁进行并发的。一是很难在复杂读取的时候不产生写入数据包括统计数据等。
-二，效率的提升只在写入数据前读取数据的哪个部分，提升效率有限。三，写入数据的锁降级会导致复杂度增加。
-因为减少了互斥区的使用时间，效率得到一定的提升，但提升并不明显。
+Int recent: whether to search for the latest data. Because cachehandle will be distributed to all threads,
+The current task can only get the latest data when retrieving its own data. When retrieving non owned data, it needs to return the submitted data
+Because cache itself can't distinguish whether the current task has data, it needs to judge in the task interface
+Recent: indicates that the page layer uses the latest cached data or does not. If no write is generated during data usage, the data does not need to be locked.
+Based on the above, read-only data can be concurrent without lock. One is that it is difficult to write data, including statistical data, when reading complex data.
+2、 The improvement of efficiency is limited in which part of data is read before data is written. 3、 Degradation of a lock that writes data results in increased complexity.
+Because the use time of the mutex is reduced, the efficiency is improved to some extent, but the improvement is not obvious.
 */
 int plg_CacheTableFind(void* pvCacheHandle, sds sdsTable, void* vKey, short keyLen, void* pDictExten, short recent) {
 
@@ -1348,21 +1367,15 @@ static void cache_Arrange(void* pvCacheHandle) {
 }
 
 /*
-触发的页更新到文件
-触发一个事务提交并更新缓存到文件
-注意和缓存调度不同，但也需要制定调度策略
-缓存也同样需要调度策略。
+Triggered page update to file
+Trigger a transaction commit and update cache to file
+Note that it is different from cache scheduling, but scheduling strategies need to be formulated
+Caching also requires scheduling strategies.
 */
 void plg_CacheFlush(void* pvCacheHandle) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
-	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
-
-	//no sava
-	if (plg_DiskIsNoSave(pCacheHandle->pDiskHandle)) {
-		return;
-	}
-	
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);	
 	//process pCacheHandle->dictTableHandleDirty
 	dictIterator* iter_dictTableHandleDirty = plg_dictGetSafeIterator(pCacheHandle->dictTableHandleDirty);
 	dictEntry* node_dictTableHandleDirty;

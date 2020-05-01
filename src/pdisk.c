@@ -203,7 +203,6 @@ static unsigned int plg_DiskLoadPageFromFile(void* pvDiskHandle, unsigned int pa
 
 	PDiskHandle pDiskHandle = pvDiskHandle;
 	if (pDiskHandle->noSave) {
-		elog(log_error, "plg_DiskLoadPageFromFile.plg_DiskIsNoSave%i", pageAddr);
 		return 0;
 	}
 
@@ -289,7 +288,6 @@ unsigned int plg_DiskFlushDirtyToFile(void* pvDiskHandle, FlushCallBack pFlushCa
 
 	PDiskHandle pDiskHandle = pvDiskHandle;
 	if (pDiskHandle->noSave) {
-		elog(log_error, "plg_DiskFlushDirtyToFile.noSave");
 		return 0;
 	}
 
@@ -385,16 +383,16 @@ static unsigned int plg_DiskCreatBitPage(void* pvDiskHandle, PDiskPageHead pPrev
 /*
 file alloc
 find space page from bitpage;
-也应用于其他页的创建,页地址的分配相当于对
-文件的存储空间的分配.
-空间被分配后要确保空间不会被错误的重新分配。
-这似乎是个一致性的问题。
-但只要没有被重新分配即使不统一写入硬盘也会相安无事。
-假设硬盘缓冲区和线程缓冲区没有写入的状态为0写入的状态为1。
-那么00和11即硬盘没有数据和硬盘存在数据都没有问题。
-01即硬盘缓冲区数据没有写如，而线程缓冲区写入了，就会导致线程缓冲区数据丢失。
-10是硬盘缓冲区写入了数据，而线程缓冲区没有写入，会导致分配的页变成无主页，并且线程缓冲区丢失。
-所谓无主页就是已经分配但无人使用的页面。这个页面从硬盘读出的可能是全零或已经被删除的页面。
+It also applies to the creation of other pages, and the allocation of page address is equivalent to
+Allocation of storage space for files
+After the space is allocated, make sure that the space will not be reallocated incorrectly.
+It seems to be a question of consistency.
+But as long as it is not reallocated, even if it is not uniformly written to the hard disk, it will be safe.
+Assume that the write state of hard disk buffer and thread buffer is 0 and the write state is 1.
+Then 00 and 11, that is, the hard disk has no data and the hard disk has data.
+01 that is to say, the hard disk buffer data is not written, and the thread buffer is written, which will cause the thread buffer data to be lost.
+10. If the hard disk buffer writes data, but the thread buffer is not written, the allocated page will become no home page, and the thread buffer will be lost.
+No home page is a page that has been assigned but is not used. This page may read all zeros or deleted pages from the hard disk.
 */
 unsigned int plg_DiskInsideAllocPage(void* pvDiskHandle, unsigned int* pageAddr) {
 
@@ -495,18 +493,18 @@ void plg_DiskAddDirtyPage(void* pvDiskHandle, unsigned int pageAddr) {
 }
 
 /*
-如果在写入文件时为不存在于文件末尾,
-则写入文件时会被创建.
-注意这个函数不立即写入文件,所以产生了与文件的不一致.
-这个函数不能进行bitpage的创建
+If it does not exist at the end of the file at the time of writing,
+Will be created when the file is written
+Note that this function does not write to the file immediately, so it is inconsistent with the file
+This function cannot create bitpage
 1, find in bitpage
 2, if no find to create bitpage
 3, sign bitpage
 4, create page
-retPage:返回的新建页的地址
-type:页类型
-prvID:页链的前一页
-nextID:前一页的页链的下一页地址
+Retpage: the address of the returned new page
+Type: page type
+Prvid: Previous page of page chain
+NextID: address of the next page of the page chain of the previous page
 */
 static unsigned int plg_DiskCreatePage(void* pvDiskHandle, void** retPage, char type) {
 
@@ -859,21 +857,21 @@ static void plg_DiskHandleInit(void* pvDiskHandle, char* filePath, void* pManage
 }
 
 /*
-打开文件,
-文件不存在,要创建新的文件并格式化;
-文件已经存在,长度小于首页的,失败退出;
-文件已经存在,要验证头,头不符合失败退出；
-读取文件首页,验证CRC,校验不对失败退出.
-文件已经存在,符合要求，创建DiskHandle，并添加到列表。
-因为要写入manage列表所以需要先检查hand是否已经存在
-如果存在要先获取句柄然后打开文件,如果没有存在就要创建,
-先打开mange句柄再打开file句柄用于管理文件.
-使用过程中是直接打开file句柄.
-这里注意数据生存期间的概念,在线程运行期间PManage
-不会被修改删除。
+Open file,
+The file does not exist. Create a new file and format it;
+If the file already exists and its length is less than the first page, it fails to exit;
+The file already exists. To verify the header, if the header does not conform to the requirements, fail to exit;
+Read the first page of the file, verify the CRC, and exit if the verification is wrong
+The file already exists, meets the requirements, creates a diskhandle, and adds it to the list.
+To write to the manage list, you need to check whether the hand already exists
+If there is one, get the handle first and then open the file. If there is no one, create it,
+Open the manage handle first and then the file handle to manage the file
+The file handle is opened directly during use
+Pay attention to the concept of data lifetime here, which is pmanage during thread running
+It will not be modified or deleted.
 pManage:PManage
-filePath:打开文件名
-pDiskHandle:返回的句柄
+Filepath: open filename
+Pdiskhandle: handle returned
 */
 
 SDS_TYPE
