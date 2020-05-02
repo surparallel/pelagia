@@ -842,7 +842,7 @@ void plg_JobPrintDetails(void* pvJobHandle) {
 	printf("pJobHandle->dictCache>>>>>>>>>>>\n");
 	dictIter = plg_dictGetSafeIterator(pJobHandle->dictCache);
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		printf("%s %p\n", dictGetKey(dictNode), dictGetVal(dictNode));
+		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
 	}
 	plg_dictReleaseIterator(dictIter);
 	printf("<<<<<<<<<<pJobHandle->dictCache\n");
