@@ -829,31 +829,31 @@ void plg_JobPrintStatus(void* pvJobHandle) {
 void plg_JobPrintDetails(void* pvJobHandle) {
 	
 	PJobHandle pJobHandle = pvJobHandle;
-	printf("pJobHandle:%p %p\n", pJobHandle, pJobHandle->eQueue);
-	printf("pJobHandle->tableName_cacheHandle>\n");
+	printf("--------pJobHandle:%p equeue:%p--------\n", pJobHandle, pJobHandle->eQueue);
+	printf("pJobHandle->tableName_cacheHandle>>>>>>>>>>\n");
 	dictIterator* dictIter = plg_dictGetSafeIterator(pJobHandle->tableName_cacheHandle);
 	dictEntry* dictNode;
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
 		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<pJobHandle->tableName_cacheHandle\n");
+	printf("<<<<<<<<<<pJobHandle->tableName_cacheHandle\n");
 
-	printf("pJobHandle->dictCache>\n");
+	printf("pJobHandle->dictCache>>>>>>>>>>>\n");
 	dictIter = plg_dictGetSafeIterator(pJobHandle->dictCache);
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		printf("%p\n", dictGetKey(dictNode));
+		printf("%s %p\n", dictGetKey(dictNode), dictGetVal(dictNode));
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<pJobHandle->dictCache\n");
+	printf("<<<<<<<<<<pJobHandle->dictCache\n");
 
-	printf("pJobHandle->order_equeue>\n");
+	printf("pJobHandle->order_equeue>>>>>>>>>>>\n");
 	dictIter = plg_dictGetSafeIterator(pJobHandle->order_equeue);
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
 		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<pJobHandle->order_equeue\n");
+	printf("<<<<<<<<<<pJobHandle->order_equeue\n");
 }
 
 void plg_JobPrintOrder(void* pvJobHandle) {
@@ -903,7 +903,9 @@ unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short t
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSetTableType.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSetTableType.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 
 	} else {
@@ -928,7 +930,9 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSetTableType.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSetTableTypeIfByte.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 
 	} else {
@@ -956,7 +960,9 @@ unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, vo
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSet.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSet.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 
 	} else {
@@ -1015,7 +1021,9 @@ unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobDel.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobDel.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobDel.Cannot access table <%s>!", sdsTable);
@@ -1056,7 +1064,9 @@ unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short ke
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSetIfNoExit.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSetIfNoExit.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSetIfNoExit.Cannot access table <%s>!", sdsTable);
@@ -1097,7 +1107,9 @@ unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen,
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobRename.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobRename.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobRename.Cannot access table <%s>!", sdsTable);
@@ -1197,7 +1209,9 @@ unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobMultiSet.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobMultiSet.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobMultiSet.Cannot access table <%s>!", sdsTable);
@@ -1266,7 +1280,9 @@ void plg_JobTableClear(void* table, short tableLen) {
 			plg_CacheTableClear(dictGetVal(valueEntry), sdsTable);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobTableClear.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobTableClear.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobTableClear.Cannot access table <%s>!", sdsTable);
@@ -1288,7 +1304,9 @@ unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, v
 				plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 			}
 		} else {
-			elog(log_error, "plg_JobSAdd.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSAdd.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSAdd.Cannot access table <%s>!", sdsTable);
@@ -1437,7 +1455,9 @@ void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pVa
 			plg_CacheTableSetDel(dictGetVal(valueEntry), sdsTable, key, keyLen, pValueDictExten);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobSDel.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSDel.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSDel.Cannot access table <%s>!", sdsTable);
@@ -1523,7 +1543,9 @@ void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* k
 			plg_CacheTableSetUionStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobSUionStore.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSUionStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSUionStore.Cannot access table <%s>!", sdsTable);
@@ -1558,7 +1580,9 @@ void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* 
 			plg_CacheTableSetInterStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobSInterStore.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSInterStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}	
 	} else {
 		elog(log_error, "plg_JobSInterStore.Cannot access table <%s>!", sdsTable);
@@ -1593,7 +1617,9 @@ void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* k
 			plg_CacheTableSetDiffStore(dictGetVal(valueEntry), sdsTable, pSetDictExten, key, keyLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobSDiffStore.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSDiffStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSDiffStore.Cannot access table <%s>!", sdsTable);
@@ -1613,7 +1639,9 @@ void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, vo
 			plg_CacheTableSetMove(dictGetVal(valueEntry), sdsTable, srcKey, srcKeyLen, desKey, desKeyLen, value, valueLen);
 			plg_listAddNodeHead(pJobHandle->tranCache, dictGetVal(valueEntry));
 		} else {
-			elog(log_error, "plg_JobSMove.No permission to table <%s>!", sdsTable);
+			short orderLen;
+			char* order = plg_JobCurrentOrder(&orderLen);
+			elog(log_error, "plg_JobSMove.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
 		elog(log_error, "plg_JobSMove.Cannot access table <%s>!", sdsTable);

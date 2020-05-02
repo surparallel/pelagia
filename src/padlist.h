@@ -85,6 +85,7 @@ listNode *plg_listInsertNode(list *list, listNode *old_node, void *value, int af
 void plg_listDelNode(list *list, listNode *node);
 listIter *plg_listGetIterator(list *list, int direction);
 listNode *plg_listNext(listIter *iter);
+listIter *plg_listIteratorDup(listIter *li);
 void plg_listReleaseIterator(listIter *iter);
 list *plg_listDup(list *orig);
 listNode *plg_listSearchKey(list *list, void *key);

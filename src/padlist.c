@@ -220,6 +220,16 @@ void plg_listRewindTail(list *list, listIter *li) {
     li->direction = AL_START_TAIL;
 }
 
+listIter *plg_listIteratorDup(listIter *li)
+{
+	listIter *iter;
+
+	if ((iter = malloc(sizeof(*iter))) == NULL) return NULL;
+	iter->next = li->next;
+	iter->direction = li->direction;
+	return iter;
+}
+
 /* Return the next element of an iterator.
  * It's valid to remove the currently returned element using
  * plg_listDelNode(), but not to remove other elements.

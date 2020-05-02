@@ -445,89 +445,105 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	}
 
 	//listOrder
+	int breakDup = 0;
+	listIter* eventIterDup = 0;
 	listIter* eventIter = plg_listGetIterator(pManage->listOrder, AL_START_HEAD);
 	listNode* eventNode;
-	while ((eventNode = plg_listNext(eventIter)) != NULL) {
 
-		//process
-		dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, listNodeValue(eventNode));
-		if (EventProcessEntry == 0) {
-			continue;
-		}
+	do {
+		while ((eventNode = plg_listNext(eventIter)) != NULL) {
 
-		//List job intersection classification
-		char nextContinue = 0;
-		listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
-		listNode* jobNode;
-		while ((jobNode = plg_listNext(jobIter)) != NULL) {
-
-			//Judge whether there is intersection
-			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			if (!table) {
-				continue;
-			}
-			dictIterator* tableIter = plg_dictGetSafeIterator(table);
-			dictEntry* tableNode;
-			while ((tableNode = plg_dictNext(tableIter)) != NULL) {
-
-				if (plg_JobFindTableName(listNodeValue(jobNode), dictGetKey(tableNode))) {
-
-					//table
-					manage_AddTableToJob(pManage, listNodeValue(jobNode), table);
-
-					//process
-					plg_JobAddEventProcess(listNodeValue(jobNode), dictGetKey(EventProcessEntry), dictGetVal(EventProcessEntry));
-
-					//equeue
-					manage_AddEqueueToJob(pManage, listNodeValue(eventNode), plg_JobEqueueHandle(listNodeValue(jobNode)));
-					nextContinue = 1;
-					break;
-				}
-			}
-			plg_dictReleaseIterator(tableIter);
-			if (nextContinue) {
-				break;
-			}
-		}
-		plg_listReleaseIterator(jobIter);
-		if (nextContinue) {
-			continue;
-		}
-
-		//other
-		do {
-
-			//table
-			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			if (!table) {
+			//process
+			dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, listNodeValue(eventNode));
+			if (EventProcessEntry == 0) {
 				continue;
 			}
 
-			void* minJob = 0;
-			unsigned int Weight = UINT_MAX;
+			//List job intersection classification
+			char nextContinue = 0;
 			listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 			listNode* jobNode;
 			while ((jobNode = plg_listNext(jobIter)) != NULL) {
-				
-				//min
-				if (plg_JobAllWeight(listNodeValue(jobNode)) < Weight) {
-					Weight = plg_JobAllWeight(listNodeValue(jobNode));
-					minJob = listNodeValue(jobNode);
+
+				//Judge whether there is intersection
+				dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
+				if (!table) {
+					continue;
+				}
+				dictIterator* tableIter = plg_dictGetSafeIterator(table);
+				dictEntry* tableNode;
+				while ((tableNode = plg_dictNext(tableIter)) != NULL) {
+
+					if (plg_JobFindTableName(listNodeValue(jobNode), dictGetKey(tableNode))) {
+
+						//table
+						manage_AddTableToJob(pManage, listNodeValue(jobNode), table);
+
+						//process
+						plg_JobAddEventProcess(listNodeValue(jobNode), dictGetKey(EventProcessEntry), dictGetVal(EventProcessEntry));
+
+						//equeue
+						manage_AddEqueueToJob(pManage, listNodeValue(eventNode), plg_JobEqueueHandle(listNodeValue(jobNode)));
+						nextContinue = 1;
+						break;
+					}
+				}
+				plg_dictReleaseIterator(tableIter);
+				if (nextContinue) {
+					break;
 				}
 			}
 			plg_listReleaseIterator(jobIter);
+			if (nextContinue) {
+				continue;
+			}
 
-			//table
-			manage_AddTableToJob(pManage, minJob, table);
+			//other
+			if (!breakDup) {
+				breakDup = 1;
+				eventIterDup = plg_listIteratorDup(eventIter);
+				do {			
+					//table
+					dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
+					if (!table) {
+						continue;
+					}
 
-			//process
-			plg_JobAddEventProcess(minJob, dictGetKey(EventProcessEntry), dictGetVal(EventProcessEntry));
+					void* minJob = 0;
+					unsigned int Weight = UINT_MAX;
+					listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
+					listNode* jobNode;
+					while ((jobNode = plg_listNext(jobIter)) != NULL) {
+				
+						//min
+						if (plg_JobAllWeight(listNodeValue(jobNode)) < Weight) {
+							Weight = plg_JobAllWeight(listNodeValue(jobNode));
+							minJob = listNodeValue(jobNode);
+						}
+					}
+					plg_listReleaseIterator(jobIter);
 
-			//equeue
-			manage_AddEqueueToJob(pManage, listNodeValue(eventNode), plg_JobEqueueHandle(minJob));
-		} while (0);
-	}
-	plg_listReleaseIterator(eventIter);
+					//table
+					manage_AddTableToJob(pManage, minJob, table);
+
+					//process
+					plg_JobAddEventProcess(minJob, dictGetKey(EventProcessEntry), dictGetVal(EventProcessEntry));
+
+					//equeue
+					manage_AddEqueueToJob(pManage, listNodeValue(eventNode), plg_JobEqueueHandle(minJob));
+				} while (0);
+			}
+		}
+		
+		plg_listReleaseIterator(eventIter);
+		if (breakDup) {
+			breakDup = 0;	
+			eventIter = eventIterDup;
+			continue;
+		} else {
+			break;
+		}
+	} while (1);
 	return 1;
 }
 
