@@ -18,6 +18,7 @@
 */
 #include "pconio.h"
 #include "plateform.h"
+#include "pelog.h"
 
 void plg_GotoXY(int x, int y) {
 #ifdef _WIN32

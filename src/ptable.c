@@ -504,6 +504,7 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
 
 					PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)*page + sizeof(DiskPageHead));
+					NOTUSED(pDiskTablePage);
 					plg_assert(pDiskTableUsingPage->element[cur].usingSpaceLength == pDiskTablePage->spaceLength);
 					plg_assert(pDiskTablePage->spaceLength >= requireLegth);
 					return r;
@@ -811,7 +812,8 @@ static void table_CheckElementPrev(void* pvTableHandle, PDiskTableElement pZeroE
 	}
 }
 
-static int table_CheckElement(void* pvTableHandle, void* page, PDiskTableElement pZeroElement) {
+int table_CheckElement(void* pvTableHandle, void* page, void* pvZeroElement) {
+	PDiskTableElement pZeroElement = pvZeroElement;
 
 	int r = 1;
 	return r;
@@ -1349,6 +1351,7 @@ static unsigned int table_ValueFindOrNewPage(void* pvTableHandle, unsigned short
 					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
 
 					PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)*page + sizeof(DiskPageHead));
+					NOTUSED(pDiskTablePage);
 					plg_assert(pDiskTablePage->spaceLength >= requireLegth);
 					return r;
 				}
@@ -1834,7 +1837,6 @@ static unsigned int table_InsideAlter(void* pvTableHandle, char* key, short keyL
 		memcpy(vluePtr, value, length);
 
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)page);
-		PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskPageHead->addr);
 		return 1;
 	}

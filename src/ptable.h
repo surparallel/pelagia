@@ -113,4 +113,5 @@ void plg_TableArrangmentBigValue(unsigned int pageSize, void* page);
 void plg_TableMembersWithJson(void* pTableHandle, void* jsonRoot);
 void plg_TableInitTableInFile(void* pTableInFile);
 int plg_TableCheckSpace(void* page);
+int table_CheckElement(void* pvTableHandle, void* page, void* pZeroElement);
 #endif
