@@ -67,7 +67,7 @@ void plg_eqPush(void* pvEventQueue, void* value) {
 	}
 }
 
-int plg_eqTimeWait(void* pvEventQueue, long long sec, int nsec) {
+int plg_eqTimeWait(void* pvEventQueue, long long sec, long long nsec) {
 
 	PEventQueue pEventQueue = pvEventQueue;
 	struct timespec ts;
@@ -89,6 +89,22 @@ void* plg_eqPop(void* pvEventQueue) {
 		listNode *node = listLast(pEventQueue->listQueue);
 		value = listNodeValue(node);
 		plg_listDelNode(pEventQueue->listQueue, node);
+	}
+	MutexUnlock(pEventQueue->mutexHandle, pEventQueue->objecName);
+	return value;
+}
+
+void* plg_eqPopWithLen(void* pvEventQueue, unsigned int *len) {
+	PEventQueue pEventQueue = pvEventQueue;
+	void* value = 0;
+	MutexLock(pEventQueue->mutexHandle, pEventQueue->objecName);
+	if (listLength(pEventQueue->listQueue) != 0) {
+		listNode *node = listLast(pEventQueue->listQueue);
+		value = listNodeValue(node);
+		plg_listDelNode(pEventQueue->listQueue, node);
+		if (len) {
+			*len = listLength(pEventQueue->listQueue);
+		}
 	}
 	MutexUnlock(pEventQueue->mutexHandle, pEventQueue->objecName);
 	return value;

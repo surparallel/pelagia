@@ -91,6 +91,26 @@ static dictType PtrDictType = {
 	PtrFreeCallback
 };
 
+static void FreeCallback(void *privdata, void *val) {
+	DICT_NOTUSED(privdata);
+	free(val);
+}
+
+static dictType SdsDictType = {
+	sdsHashCallback,
+	NULL,
+	NULL,
+	sdsCompareCallback,
+	NULL,
+	FreeCallback
+};
+
+typedef struct __Intervalometer {
+	unsigned long long tim;
+	sds Order;
+	sds Value;
+}*PIntervalometer, Intervalometer;
+
 /*
 Threadtype: the type of the current thread
 Pmanagequeue: event handle for management thread
@@ -110,7 +130,7 @@ Transaction commit related flags
 Flush_laststamp: time of last submission
 Flush_interval: commit interval
 Flush_Lastcount: number of submissions
-Flush Ou count: total number of times
+Flush_count: total number of times
 */
 typedef struct _JobHandle
 {
@@ -143,11 +163,20 @@ typedef struct _JobHandle
 	void* luaHandle;
 	void* dllHandle;
 
-	//order;
+	//current order name from order_process;
 	char* pOrderName;
 
 	//intervalometer
 	list* pListIntervalometer;
+	PIntervalometer pMinPIntervalometer;
+
+	//Statistics
+	short isOpenStat;
+	//order run time
+	dict* order_runCount;
+	unsigned long long statistics_frequency;
+	unsigned int statistics_eventQueueLength;
+	dict* order_msg;
 
 } *PJobHandle, JobHandle;
 
@@ -214,12 +243,6 @@ void plg_JobProcessDestory(void* pvEventPorcess) {
 static void listSdsFree(void *ptr) {
 	plg_sdsFree(ptr);
 }
-
-typedef struct __Intervalometer {
-	unsigned long long tim;
-	sds Order;
-	sds Value;
-}*PIntervalometer, Intervalometer;
 
 static void listIntervalometerFree(void *ptr) {
 	PIntervalometer pPIntervalometer = (PIntervalometer)ptr;
@@ -381,6 +404,8 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->order_process = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pJobHandle->tableName_cacheHandle = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pJobHandle->dictCache = plg_dictCreate(&PtrDictType, NULL, DICT_MIDDLE);
+	pJobHandle->order_runCount = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	pJobHandle->order_msg = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 
 	pJobHandle->tranCache = plg_listCreate(LIST_MIDDLE);
 	pJobHandle->tranFlush = plg_listCreate(LIST_MIDDLE);
@@ -398,7 +423,8 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->donotFlush = 0;
 	pJobHandle->donotCommit = 0;
 	pJobHandle->privateData = 0;
-
+	pJobHandle->pMinPIntervalometer = 0;
+	
 	pJobHandle->flush_lastStamp = plg_GetCurrentSec();
 	pJobHandle->flush_interval = 5*60;
 	pJobHandle->flush_count = 1;
@@ -426,6 +452,10 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 		InitProcessCommend(pJobHandle);
 	}
 
+	pJobHandle->isOpenStat = 0;
+	pJobHandle->statistics_frequency = 5000;
+	pJobHandle->statistics_eventQueueLength = 0;
+
 	elog(log_fun, "plg_JobCreateHandle:%U", pJobHandle);
 	return pJobHandle;
 }
@@ -452,6 +482,8 @@ void plg_JobDestoryHandle(void* pvJobHandle) {
 	plg_listRelease(pJobHandle->userEvent);
 	plg_listRelease(pJobHandle->userProcess);
 	plg_listRelease(pJobHandle->pListIntervalometer);
+	plg_dictRelease(pJobHandle->order_runCount);
+	plg_dictRelease(pJobHandle->order_msg);
 
 	if (pJobHandle->luaHandle) {
 		plg_LvmDestory(pJobHandle->luaHandle);
@@ -496,6 +528,7 @@ void* plg_JobNewTableCache(void* pvJobHandle, char* table, void* pDiskHandle) {
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, table);
 	if (valueEntry == 0) {
 		void* pCacheHandle = plg_CacheCreateHandle(pDiskHandle);
+		plg_CacheSetStat(pCacheHandle, pJobHandle->isOpenStat);
 		plg_dictAdd(pJobHandle->dictCache, table, pCacheHandle);
 		return pCacheHandle;
 	} else {
@@ -539,13 +572,21 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 	pOrderPacket->order = plg_sdsNewLen(order, orderLen);
 	pOrderPacket->value = plg_sdsNewLen(value, valueLen);
 	
-	dictEntry* entry = plg_dictFind(pJobHandle->order_equeue, pOrderPacket->order);
-	if (entry) {
-		plg_eqPush(dictGetVal(entry), pOrderPacket);
+	dictEntry* entryOrder = plg_dictFind(pJobHandle->order_equeue, pOrderPacket->order);
+	if (entryOrder) {
+		plg_eqPush(dictGetVal(entryOrder), pOrderPacket);
+		if (pJobHandle->isOpenStat) {
+			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
+		}
 		return 1;
 	} else {
 		void* pManage = pJobHandle->privateData;
-		return plg_MngRemoteCallPacket(pManage, pOrderPacket);
+		char* order;
+		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &order);
+		if (pJobHandle->isOpenStat) {
+			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
+		}
+		return r;
 	}
 }
 
@@ -585,8 +626,6 @@ static unsigned long long plg_JogActIntervalometer(void* pvJobHandle) {
 	if (!listLength(pJobHandle->pListIntervalometer)) {
 		return 0;
 	}
-
-	plg_SortList(pJobHandle->pListIntervalometer, IntervalometerCmpFun);
 	
 	unsigned long long milli = plg_GetCurrentMilli();
 	listIter* iter = plg_listGetIterator(pJobHandle->pListIntervalometer, AL_START_HEAD);
@@ -597,18 +636,95 @@ static unsigned long long plg_JogActIntervalometer(void* pvJobHandle) {
 		if (pPIntervalometer->tim <= milli) {
 			plg_JobRemoteCall(pPIntervalometer->Order, plg_sdsLen(pPIntervalometer->Order), pPIntervalometer->Value, plg_sdsLen(pPIntervalometer->Value));
 			plg_listDelNode(pJobHandle->pListIntervalometer, node);
-		} else {
+		} else if (!pJobHandle->pMinPIntervalometer) {
+			pJobHandle->pMinPIntervalometer = pPIntervalometer;
+		} else if (pPIntervalometer->tim < pJobHandle->pMinPIntervalometer->tim) {
+			pJobHandle->pMinPIntervalometer = pPIntervalometer;
+		}
+		else {
 			break;
 		}
 	}
 	plg_listReleaseIterator(iter);
 
-	if (listLength(pJobHandle->pListIntervalometer)) {
-		PIntervalometer pPIntervalometer = (PIntervalometer)listNodeValue(listFirst(pJobHandle->pListIntervalometer));
-		return pPIntervalometer->tim;
+	if (pJobHandle->pMinPIntervalometer) {
+		return pJobHandle->pMinPIntervalometer->tim;
 	} else {
 		return 0;
 	}
+}
+
+static unsigned long long plg_JogMinIntervalometer(void* pvJobHandle) {
+
+	PJobHandle pJobHandle = pvJobHandle;
+	if (!listLength(pJobHandle->pListIntervalometer)) {
+		return 0;
+	}
+
+	if (pJobHandle->pMinPIntervalometer) {
+		return pJobHandle->pMinPIntervalometer->tim;
+	} else {
+		return 0;
+	}
+}
+
+void plg_JobSetStat(void* pvJobHandle, short stat, unsigned long long checkTime) {
+	PJobHandle pJobHandle = pvJobHandle;
+	pJobHandle->isOpenStat = stat;
+	pJobHandle->statistics_frequency = checkTime;
+}
+
+static void plg_LogStat(void* pvJobHandle, unsigned long long passTime) {
+
+	PJobHandle pJobHandle = pvJobHandle;
+	sds outPut = plg_sdsEmpty();
+	outPut = plg_sdsCatPrintf(outPut, "<- time:%llu  queue:%u->", passTime, pJobHandle->statistics_eventQueueLength);
+	pJobHandle->statistics_eventQueueLength = 0;
+
+	dictIterator* iter_runCount = plg_dictGetSafeIterator(pJobHandle->order_runCount);
+	dictEntry* node_runCount;
+	while ((node_runCount = plg_dictNext(iter_runCount)) != NULL) {
+		char* key = dictGetKey(node_runCount);
+		unsigned int* count = dictGetVal(node_runCount);
+		outPut = plg_sdsCatPrintf(outPut, "%s:%i;", key, *count);
+	}
+	plg_dictReleaseIterator(iter_runCount);
+
+	outPut = plg_sdsCatPrintf(outPut, "<- msg->");
+	dictIterator* iter_msg = plg_dictGetSafeIterator(pJobHandle->order_msg);
+	dictEntry* node_msg;
+	while ((node_msg = plg_dictNext(iter_msg)) != NULL) {
+		char* key = dictGetKey(node_msg);
+		unsigned int* count = dictGetVal(node_msg);
+		outPut = plg_sdsCatPrintf(outPut, "%s:%i;", key, *count);
+	}
+	plg_dictReleaseIterator(iter_msg);
+	
+	unsigned long long allCacheCount = 0;
+	unsigned long long allFreeCacheCount = 0;
+	
+	dictIterator* iter_cache = plg_dictGetSafeIterator(pJobHandle->dictCache);
+	dictEntry* node_cache;
+	while ((node_cache = plg_dictNext(iter_cache)) != NULL) {
+		unsigned long long cacheCount;
+		unsigned long long freeCacheCount;
+		plg_CachePageAllCount(dictGetVal(node_cache), &cacheCount, &freeCacheCount);
+		allCacheCount += cacheCount;
+		allFreeCacheCount += freeCacheCount;
+	}
+	plg_dictReleaseIterator(iter_cache);
+
+	outPut = plg_sdsCatPrintf(outPut, "<- cache:%llu free:%llu->", allCacheCount, allFreeCacheCount);
+
+	iter_cache = plg_dictGetSafeIterator(pJobHandle->dictCache);
+	while ((node_cache = plg_dictNext(iter_cache)) != NULL) {
+		plg_CachePageCountPrint(dictGetVal(node_cache), &outPut);
+	}
+	plg_dictReleaseIterator(iter_cache);
+
+	outPut = plg_sdsCatPrintf(outPut, "<-");
+	elog(log_stat, "%s", outPut);
+	plg_sdsFree(outPut);
 }
 
 static void* plg_JobThreadRouting(void* pvJobHandle) {
@@ -646,22 +762,31 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 		pFinishPorcess = (PEventPorcess)dictGetVal(entry);
 	}
 	plg_sdsFree(sdsKey);
+
 	unsigned long long timer = 0;
+	unsigned long long checkTime = plg_GetCurrentMilli();
 
 	do {
 		if (timer == 0) {
 			plg_eqWait(pJobHandle->eQueue);
 		} else {
-			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, timer / 1000, timer % 1000 * 1000)) {
-				timer = plg_JogActIntervalometer(pJobHandle);
-				continue;
+
+			long long secs = timer / 1000;
+			long long msecs = (timer % 1000) * (1000 * 1000);
+			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, secs, msecs)) {
+				timer = plg_JogActIntervalometer(pJobHandle);	
 			}
 		}
-		
-		do {
-			POrderPacket pOrderPacket = (POrderPacket)plg_eqPop(pJobHandle->eQueue);
 
+		do {
+			unsigned int nowEventQueueLength;
+			POrderPacket pOrderPacket = (POrderPacket)plg_eqPopWithLen(pJobHandle->eQueue, &nowEventQueueLength);
 			if (pOrderPacket != 0) {
+				if (pJobHandle->statistics_eventQueueLength < nowEventQueueLength) {
+					pJobHandle->statistics_eventQueueLength = nowEventQueueLength;
+				}
+				unsigned long long runTime = plg_GetCurrentMilli();
+
 				elog(log_details, "ThreadType:%i.plg_JobThreadRouting.order:%s", pJobHandle->threadType, (char*)pOrderPacket->order);
 				pJobHandle->pOrderName = pOrderPacket->order;
 
@@ -674,9 +799,15 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 				entry = plg_dictFind(pJobHandle->order_process, pOrderPacket->order);
 				if (entry) {
 					pEventPorcess = (PEventPorcess)dictGetVal(entry);
+					pJobHandle->pOrderName = dictGetKey(entry);
 				} else {
 					void* pManage = pJobHandle->privateData;
-					pEventPorcess = plg_MngGetProcess(pManage, pOrderPacket->order);
+					pEventPorcess = plg_MngGetProcess(pManage, pOrderPacket->order, &pJobHandle->pOrderName);
+				} 
+				
+				if (!pEventPorcess) {
+					elog(log_error, "not proocess for order %s", pOrderPacket->order);
+					continue;
 				}
 
 				if (pEventPorcess) {
@@ -715,25 +846,39 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 					}
 				}
 
-				pJobHandle->pOrderName = 0;
-				plg_sdsFree(pOrderPacket->order);
-				plg_sdsFree(pOrderPacket->value);
-				free(pOrderPacket);
-
 				//finish
 				if (pFinishPorcess && pFinishPorcess->scriptType == ST_PTR) {
 					pFinishPorcess->functionPoint(NULL, 0);
 				}
 
+				if (pJobHandle->isOpenStat) {
+					dictAddValueWithUint(pJobHandle->order_runCount, pJobHandle->pOrderName, 1);
+					unsigned long long milli = plg_GetCurrentMilli();
+					if ((milli - checkTime) > pJobHandle->statistics_frequency) {	
+						plg_LogStat(pJobHandle, milli - checkTime);
+						checkTime = milli;
+						plg_dictEmpty(pJobHandle->order_runCount, 0);
+						plg_dictEmpty(pJobHandle->order_msg, 0);
+					}
+				}
+
+				pJobHandle->pOrderName = 0;
+				plg_sdsFree(pOrderPacket->order);
+				plg_sdsFree(pOrderPacket->value);
+				free(pOrderPacket);
+
 				elog(log_details, "plg_JobThreadRouting.finish!");
 			} else {
 				break; 
 			}
+
 		} while (1);
 
-		timer = plg_JogActIntervalometer(pJobHandle);
+		timer = plg_JogMinIntervalometer(pJobHandle);
+		plg_assert(listLength(pJobHandle->pListIntervalometer)?timer:1);
 
 		if (pJobHandle->exitThread == 1) {
+
 			elog(log_details, "ThreadType:%i.plg_JobThreadRouting.exitThread:%i", pJobHandle->threadType, pJobHandle->exitThread);
 			break;
 		} else if (pJobHandle->exitThread == 2) {
@@ -754,7 +899,7 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 	return 0;
 }
 
-int plg_jobStartRouting(void* pvJobHandle) {
+int plg_JobStartRouting(void* pvJobHandle) {
 
 	pthread_t pid;
 	return pthread_create(&pid, NULL, plg_JobThreadRouting, pvJobHandle);
@@ -783,7 +928,6 @@ void plg_JobAddAdmOrderProcess(void* pvJobHandle, char* nameOrder, void* pvProce
 		plg_listAddNodeHead(pJobHandle->userProcess, process);
 		plg_dictAdd(pJobHandle->order_process, sdsOrder, process);
 	} else {
-		assert(0);
 		plg_sdsFree(sdsOrder);
 		free(process);
 	}
@@ -1682,8 +1826,13 @@ void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, sho
 	pPIntervalometer->Order = plg_sdsNewLen(order, orderLen);
 	pPIntervalometer->Value = plg_sdsNewLen(value, valueLen);
 	pPIntervalometer->tim = milli + timer * 1000;
-
 	plg_listAddNodeHead(pJobHandle->pListIntervalometer, pPIntervalometer);
+	
+	if (pJobHandle->pMinPIntervalometer && pJobHandle->pMinPIntervalometer->tim < pPIntervalometer->tim) {
+		pJobHandle->pMinPIntervalometer = pPIntervalometer;
+	} else {
+		pJobHandle->pMinPIntervalometer = pPIntervalometer;
+	}
 }
 
 char* plg_JobTableNameWithJson() {

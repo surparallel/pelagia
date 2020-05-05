@@ -115,6 +115,10 @@ static void EnumJson(pJSON * root, void* pManage)
 				plg_MngSetLuaHot(pManage, item->valueint);
 			} else 	if (strcmp(item->string, "nosave") == 0) {
 				plg_MngSetAllNoSave(pManage, item->valueint);
+			} else 	if (strcmp(item->string, "stat") == 0) {
+				plg_MngSetStat(pManage, item->valueint);
+			} else 	if (strcmp(item->string, "checkTime") == 0) {
+				plg_MngSetStatCheckTime(pManage, item->valueint);
 			}
 		}
 	}

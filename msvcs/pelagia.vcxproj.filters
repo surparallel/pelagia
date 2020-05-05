@@ -42,6 +42,7 @@
     <ClCompile Include="..\src\pbase64.c" />
     <ClCompile Include="..\src\prandomlevel.c" />
     <ClCompile Include="..\src\psemaphore.c" />
+    <ClCompile Include="..\src\pconio.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\padlist.h" />
@@ -91,5 +92,6 @@
     <ClInclude Include="..\src\plualib.h" />
     <ClInclude Include="..\src\pbase64.h" />
     <ClInclude Include="..\src\psemaphore.h" />
+    <ClInclude Include="..\src\pconio.h" />
   </ItemGroup>
 </Project>

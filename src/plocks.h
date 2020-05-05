@@ -45,7 +45,7 @@ void plg_MutexThreadDestroy();
 
 #define MutexLock(lockObj, lockName) do {\
 if(0==plg_LocksEntry(lockObj)){\
-		assert(0);sds x = plg_sdsCatPrintf(plg_sdsEmpty(),"entry mutex %p %s!", lockObj, lockName);\
+		sds x = plg_sdsCatPrintf(plg_sdsEmpty(),"entry mutex %p %s!", lockObj, lockName);\
 		elog(log_error, x);\
 		plg_sdsFree(x);}else {\
 plg_MutexLock(lockObj);}\
@@ -53,7 +53,7 @@ plg_MutexLock(lockObj);}\
 
 #define MutexUnlock(lockObj, lockName) do {\
 if(0==plg_LocksLeave(lockObj)){\
-		assert(0);sds x = plg_sdsCatPrintf(plg_sdsEmpty(),"leave mutex %p %s!", lockObj, lockName);\
+		sds x = plg_sdsCatPrintf(plg_sdsEmpty(),"leave mutex %p %s!", lockObj, lockName);\
 		elog(log_error, x);\
 		plg_sdsFree(x);}else{\
 plg_MutexUnlock(lockObj);}\

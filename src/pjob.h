@@ -57,6 +57,7 @@ void plg_JobSetPrivate(void* pJobHandle, void* privateData);
 void* plg_JobGetPrivate();
 char* plg_JobTableNameWithJson();
 void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot);
-int plg_jobStartRouting(void* pvJobHandle);
+int plg_JobStartRouting(void* pvJobHandle);
+void plg_JobSetStat(void* pvJobHandle, short stat, unsigned long long checkTime);
 
 #endif

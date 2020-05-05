@@ -24,6 +24,7 @@ enum OutPutLevel
 	log_null = 0,
 	log_error,
 	log_warn,
+	log_stat,
 	log_fun,
 	log_details,
 	log_all,

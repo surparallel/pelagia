@@ -222,7 +222,8 @@ static unsigned int plg_DiskLoadPageFromFile(void* pvDiskHandle, unsigned int pa
 	return 1;
 
 }
-static unsigned int plg_DiskFindPage(void* pvDiskHandle, unsigned int pageAddr, void** page) {
+
+static unsigned int _plg_DiskFindPage(void* pvDiskHandle, unsigned int pageAddr, void** page) {
 
 	PDiskHandle pDiskHandle = pvDiskHandle;
 	dictEntry* findPageEntry;
@@ -247,9 +248,16 @@ static unsigned int plg_DiskFindPage(void* pvDiskHandle, unsigned int pageAddr, 
 	return 1;
 }
 
-static unsigned int plg_DiskArrangementCheck(void* pvDiskHandle, void* page) {
+static unsigned int plg_DiskFindPage(void* pTableHandle, unsigned int pageAddr, void** page) {
 
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
+	_plg_DiskFindPage(pDiskHandle, pageAddr, page);
+	return 1;
+}
+
+static unsigned int plg_DiskArrangementCheck(void* pTableHandle, void* page) {
+
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
@@ -262,19 +270,22 @@ static unsigned int plg_DiskArrangementCheck(void* pvDiskHandle, void* page) {
 	}
 
 	unsigned long long sec = plg_GetCurrentSec();
-	if (pDiskTablePage->arrangmentStamp + _ARRANGMENTTIME_ < sec) {
+	if (pDiskTablePage->arrangmentStamp == 0) {
+		pDiskTablePage->arrangmentStamp = sec;
+	}
+	if (pDiskTablePage->arrangmentStamp + _ARRANGMENTTIME_ > sec) {
 		return 0;
 	}
 	pDiskTablePage->arrangmentStamp = sec;
 
 	unsigned int pageSize = FULLSIZE(pDiskHandle->diskHead->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTablePage);
-	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_1 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_1) {
+	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_1) {
 		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_2 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_2) {
+	} else if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_2) {
 		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_3 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_3) {
+	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_3) {
 		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_4 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_4) {
+	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_4) {
 		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
 	}
 
@@ -405,7 +416,7 @@ unsigned int plg_DiskInsideAllocPage(void* pvDiskHandle, unsigned int* pageAddr)
 	do {
 
 		//find bitpage in disk
-		unsigned int ret = plg_DiskFindPage(pDiskHandle, pageBitAddr, &pbitPage);
+		unsigned int ret = _plg_DiskFindPage(pDiskHandle, pageBitAddr, &pbitPage);
 		if (ret == 0) {
 			break;
 		}
@@ -487,8 +498,8 @@ unsigned int plg_DiskAllocPage(void* pvDiskHandle, unsigned int* pageAddr) {
 	return r;
 }
 
-void plg_DiskAddDirtyPage(void* pvDiskHandle, unsigned int pageAddr) {
-	PDiskHandle pDiskHandle = pvDiskHandle;
+void plg_DiskAddDirtyPage(void* pTableHandle, unsigned int pageAddr) {
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	dictAddWithUint(pDiskHandle->pageDirty, pageAddr, NULL);
 }
 
@@ -506,9 +517,9 @@ Type: page type
 Prvid: Previous page of page chain
 NextID: address of the next page of the page chain of the previous page
 */
-static unsigned int plg_DiskCreatePage(void* pvDiskHandle, void** retPage, char type) {
+static unsigned int plg_DiskCreatePage(void* pTableHandle, void** retPage, char type) {
 
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	unsigned int pageAddr = 0;
 	plg_DiskInsideAllocPage(pDiskHandle, &pageAddr);
 	if (pageAddr == 0) {
@@ -541,7 +552,7 @@ static unsigned int plg_DiskDelBitPage(void* pvDiskHandle, unsigned int pageAddr
 	PDiskHandle pDiskHandle = pvDiskHandle;
 	//find page
 	void* page;
-	if (plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0)
+	if (_plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0)
 		return 0;
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 
@@ -550,7 +561,7 @@ static unsigned int plg_DiskDelBitPage(void* pvDiskHandle, unsigned int pageAddr
 
 		//prevPage
 		void* prevPage;
-		if (plg_DiskFindPage(pDiskHandle, pDiskPageHead->prevPage, &prevPage) == 0)
+		if (_plg_DiskFindPage(pDiskHandle, pDiskPageHead->prevPage, &prevPage) == 0)
 			return 0;
 		PDiskPageHead pPrevDiskPageHead = (PDiskPageHead)prevPage;
 		pPrevDiskPageHead->nextPage = pDiskPageHead->nextPage;
@@ -561,7 +572,7 @@ static unsigned int plg_DiskDelBitPage(void* pvDiskHandle, unsigned int pageAddr
 
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (plg_DiskFindPage(pDiskHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (_plg_DiskFindPage(pDiskHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
 			PDiskPageHead pDiskPageHead = (PDiskPageHead)nextPage;
 			pDiskPageHead->prevPage = pPrevDiskPageHead->addr;
@@ -577,7 +588,7 @@ static unsigned int plg_DiskDelBitPage(void* pvDiskHandle, unsigned int pageAddr
 
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (plg_DiskFindPage(pDiskHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (_plg_DiskFindPage(pDiskHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
 			PDiskPageHead pDiskPageHead = (PDiskPageHead)nextPage;
 			pDiskPageHead->prevPage = 0;
@@ -606,7 +617,7 @@ unsigned int plg_DiskInsideFreePage(void* pvDiskHandle, unsigned int pageAddr) {
 
 	//find page
 	void* page;
-	if (plg_DiskFindPage(pDiskHandle, bitPageAddr, &page) == 0)
+	if (_plg_DiskFindPage(pDiskHandle, bitPageAddr, &page) == 0)
 		return 0;
 
 	PDiskBitPage pDiskBitPage = (PDiskBitPage)((unsigned char*)page + sizeof(DiskPageHead));
@@ -637,13 +648,13 @@ unsigned int plg_DiskFreePage(void* pvDiskHandle, unsigned int pageAddr) {
 /*
 Inverse function of plg_DiskCreatePage
 */
-static unsigned int plg_DiskDelPage(void* pvDiskHandle, unsigned int pageAddr) {
+static unsigned int plg_DiskDelPage(void* pTableHandle, unsigned int pageAddr) {
 
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	elog(log_fun, "plg_DiskDelPage.pageAddr:%i", pageAddr);
 	//find page
 	void* page;
-	if (plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0) {
+	if (_plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0) {
 		return 0;
 	}
 
@@ -725,7 +736,7 @@ void plg_DiskPrintTableName(void* pvDiskHandle) {
 			pageAddr = plg_TableIteratorAddr(iter);
 
 			void *page = 0;
-			if (plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0)
+			if (_plg_DiskFindPage(pDiskHandle, pageAddr, &page) == 0)
 				return;
 			printf("address:%d;count:%d\n", pageAddr, count);
 
@@ -735,9 +746,9 @@ void plg_DiskPrintTableName(void* pvDiskHandle) {
 
 			PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
-			printf("arrangmentStamp:%llu;delCount:%d,spaceAddr:%d;spaceLength:%d;\ntableLength:%d;tableSize:%d;usingLength:%d;\nusingPageAddr:%d;usingPageOffset:%d\n",
+			printf("arrangmentStamp:%llu;delSize:%d,spaceAddr:%d;spaceLength:%d;\ntableLength:%d;tableSize:%d;usingLength:%d;\nusingPageAddr:%d;usingPageOffset:%d\n",
 				pDiskTablePage->arrangmentStamp, 
-				pDiskTablePage->delCount,
+				pDiskTablePage->delSize,
 				pDiskTablePage->spaceAddr,
 				pDiskTablePage->spaceLength,
 				pDiskTablePage->tableLength,
@@ -795,25 +806,25 @@ unsigned int plg_DiskGetTableAllWeight(void* pvDiskHandle) {
 	return pDiskHandle->allWeight;
 }
 
-static void* plg_DiskpageCopyOnWrite(void* pvDiskHandle, unsigned int pageAddr, void* page) {
+static void* plg_DiskpageCopyOnWrite(void* pTableHandle, unsigned int pageAddr, void* page) {
 
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	NOTUSED(pDiskHandle);
 	NOTUSED(pageAddr);
 	return page;
 }
 
-static void* plg_DisktableCopyOnWrite(void* pvDiskHandle, sds table, void* tableHead) {
+static void* plg_DisktableCopyOnWrite(void* pTableHandle, sds table, void* tableHead) {
 
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	NOTUSED(pDiskHandle);
 	NOTUSED(table);
 	return tableHead;
 }
 
-static void plg_DiskaddDirtyTable(void* pvDiskHandle, sds table) {
+static void plg_DiskaddDirtyTable(void* pTableHandle, sds table) {
 	NOTUSED(table);
-	PDiskHandle pDiskHandle = pvDiskHandle;
+	PDiskHandle pDiskHandle = plg_TableOperateHandle(pTableHandle);
 	dictAddWithUint(pDiskHandle->pageDirty, 0, NULL);
 }
 

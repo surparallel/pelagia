@@ -107,6 +107,10 @@ typedef struct _Manage
 
 	//noSave
 	short noSave;
+
+	//
+	short isOpenStat;
+	unsigned long long checkTime;
 } *PManage, Manage;
 
 static void listSdsFree(void *ptr) {
@@ -440,6 +444,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
 		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath, pManage->luaHot);
+		plg_JobSetStat(pJobHandle, pManage->isOpenStat, pManage->checkTime);
 		plg_JobSetPrivate(pJobHandle, pvManage);
 		plg_listAddNodeHead(pManage->listJob, pJobHandle);
 	}
@@ -568,11 +573,12 @@ void* plg_MngRandJobEqueue(void* pvManage) {
 	return jobEqueue;
 }
  
-void* plg_MngGetProcess(void* pvManage, char* sdsOrder) {
+void* plg_MngGetProcess(void* pvManage, char* sdsOrder, char** retSdsOrder) {
 	PManage pManage = pvManage;
 
 	dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, sdsOrder);
 	if (EventProcessEntry != 0) {
+		*retSdsOrder = dictGetKey(EventProcessEntry);
 		return dictGetVal(EventProcessEntry);
 	}
 
@@ -762,7 +768,7 @@ int plg_MngStarJob(void* pvManage) {
 	while ((diskNode = plg_listNext(diskIter)) != NULL) {
 		void* fileHandle = plg_DiskFileHandle(listNodeValue(diskNode));
 		if (fileHandle) {
-			if (plg_jobStartRouting(plg_FileJobHandle(fileHandle)) != 0)
+			if (plg_JobStartRouting(plg_FileJobHandle(fileHandle)) != 0)
 				elog(log_error, "can't create thread");
 		}
 	}
@@ -772,13 +778,13 @@ int plg_MngStarJob(void* pvManage) {
 	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 	listNode* jobNode;
 	while ((jobNode = plg_listNext(jobIter)) != NULL) {
-		if (plg_jobStartRouting(listNodeValue(jobNode)) != 0)
+		if (plg_JobStartRouting(listNodeValue(jobNode)) != 0)
 			elog(log_error, "can't create thread");
 	}
 	plg_listReleaseIterator(jobIter);
 
 	//manage
-	if (plg_jobStartRouting(pManage->pJobHandle) != 0)
+	if (plg_JobStartRouting(pManage->pJobHandle) != 0)
 		elog(log_error, "can't create thread");
 
 	pManage->runStatus = 1;
@@ -867,7 +873,7 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 	return r;
 }
 
-int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket) {
+int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order) {
 
 	int r = 0;
 	PManage pManage = pvManage;
@@ -875,6 +881,7 @@ int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket) {
 	dictEntry* entryPrcess = plg_dictFind(pManage->order_process, pOrderPacket->order);
 	if (entryPrcess) {
 		void* equeue = plg_MngRandJobEqueue(pvManage);
+		*order = dictGetKey(entryPrcess);
 		plg_eqPush(equeue, pOrderPacket);
 		r = 1;
 	} else {
@@ -1021,6 +1028,16 @@ static void CallBackDestroyFile(void* value) {
 	}
 }
 
+void plg_MngSetStat(void* pvManage, short stat) {
+	PManage pManage = pvManage;
+	pManage->isOpenStat = stat;
+}
+
+void plg_MngSetStatCheckTime(void* pvManage, short checkTime) {
+	PManage pManage = pvManage;
+	pManage->checkTime = checkTime;
+}
+
 /*
 Create a handle to manage multiple files
 Multithreading is not safe and is read-only during multithreading startup.
@@ -1048,7 +1065,9 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	listSetFreeMethod(pManage->listProcess, listProcessFree);
 
 	pManage->dictTableName = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
-
+	
+	pManage->isOpenStat = 0;
+	pManage->checkTime = 5000;
 	pManage->order_tableName = plg_DictSetCreate(plg_DefaultSdsDictPtr(), DICT_MIDDLE, plg_DefaultSdsDictPtr(), DICT_MIDDLE);
 	pManage->tableName_diskHandle = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pManage->order_process = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);

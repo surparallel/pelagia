@@ -73,4 +73,7 @@ void plg_CacheSetInterval(void* pvCacheHandle, unsigned int interval);
 void plg_CacheSetPercent(void* pvCacheHandle, unsigned int percent);
 
 unsigned int plg_CacheTableMembersWithJson(void* pvCacheHandle, char* sdsTable, void* jsonRoot, short recent);
+void plg_CachePageCountPrint(void* pvCacheHandle, char** catSdsStr);
+void plg_CacheSetStat(void* pvCacheHandle, short stat);
+void plg_CachePageAllCount(void* pvCacheHandle, unsigned long long* cacheCount, unsigned long long* freeCacheCount);
 #endif

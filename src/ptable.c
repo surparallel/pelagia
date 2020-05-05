@@ -62,9 +62,13 @@ typedef struct _SkipListPoint
 
 typedef SkipListPoint(ARRAY_SKIPLISTPOINT)[SKIPLIST_MAXLEVEL];
 
+void* plg_TableOperateHandle(void* pvTableHandle) {
+	PTableHandle pTableHandle = pvTableHandle;
+	return pTableHandle->pageOperateHandle;
+}
+
 void* plg_TableCreateHandle(void* pTableInFile, void* pageOperateHandle, unsigned int pageSize,
 	sds	nameaTable, PTableHandleCallBack pTableHandleCallBack) {
-	assert(pTableInFile);
 	PTableHandle pTableHandle = malloc(sizeof(TableHandle));
 	pTableHandle->pageOperateHandle = pageOperateHandle;
 	pTableHandle->pageSize = pageSize;
@@ -133,7 +137,7 @@ void* plg_TableGetIteratorWithKey(void* pvTableHandle, void* vKey, short keyLen)
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 
 	if (vKey != 0) {
@@ -160,15 +164,12 @@ void* plg_TablePrevIterator(void* pvTableIterator) {
 	}
 
 	void *nextPage = 0;
-	if (pTableIterator->pTableHandle->pTableHandleCallBack->findPage(pTableIterator->pTableHandle->pageOperateHandle, pTableIterator->elementPage, &nextPage) == 0){
-		assert(0);
+	if (pTableIterator->pTableHandle->pTableHandleCallBack->findPage(pTableIterator->pTableHandle, pTableIterator->elementPage, &nextPage) == 0){
 		return 0;
 	}
 		
 	//get PDiskTableKey
 	PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(nextPage, pTableIterator->elementOffset);
-
-	assert(pDiskTableElement->keyOffset);
 
 	PDiskTableKey ptrDiskTableKey;
 	ptrDiskTableKey = (PDiskTableKey)POINTER(nextPage, pDiskTableElement->keyOffset);
@@ -193,15 +194,12 @@ void* plg_TableNextIterator(void* pvTableIterator) {
 	}
 
 	void *nextPage = 0;
-	if (pTableIterator->pTableHandle->pTableHandleCallBack->findPage(pTableIterator->pTableHandle->pageOperateHandle, pTableIterator->elementPage, &nextPage) == 0){
-		assert(0);
+	if (pTableIterator->pTableHandle->pTableHandleCallBack->findPage(pTableIterator->pTableHandle,  pTableIterator->elementPage, &nextPage) == 0){
 		return 0;
 	}
 
 	//get PDiskTableKey
 	PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(nextPage, pTableIterator->elementOffset);
-
-	assert(pDiskTableElement->keyOffset);
 	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(nextPage, pDiskTableElement->keyOffset);
 	
 	//next loop
@@ -248,12 +246,20 @@ int plg_TableHandleCmpFun(void* left, void* right) {
 }
 
 int plg_TableCheckSpace(void* page) {
-	NOTUSED(page);
 	//PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
-	//unsigned short r = plg_crc16((unsigned char*)page + pDiskTablePage->spaceAddr, pDiskTablePage->spaceLength);
-	//assert(!r);
-	//return !r;
-	return 1;
+	unsigned short r = 0;// plg_crc16((unsigned char*)page + pDiskTablePage->spaceAddr, pDiskTablePage->spaceLength);
+	plg_assert(!r);
+	return !r;
+}
+
+int plg_TableCheckLength(void* page, unsigned int pageSize) {
+	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
+	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
+
+	unsigned int pagesize = pDiskTablePage->delSize + pDiskTablePage->spaceLength + pDiskTablePage->usingLength + sizeof(DiskTablePage) + sizeof(DiskPageHead) + (pDiskTablePage->tableSize - pDiskTablePage->tableLength) * sizeof(DiskTableElement);
+	plg_assert(pagesize == FULLSIZE(pageSize));
+
+	return pagesize == FULLSIZE(pageSize);
 }
 
 void plg_TableArrangementPage(unsigned int pageSize, void* page){
@@ -261,41 +267,46 @@ void plg_TableArrangementPage(unsigned int pageSize, void* page){
 	elog(log_fun, "plg_TableArrangementPage");
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
-	//reset
-	pDiskTablePage->delCount = 0;
+	plg_assert(plg_TableCheckLength(page, pageSize));
+	plg_assert(plg_TableCheckSpace(page));
+
 	unsigned short** pKeyOffset = calloc(sizeof(unsigned short*), pDiskTablePage->tableLength);
 
+	int count = 0;
 	for (unsigned short l = 0; l < pDiskTablePage->tableSize; l++) {
 		PDiskTableElement pDiskTableElement = &pDiskTablePage->element[l];
-		if (pDiskTableElement->currentLevel == 0 && pDiskTableElement->keyOffset != 0) {
-			*pKeyOffset = &pDiskTableElement->keyOffset;
+		if (pDiskTableElement->currentLevel == 0 && pDiskTableElement->keyOffset != 0) {		
+			pKeyOffset[count++] = &pDiskTableElement->keyOffset;
 		}
 	}
 
-	plg_SortArrary(pKeyOffset, sizeof(unsigned short*), pDiskTablePage->tableLength, plg_SortDefaultUshortPtrCmp);
+	if (count) {
+		plg_SortArrary(pKeyOffset, sizeof(unsigned short*), pDiskTablePage->tableLength, plg_SortDefaultUshortPtrCmp);
 
-	unsigned short nextOffest = FULLSIZE(pageSize) - 1;
-	for (int l = 0; l < pDiskTablePage->tableLength; l++) {
-		if (pKeyOffset[l] == 0) {
-			break;
-		}
-		PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, *pKeyOffset[l]);
-		unsigned short allSize = sizeof(DiskTableKey) + pDiskTableKey->keyStrSize + pDiskTableKey->valueSize;
-		unsigned short tail = *pKeyOffset[l] + allSize;
-		if (tail != nextOffest) {
-			unsigned short move = nextOffest - tail;
-			memmove((unsigned char*)pDiskTableKey + move, pDiskTableKey, allSize);
-			nextOffest = *pKeyOffset[l] = OFFSET(page, (unsigned char*)pDiskTableKey + move);
-		} else {
-			nextOffest = *pKeyOffset[l];
-		}
-	};
-	pDiskTablePage->spaceLength += nextOffest - (pDiskTablePage->spaceAddr + pDiskTablePage->spaceLength);
+		unsigned short nextOffest = FULLSIZE(pageSize);
+		for (int l = 0; l < count; l++) {
+			PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, *pKeyOffset[l]);
+			unsigned short allSize = sizeof(DiskTableKey) + pDiskTableKey->keyStrSize + pDiskTableKey->valueSize;
+			unsigned short tail = *pKeyOffset[l] + allSize;
+			if (tail != nextOffest) {
+				unsigned short move = nextOffest - tail;
+				memmove((unsigned char*)pDiskTableKey + move, pDiskTableKey, allSize);
+				nextOffest = *pKeyOffset[l] = OFFSET(page, (unsigned char*)pDiskTableKey + move);
+			} else {
+				nextOffest = *pKeyOffset[l];
+			}
+		};
+
+		pDiskTablePage->spaceLength += nextOffest - (pDiskTablePage->spaceAddr + pDiskTablePage->spaceLength);
+		memset(POINTER(page, pDiskTablePage->spaceAddr), 0, pDiskTablePage->spaceLength);	
+	}
+	pDiskTablePage->delSize = 0;
+
+	plg_assert(plg_TableCheckLength(page, pageSize));
 	free(pKeyOffset);
 }
 
 /*
-为了删除,返回被删除点的前一点.
 find table name in skip list
 */
 int plg_TablePrevFindCmpFun(void* key1, unsigned int key1Len, void* key2, unsigned int Key2Len) {
@@ -342,7 +353,7 @@ unsigned int plg_TableFindWithName(void* pvTableHandle, char* key, short keyLen,
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 	PDiskTableElement tableElement = &pTableInFile->tableHead[SKIPLIST_MAXLEVEL - 1];
 	pTableHandle->hitStamp = plg_GetCurrentSec();
@@ -354,8 +365,7 @@ unsigned int plg_TableFindWithName(void* pvTableHandle, char* key, short keyLen,
 			if (pageAddr == tableElement->nextElementPage) {
 				nextPage = page;
 			} else {
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, tableElement->nextElementPage, &nextPage) == 0){
-					assert(0);
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, tableElement->nextElementPage, &nextPage) == 0){
 					return 0;
 				}
 			}
@@ -363,7 +373,6 @@ unsigned int plg_TableFindWithName(void* pvTableHandle, char* key, short keyLen,
 			//get keyStr
 			PDiskTableElement nextItem;
 			nextItem = (PDiskTableElement)POINTER(nextPage, tableElement->nextElementOffset);
-			assert(nextItem->keyOffset);
 			PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(nextPage, nextItem->keyOffset);
 			
 			if (pFindCmpFun(key, keyLen, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize)) {
@@ -391,8 +400,6 @@ unsigned int plg_TableFindWithName(void* pvTableHandle, char* key, short keyLen,
 			tableElement = &pTableInFile->tableHead[tableElement->currentLevel - 1];
 		} else {
 			PDiskTableElement lowElement = (PDiskTableElement)POINTER(page, tableElement->lowElementOffset);
-			assert(tableElement->keyOffset);
-			assert(lowElement->lowElementOffset != tableElement->lowElementOffset);
 			tableElement = lowElement;
 		}
 		
@@ -414,7 +421,7 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 	unsigned int* nextPageAddr = &pTableInFile->tableUsingPage;
 	void* usingPage;
@@ -428,12 +435,12 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 		if (*nextPageAddr == 0) {
 
 			//Changed up to 3 using pages
-			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle->pageOperateHandle, &usingPage, TABLEUSING) == 0) {
+			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle, &usingPage, TABLEUSING) == 0) {
 				return 0;
 			}
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->addr, usingPage);
 
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->addr, usingPage);
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
 			pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 			pDiskTableUsingPage->usingPageSize = (FULLSIZE(pTableHandle->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTableUsingPage)) / sizeof(DiskTableUsing);
@@ -442,13 +449,13 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 
 			pUsingPageHead->prevPage = prevPage;
 			*nextPageAddr = pUsingPageHead->addr;
+			
 
 		} else {
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, *nextPageAddr, &usingPage) == 0) {
-				assert(0);
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, *nextPageAddr, &usingPage) == 0) {
 				return 0;
 			}
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, *nextPageAddr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, *nextPageAddr, usingPage);
 
 			//find in page
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
@@ -489,13 +496,14 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 				}
 
 				//Return table page if the requirements are met
-				if (pDiskTableUsingPage->element[cur].spaceLength >= requireLegth) {
-
-					int r = pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTableUsingPage->element[cur].pageAddr, page);
-					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
+				if (pDiskTableUsingPage->element[cur].usingSpaceLength >= requireLegth) {
+				
+					int r = pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, page);
+					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
 
 					PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)*page + sizeof(DiskPageHead));
-					assert(pDiskTablePage->spaceLength == pDiskTableUsingPage->element[cur].spaceLength);
+					plg_assert(pDiskTableUsingPage->element[cur].usingSpaceLength == pDiskTablePage->spaceLength);
+					plg_assert(pDiskTablePage->spaceLength >= requireLegth);
 					return r;
 				}
 
@@ -520,18 +528,16 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 			if (pTableHandle->pTableInFile->isSetHead) {
 				pTableInFile = pTableHandle->pTableInFile;
 			} else {
-				pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+				pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 			}
 			tableNextPageAddr = pTableInFile->tablePageHead;
 			pTableHandle->hitStamp = plg_GetCurrentSec();
 			
 			//Create table page up to 2 table pages have been changed
-			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle->pageOperateHandle, page, TABLEPAGE) == 0) {
-				assert(plg_TableCheckSpace(*page));
+			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle, page, TABLEPAGE) == 0) {
 				return 0;
 			} else {
 				PDiskPageHead pDiskPageHead = (PDiskPageHead)*page;
-				*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->addr, *page);
 
 				//init table page
 				pDiskPageHead = (PDiskPageHead)*page;
@@ -543,29 +549,31 @@ static unsigned int table_FindOrNewPage(void* pvTableHandle, unsigned short requ
 
 				if (tableNextPageAddr != 0) {
 					void* nextPage;
-					if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, tableNextPageAddr, &nextPage) == 0) {
-						assert(0);
+					if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, tableNextPageAddr, &nextPage) == 0) {
 						return 0;
 					}
-					nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, tableNextPageAddr, nextPage);
+					nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, tableNextPageAddr, nextPage);
 
 					PDiskPageHead pDiskNextPageHead = (PDiskPageHead)nextPage;
 					pDiskNextPageHead->prevPage = pDiskPageHead->addr;
-					pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, tableNextPageAddr);
+					pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, tableNextPageAddr);
 				}
 
 				pDiskTablePage->usingPageAddr = pUsingPageHead->addr;
-				pDiskTablePage->usingPageOffset = OFFSET(usingPage, &pDiskTableUsingPage->element[pDiskTableUsingPage->usingPageLength]);
+				pDiskTablePage->usingPageOffset = OFFSET(usingPage, &pDiskTableUsingPage->element[emptySlot]);
 				pDiskTablePage->spaceAddr = OFFSET(*page, (unsigned char*)pDiskTablePage + sizeof(DiskTablePage));
 				pDiskTablePage->spaceLength = FULLSIZE(pTableHandle->pageSize) - pDiskTablePage->spaceAddr;
 
 				//write to using page
 				pDiskTableUsingPage->element[emptySlot].pageAddr = pDiskPageHead->addr;
-				pDiskTableUsingPage->element[emptySlot].spaceLength = pDiskTablePage->spaceLength;
+				pDiskTableUsingPage->element[emptySlot].usingSpaceLength = pDiskTablePage->spaceLength;
 				pDiskTableUsingPage->usingPageLength += 1;
-				pDiskTableUsingPage->allSpace += pDiskTableUsingPage->element[emptySlot].spaceLength;
+				pDiskTableUsingPage->allSpace += pDiskTableUsingPage->element[emptySlot].usingSpaceLength;
 
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pUsingPageHead->addr);
+				*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->addr, *page);
+
+				plg_assert(plg_TableCheckLength(*page, pTableHandle->pageSize));
 				return 1;
 			}
 		}
@@ -583,7 +591,7 @@ unsigned short plg_TableGetTableType(void* pvTableHandle) {
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
 
-	pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	return pTableInFile->tableType;
 }
 
@@ -593,7 +601,7 @@ unsigned short plg_TableSetTableType(void* pvTableHandle, unsigned short tableTy
 	PTableInFile pTableInFile;
 	unsigned short oldType = pTableHandle->pTableInFile->tableType;
 
-	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	pTableInFile->tableType = tableType;
 	return oldType;
 }
@@ -604,7 +612,7 @@ unsigned short plg_TableSetTableTypeIfByte(void* pvTableHandle, unsigned short t
 	PTableInFile pTableInFile;
 	unsigned short oldType = pTableHandle->pTableInFile->tableType;
 
-	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	pTableInFile->tableType = tableType;
 	if (oldType == TT_Byte || oldType == tableType) {
 		return tableType;
@@ -627,27 +635,27 @@ static unsigned int table_DelPage(void* pvTableHandle, unsigned int pageAddr) {
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 	//find page
 	void* page;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pageAddr, &page) == 0){
-		assert(0);
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pageAddr, &page) == 0){
 		return 0;
 	}
 		
-	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pageAddr, page);
+	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pageAddr, page);
 
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)page);
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
+	plg_assert(plg_TableCheckLength(page, pTableHandle->pageSize));
+
 	void* usingPage;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0){
-		assert(0);
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0){
 		return 0;
 	}
 		
-	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, usingPage);
+	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->usingPageAddr, usingPage);
 
 	//init point
 	PDiskPageHead pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
@@ -655,41 +663,39 @@ static unsigned int table_DelPage(void* pvTableHandle, unsigned int pageAddr) {
 	PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskTablePage->usingPageOffset);
 
 	//clear in using page
-	pDiskTableUsingPage->allSpace -= pDiskTableUsing->spaceLength;
+	pDiskTableUsingPage->allSpace -= pDiskTableUsing->usingSpaceLength;
 	pDiskTableUsing->pageAddr = 0;
-	pDiskTableUsing->spaceLength = 0;
+	pDiskTableUsing->usingSpaceLength = 0;
 	pDiskTableUsingPage->usingPageLength -= 1;
 
 	//del using page
 	if (pDiskTableUsingPage->usingPageLength == 0) {
 		if (pUsingPageHead->prevPage != 0) {
 			void* prevUsingPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->prevPage, &prevUsingPage) == 0){
-				assert(0);
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->prevPage, &prevUsingPage) == 0){
 				return 0;
 			}
 				
-			prevUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->prevPage, prevUsingPage);
+			prevUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->prevPage, prevUsingPage);
 
 			PDiskPageHead pPrevUsingPageHead = (PDiskPageHead)((unsigned char*)prevUsingPage);		
 			pPrevUsingPageHead->nextPage = pUsingPageHead->nextPage;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pPrevUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pPrevUsingPageHead->addr);
 
 			if (pUsingPageHead->nextPage != 0) {
 				void* nextUsingPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0){
-					assert(0);
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0){
 					return 0;
 				}
 					
-				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, nextUsingPage);
+				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->nextPage, nextUsingPage);
 
 				PDiskPageHead pNextUsingPageHead = (PDiskPageHead)(nextUsingPage);
 				pNextUsingPageHead->prevPage = pPrevUsingPageHead->addr;
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextUsingPageHead->addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextUsingPageHead->addr);
 			}
 			
-			pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pUsingPageHead->addr);
 
 		} else {
 
@@ -697,19 +703,18 @@ static unsigned int table_DelPage(void* pvTableHandle, unsigned int pageAddr) {
 
 			if (pUsingPageHead->nextPage != 0) {
 				void* nextUsingPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0){
-					assert(0);
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0){
 					return 0;
 				}
 					
-				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, nextUsingPage);
+				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->nextPage, nextUsingPage);
 
 				PDiskPageHead pNextUsingPageHead = (PDiskPageHead)(nextUsingPage);
 				pNextUsingPageHead->prevPage = 0;
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextUsingPageHead->addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextUsingPageHead->addr);
 			}
 			
-			pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pUsingPageHead->addr);
 		}
 	}
 
@@ -717,30 +722,29 @@ static unsigned int table_DelPage(void* pvTableHandle, unsigned int pageAddr) {
 	if (pDiskPageHead->prevPage != 0) {
 
 		void* prevPage;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->prevPage, &prevPage) == 0){
-			assert(0);
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->prevPage, &prevPage) == 0){
 			return 0;
 		}
 			
-		prevPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->prevPage, prevPage);
+		prevPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->prevPage, prevPage);
 
 		PDiskPageHead pPrevPageHead = (PDiskPageHead)prevPage;
 		pPrevPageHead->nextPage = pDiskPageHead->nextPage;
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pPrevPageHead->addr);
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pPrevPageHead->addr);
 
 		//seting next page
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, nextPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->nextPage, nextPage);
 
 			PDiskPageHead pNextPageHead = (PDiskPageHead)nextPage;
 			pNextPageHead->prevPage = pPrevPageHead->addr;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextPageHead->addr);
 		}
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pageAddr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pageAddr);
 	} else {
 
 		pTableInFile->tablePageHead = pDiskPageHead->nextPage;
@@ -748,16 +752,16 @@ static unsigned int table_DelPage(void* pvTableHandle, unsigned int pageAddr) {
 		//seting next page
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, nextPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->nextPage, nextPage);
 
 			PDiskPageHead pNextPageHead = (PDiskPageHead)((unsigned char*)nextPage);
 			pNextPageHead->prevPage = 0;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextPageHead->addr);
 		}
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pageAddr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pageAddr);
 	}
 	return 0;
 }
@@ -772,13 +776,11 @@ static void table_CheckElementNext(void* pvTableHandle, PDiskTableElement pZeroE
 			return;
 		}
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPage, &page) == 0) {
-			assert(0);
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPage, &page) == 0) {
 			return;
 		}
 
 		PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(page, nextOffset);
-		assert(pDiskTableElement->keyOffset);
 		nextPage = pDiskTableElement->nextElementPage;
 		nextOffset = pDiskTableElement->nextElementOffset;
 	}
@@ -796,13 +798,11 @@ static void table_CheckElementPrev(void* pvTableHandle, PDiskTableElement pZeroE
 			return;
 		}
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, prevPage, &page) == 0) {
-			assert(0);
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, prevPage, &page) == 0) {
 			return;
 		}
 
 		PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(page, prevOffset);
-		assert(pDiskTableElement->keyOffset);
 		pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 		prevPage = pDiskTableKey->prevElementPage;
 		prevOffset = pDiskTableKey->prevElementOffset;
@@ -812,13 +812,13 @@ static void table_CheckElementPrev(void* pvTableHandle, PDiskTableElement pZeroE
 static int table_CheckElement(void* pvTableHandle, void* page, PDiskTableElement pZeroElement) {
 
 	int r = 1;
+	return r;
 	if (!page) {
 		return r;
 	}
 
 	PDiskTableElement pHighElement = pZeroElement;
 	while (1) {
-		assert(pHighElement->keyOffset);
 		if (!pHighElement->keyOffset) {
 			r = 0;
 		}
@@ -833,7 +833,6 @@ static int table_CheckElement(void* pvTableHandle, void* page, PDiskTableElement
 	}
 
 	while (1) {
-		assert(pHighElement->keyOffset);
 		if (!pHighElement->keyOffset) {
 			r = 0;
 		}
@@ -874,8 +873,11 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 	//write to table page	
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)tablePage);
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)tablePage + sizeof(DiskPageHead));
-	assert(pDiskTablePage->spaceLength >= requireLength);
 
+	plg_assert(pDiskTablePage->spaceLength >= requireLength);
+	plg_assert(plg_TableCheckLength(tablePage, pTableHandle->pageSize));
+	plg_assert(plg_TableCheckSpace(tablePage));
+	
 	//write pDiskTableKey
 	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(tablePage, pDiskTablePage->spaceAddr + pDiskTablePage->spaceLength - kvLength);
 	pDiskTableKey->prevElementPage = (*skipListPoint)[0].skipListAddr;
@@ -914,8 +916,8 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 			if ((*skipListPoint)[curLevel].skipListAddr) {
 
 				//Note! Pagecopyonwrite returns different results under different files
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, (*skipListPoint)[curLevel].skipListAddr);
-				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, (*skipListPoint)[curLevel].skipListAddr, (*skipListPoint)[curLevel].page);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, (*skipListPoint)[curLevel].skipListAddr);
+				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, (*skipListPoint)[curLevel].skipListAddr, (*skipListPoint)[curLevel].page);
 				if (page != (*skipListPoint)[curLevel].page) {
 					(*skipListPoint)[curLevel].page = page;
 					(*skipListPoint)[curLevel].pDiskTableElement = (PDiskTableElement)POINTER(page, (*skipListPoint)[curLevel].skipListOffset);
@@ -925,13 +927,13 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 				if (pTableHandle->pTableInFile->isSetHead) {
 					pTableInFile = pTableHandle->pTableInFile;
 				} else {
-					pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+					pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 				}
 				(*skipListPoint)[curLevel].pDiskTableElement = &pTableInFile->tableHead[curLevel];
 				pTableHandle->hitStamp = plg_GetCurrentSec();
 
 				if (!pTableHandle->pTableInFile->isSetHead) {
-					pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle->pageOperateHandle, pTableHandle->nameaTable);
+					pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle, pTableHandle->nameaTable);
 				}
 			}
 			
@@ -943,19 +945,16 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 
 			//set nextItem
 			if (curLevel == 0 && pDiskTablePage->element[l].nextElementPage) {
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskTablePage->element[l].nextElementPage);
 				void* nextElementPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage, &nextElementPage) == 0)
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->element[l].nextElementPage, &nextElementPage) == 0)
 					return 0;
-				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage, nextElementPage);
+				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->element[l].nextElementPage, nextElementPage);
 
 				PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(page, pDiskTablePage->element[l].nextElementOffset);
 				PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 				pDiskTableKey->prevElementPage = pDiskPageHead->addr;
 				pDiskTableKey->prevElementOffset = OFFSET(tablePage, &pDiskTablePage->element[l]);
-
-				assert(pPrevDiskTablePageElement->nextElementPage == pDiskTableKey->prevElementPage);
-				assert(pPrevDiskTablePageElement->nextElementOffset == pDiskTableKey->prevElementOffset);
 			}
 
 			////Set lowElement and highElement
@@ -975,18 +974,21 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 
 				//To update TableUsing
 				void* usingPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0)
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0) {
+					plg_assert(0);
 					return 0;
-				usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, usingPage);
+				}
+				usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->usingPageAddr, usingPage);
 				PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 				PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskTablePage->usingPageOffset);
 
-				pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->spaceLength;
-				pDiskTableUsing->spaceLength = pDiskTablePage->spaceLength;
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr);
+				pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->usingSpaceLength;
+				pDiskTableUsing->usingSpaceLength = pDiskTablePage->spaceLength;
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskTablePage->usingPageAddr);
 
-				assert(table_CheckElement(pvTableHandle, tablePage, &pDiskTablePage->element[l]));
-				assert(plg_TableCheckSpace(tablePage));
+				plg_assert(table_CheckElement(pvTableHandle, tablePage, &pDiskTablePage->element[l]));
+				plg_assert(plg_TableCheckSpace(tablePage));
+				plg_assert(plg_TableCheckLength(tablePage, pTableHandle->pageSize));
 				return 1;
 			}
 
@@ -1000,7 +1002,9 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 	//loop remains curLevel
 	unsigned short end = pDiskTablePage->tableSize + curLevel + 1;
 	for (unsigned short l = pDiskTablePage->tableSize; l < end; l++) {
-		assert(!pDiskTablePage->element[l].keyOffset);
+
+		plg_assert((int)pDiskTablePage->spaceLength >= sizeof(DiskTableElement));
+		plg_assert((int)pDiskTablePage->usingLength + sizeof(DiskTableElement) <= 65536);
 
 		pDiskTablePage->tableSize += 1;
 		pDiskTablePage->tableLength += 1;
@@ -1010,22 +1014,22 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 
 		//If you fail to find the link point in front of you, you will fail
 		if ((*skipListPoint)[curLevel].skipListAddr) {
-			void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, (*skipListPoint)[curLevel].skipListAddr, (*skipListPoint)[curLevel].page);
+			void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, (*skipListPoint)[curLevel].skipListAddr, (*skipListPoint)[curLevel].page);
 			if (page != (*skipListPoint)[curLevel].page) {
 				(*skipListPoint)[curLevel].pDiskTableElement = (PDiskTableElement)POINTER(page, (*skipListPoint)[curLevel].skipListOffset);
 			}
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, (*skipListPoint)[curLevel].skipListAddr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, (*skipListPoint)[curLevel].skipListAddr);
 		} else {
 			PTableInFile pTableInFile;
 			if (pTableHandle->pTableInFile->isSetHead) {
 				pTableInFile = pTableHandle->pTableInFile;
 			} else {
-				pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+				pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 			}
 			(*skipListPoint)[curLevel].pDiskTableElement = &pTableInFile->tableHead[curLevel];
 			pTableHandle->hitStamp = plg_GetCurrentSec();
 			if (!pTableHandle->pTableInFile->isSetHead) {
-				pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle->pageOperateHandle, pTableHandle->nameaTable);
+				pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle, pTableHandle->nameaTable);
 			}
 		}
 
@@ -1037,22 +1041,18 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 
 		//set nextItem
 		if (curLevel == 0 && pDiskTablePage->element[l].nextElementPage) {
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskTablePage->element[l].nextElementPage);
 			void* nextElementPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage, &nextElementPage) == 0) {
-				assert(0);
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->element[l].nextElementPage, &nextElementPage) == 0) {
 				return 0;
 			}
 				
-			void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->element[l].nextElementPage, nextElementPage);
+			void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->element[l].nextElementPage, nextElementPage);
 
 			PDiskTableElement pDiskTableElement = (PDiskTableElement)POINTER(page, pDiskTablePage->element[l].nextElementOffset);
 			PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 			pDiskTableKey->prevElementPage = pDiskPageHead->addr;
 			pDiskTableKey->prevElementOffset = OFFSET(tablePage, &pDiskTablePage->element[l]);
-
-			assert(pPrevDiskTablePageElement->nextElementPage == pDiskTableKey->prevElementPage);
-			assert(pPrevDiskTablePageElement->nextElementOffset == pDiskTableKey->prevElementOffset);
 		}
 
 		//Set lowElement and highElement
@@ -1069,27 +1069,31 @@ static unsigned int table_InsideNew(void* pvTableHandle, char* key, unsigned sho
 		prevItem = l;
 
 		if (curLevel == 0) {
-			assert(table_CheckElement(pvTableHandle, tablePage, &pDiskTablePage->element[l]));
-			assert(plg_TableCheckSpace(tablePage));
+			plg_assert(table_CheckElement(pvTableHandle, tablePage, &pDiskTablePage->element[l]));
+			plg_assert(plg_TableCheckSpace(tablePage));
+			plg_assert(plg_TableCheckLength(tablePage, pTableHandle->pageSize));
 			break;
 		}
-
 		curLevel -= 1;
 	}
 
 	//To update TableUsing
 	void* usingPage;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0) {
+		plg_assert(0);
 		return 0;
-	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, usingPage);
+	}
+		
+	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->usingPageAddr, usingPage);
 	PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 	PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskTablePage->usingPageOffset);
 
-	pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->spaceLength;
-	pDiskTableUsing->spaceLength = pDiskTablePage->spaceLength;
-	pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr);
+	pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->usingSpaceLength;
+	pDiskTableUsing->usingSpaceLength = pDiskTablePage->spaceLength;
+	pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskTablePage->usingPageAddr);
 
-	assert(plg_TableCheckSpace(tablePage));
+	plg_assert(plg_TableCheckLength(tablePage, pTableHandle->pageSize));
+	plg_assert(plg_TableCheckSpace(tablePage));
 	return 1;
 }
 
@@ -1116,7 +1120,7 @@ static void table_CheckIterator(void* pvTableHandle, PTableIterator pDiskIterato
 		return;
 	}
 	void *nextPage = 0;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskIterator->elementPage, &nextPage) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskIterator->elementPage, &nextPage) == 0)
 		return;
 
 	//get PDiskTableKey
@@ -1213,11 +1217,11 @@ static unsigned int table_CreateValuePage(void* pvTableHandle, PTableInFile pTab
 	pTableHandle->hitStamp = plg_GetCurrentSec();
 	
 	//create table page Changed up to 3 value pages
-	if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle->pageOperateHandle, page, VALUEPAGE) == 0) {
+	if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle, page, VALUEPAGE) == 0) {
 		return 0;
 	} else {
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)*page;
-		*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->addr, *page);
+		*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->addr, *page);
 
 		elog(log_details, "table_CreateValuePage.createPage:%i", pDiskPageHead->addr);
 		//init table page
@@ -1230,28 +1234,28 @@ static unsigned int table_CreateValuePage(void* pvTableHandle, PTableInFile pTab
 
 		if (tableNextPageAddr != 0) {
 			void* nextPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, tableNextPageAddr, &nextPage) == 0) {
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, tableNextPageAddr, &nextPage) == 0) {
 				return 0;
 			}
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, tableNextPageAddr, nextPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, tableNextPageAddr, nextPage);
 
 			PDiskPageHead pDiskNextPageHead = (PDiskPageHead)nextPage;
 			pDiskNextPageHead->prevPage = pDiskPageHead->addr;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, tableNextPageAddr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, tableNextPageAddr);
 		}
 
 		pDiskValuePage->valueUsingPageAddr = pUsingPageHead->addr;
-		pDiskValuePage->valueUsingPageOffset = OFFSET(usingPage, &pDiskTableUsingPage->element[pDiskTableUsingPage->usingPageLength]);
+		pDiskValuePage->valueUsingPageOffset = OFFSET(usingPage, &pDiskTableUsingPage->element[emptySlot]);
 		pDiskValuePage->valueSpaceAddr = OFFSET(*page, (unsigned char*)pDiskValuePage + sizeof(DiskTablePage));
 		pDiskValuePage->valueSpaceLength = FULLSIZE(pTableHandle->pageSize) - pDiskValuePage->valueSpaceAddr;
 
 		//write to using page
 		pDiskTableUsingPage->element[emptySlot].pageAddr = pDiskPageHead->addr;
-		pDiskTableUsingPage->element[emptySlot].spaceLength = pDiskValuePage->valueSpaceLength;
+		pDiskTableUsingPage->element[emptySlot].usingSpaceLength = pDiskValuePage->valueSpaceLength;
 		pDiskTableUsingPage->usingPageLength += 1;
-		pDiskTableUsingPage->allSpace += pDiskTableUsingPage->element[emptySlot].spaceLength;
+		pDiskTableUsingPage->allSpace += pDiskTableUsingPage->element[emptySlot].usingSpaceLength;
 
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pUsingPageHead->addr);
 		return 1;
 	}
 }
@@ -1264,7 +1268,7 @@ static unsigned int table_ValueFindOrNewPage(void* pvTableHandle, unsigned short
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 	unsigned int* nextPageAddr = &pTableInFile->valueUsingPage;
 	void* usingPage;
@@ -1278,11 +1282,11 @@ static unsigned int table_ValueFindOrNewPage(void* pvTableHandle, unsigned short
 		if (*nextPageAddr == 0) {
 
 			//Changed up to 3 using pages
-			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle->pageOperateHandle, &usingPage, VALUEUSING) == 0) {
+			if (pTableHandle->pTableHandleCallBack->createPage(pTableHandle, &usingPage, VALUEUSING) == 0) {
 				return 0;
 			}
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->addr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->addr, usingPage);
 
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
 			pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
@@ -1293,10 +1297,10 @@ static unsigned int table_ValueFindOrNewPage(void* pvTableHandle, unsigned short
 			*nextPageAddr = pUsingPageHead->addr;
 
 		} else {
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, *nextPageAddr, &usingPage) == 0) {
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, *nextPageAddr, &usingPage) == 0) {
 				return 0;
 			}
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, *nextPageAddr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, *nextPageAddr, usingPage);
 
 			//find in page
 			pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
@@ -1337,8 +1341,14 @@ static unsigned int table_ValueFindOrNewPage(void* pvTableHandle, unsigned short
 				}
 
 				//Return table page if the requirements are met
-				if (requireLegth && pDiskTableUsingPage->element[cur].spaceLength >= requireLegth) {
-					return pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTableUsingPage->element[cur].pageAddr, page);
+				if (requireLegth && pDiskTableUsingPage->element[cur].usingSpaceLength >= requireLegth) {
+
+					int r = pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, page);
+					*page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTableUsingPage->element[cur].pageAddr, *page);
+
+					PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)*page + sizeof(DiskPageHead));
+					plg_assert(pDiskTablePage->spaceLength >= requireLegth);
+					return r;
 				}
 
 				count += 1;
@@ -1419,16 +1429,16 @@ unsigned int plg_TableNewBigValue(void* pvTableHandle, char* value, unsigned int
 
 			//alter using page
 			void* usingPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
 				return 0;
 
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
 			PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskValuePage->valueUsingPageOffset);
 			PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 			
-			pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->spaceLength - (int)pDiskValuePage->valueSpaceLength;	
-			pDiskTableUsing->spaceLength = pDiskValuePage->valueSpaceLength;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr);
+			pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->usingSpaceLength - (int)pDiskValuePage->valueSpaceLength;
+			pDiskTableUsing->usingSpaceLength = pDiskValuePage->valueSpaceLength;
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskValuePage->valueUsingPageAddr);
 		} else {
 			break;
 		}
@@ -1489,16 +1499,16 @@ unsigned int plg_TableNewBigValue(void* pvTableHandle, char* value, unsigned int
 
 		//alter using page
 		void* usingPage;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
 			return 0;
 
-		usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
+		usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
 		PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskValuePage->valueUsingPageOffset);
 		PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 		
-		pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->spaceLength - (int)pDiskValuePage->valueSpaceLength;
-		pDiskTableUsing->spaceLength = pDiskValuePage->valueSpaceLength;
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr);
+		pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->usingSpaceLength - (int)pDiskValuePage->valueSpaceLength;
+		pDiskTableUsing->usingSpaceLength = pDiskValuePage->valueSpaceLength;
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskValuePage->valueUsingPageAddr);
 	}
 
 	return 1;
@@ -1512,21 +1522,21 @@ static unsigned int table_DelValuePage(void* pvTableHandle, unsigned int pageAdd
 	if (pTableHandle->pTableInFile->isSetHead) {
 		pTableInFile = pTableHandle->pTableInFile;
 	} else {
-		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->findTableInFile(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	}
 	//find page
 	void* page;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pageAddr, &page) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pageAddr, &page) == 0)
 		return 0;
-	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pageAddr, page);
+	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pageAddr, page);
 
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)page);
 	PDiskValuePage pDiskValuePage = (PDiskValuePage)((unsigned char*)page + sizeof(DiskPageHead));
 
 	void* usingPage;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
 		return 0;
-	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
+	usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
 
 	//init point
 	PDiskPageHead pUsingPageHead = (PDiskPageHead)((unsigned char*)usingPage);
@@ -1534,35 +1544,35 @@ static unsigned int table_DelValuePage(void* pvTableHandle, unsigned int pageAdd
 	PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskValuePage->valueUsingPageOffset);
 
 	//clear in using page
-	pDiskTableUsingPage->allSpace -= pDiskTableUsing->spaceLength;
+	pDiskTableUsingPage->allSpace -= pDiskTableUsing->usingSpaceLength;
 	pDiskTableUsing->pageAddr = 0;
-	pDiskTableUsing->spaceLength = 0;
+	pDiskTableUsing->usingSpaceLength = 0;
 	pDiskTableUsingPage->usingPageLength -= 1;
 
 	//del using page
 	if (pDiskTableUsingPage->usingPageLength == 0) {
 		if (pUsingPageHead->prevPage != 0) {
 			void* prevUsingPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->prevPage, &prevUsingPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->prevPage, &prevUsingPage) == 0)
 				return 0;
-			prevUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->prevPage, prevUsingPage);
+			prevUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->prevPage, prevUsingPage);
 
 			PDiskPageHead pPrevUsingPageHead = (PDiskPageHead)((unsigned char*)prevUsingPage);
 			pPrevUsingPageHead->nextPage = pUsingPageHead->nextPage;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pPrevUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pPrevUsingPageHead->addr);
 
 			if (pUsingPageHead->nextPage != 0) {
 				void* nextUsingPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0)
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0)
 					return 0;
-				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, nextUsingPage);
+				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->nextPage, nextUsingPage);
 
 				PDiskPageHead pNextUsingPageHead = (PDiskPageHead)(nextUsingPage);
 				pNextUsingPageHead->prevPage = pPrevUsingPageHead->addr;
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextUsingPageHead->addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextUsingPageHead->addr);
 			}
 
-			pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pUsingPageHead->addr);
 
 		} else {
 
@@ -1570,16 +1580,16 @@ static unsigned int table_DelValuePage(void* pvTableHandle, unsigned int pageAdd
 
 			if (pUsingPageHead->nextPage != 0) {
 				void* nextUsingPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0)
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pUsingPageHead->nextPage, &nextUsingPage) == 0)
 					return 0;
-				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pUsingPageHead->nextPage, nextUsingPage);
+				nextUsingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pUsingPageHead->nextPage, nextUsingPage);
 
 				PDiskPageHead pNextUsingPageHead = (PDiskPageHead)(nextUsingPage);
 				pNextUsingPageHead->prevPage = 0;
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextUsingPageHead->addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextUsingPageHead->addr);
 			}
 
-			pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pUsingPageHead->addr);
+			pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pUsingPageHead->addr);
 		}
 	}
 
@@ -1587,27 +1597,27 @@ static unsigned int table_DelValuePage(void* pvTableHandle, unsigned int pageAdd
 	if (pDiskPageHead->prevPage != 0) {
 
 		void* prevPage;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->prevPage, &prevPage) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->prevPage, &prevPage) == 0)
 			return 0;
-		prevPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->prevPage, prevPage);
+		prevPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->prevPage, prevPage);
 
 		PDiskPageHead pPrevPageHead = (PDiskPageHead)prevPage;
 		pPrevPageHead->nextPage = pDiskPageHead->nextPage;
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pPrevPageHead->addr);
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pPrevPageHead->addr);
 
 		//seting next page
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, nextPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->nextPage, nextPage);
 
 			PDiskPageHead pNextPageHead = (PDiskPageHead)nextPage;
 			pNextPageHead->prevPage = pPrevPageHead->addr;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextPageHead->addr);
 		}
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pageAddr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pageAddr);
 	} else {
 
 		pTableInFile->valuePage = pDiskPageHead->nextPage;
@@ -1615,16 +1625,16 @@ static unsigned int table_DelValuePage(void* pvTableHandle, unsigned int pageAdd
 		//seting next page
 		if (pDiskPageHead->nextPage != 0) {
 			void* nextPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, &nextPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskPageHead->nextPage, &nextPage) == 0)
 				return 0;
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskPageHead->nextPage, nextPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskPageHead->nextPage, nextPage);
 
 			PDiskPageHead pNextPageHead = (PDiskPageHead)((unsigned char*)nextPage);
 			pNextPageHead->prevPage = 0;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pNextPageHead->addr);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pNextPageHead->addr);
 		}
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pageAddr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pageAddr);
 	}
 	return 0;
 }
@@ -1646,9 +1656,9 @@ static int table_DelBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBigVa
 		}
 
 		void* valuePage;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPage, &valuePage) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPage, &valuePage) == 0)
 			return 0;
-		valuePage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextPage, valuePage);
+		valuePage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextPage, valuePage);
 
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)valuePage);
 		PDiskValuePage pDiskValuePage = (PDiskValuePage)((unsigned char*)valuePage + sizeof(DiskPageHead));
@@ -1665,7 +1675,6 @@ static int table_DelBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBigVa
 			pDiskValuePage->valueSpaceLength += valuePtr->valueSize;
 		}
 
-		assert(pDiskValuePage->valueLength);
 		pDiskValuePage->valueDelCount += 1;
 		pDiskValuePage->valueLength -= 1;
 		nextPage = pDiskValueElement->nextElementPage;
@@ -1674,16 +1683,16 @@ static int table_DelBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBigVa
 
 		if (pDiskValuePage->valueLength != 0) {
 			void* usingPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskValuePage->valueUsingPageAddr, &usingPage) == 0)
 				return 0;
 
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskValuePage->valueUsingPageAddr, usingPage);
 			PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskValuePage->valueUsingPageOffset);
 			PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 
-			pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->spaceLength - (int)pDiskValuePage->valueSpaceLength;
-			pDiskTableUsing->spaceLength = pDiskValuePage->valueSpaceLength;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskValuePage->valueUsingPageAddr);
+			pDiskTableUsingPage->allSpace += (int)pDiskTableUsing->usingSpaceLength - (int)pDiskValuePage->valueSpaceLength;
+			pDiskTableUsing->usingSpaceLength = pDiskValuePage->valueSpaceLength;
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskValuePage->valueUsingPageAddr);
 
 		} else {
 			table_DelValuePage(pTableHandle, pDiskPageHead->addr);
@@ -1711,13 +1720,12 @@ static void* table_GetBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBig
 		}
 
 		void* valuePage;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPage, &valuePage) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPage, &valuePage) == 0)
 			return 0;
 
 		PDiskValueElement pDiskValueElement = (PDiskValueElement)POINTER(valuePage, nextOffset);
 		PDiskBigValue valuePtr = (PDiskBigValue)POINTER(valuePage, pDiskValueElement->valueOffset);
 
-		assert(addSize + valuePtr->valueSize <= pDiskKeyBigValue->allSize);
 		memcpy(retPtr + addSize, valuePtr->valueBuff, valuePtr->valueSize);
 		addSize += valuePtr->valueSize;
 
@@ -1741,18 +1749,18 @@ void plg_TableArrangmentBigValue(unsigned int pageSize, void* page) {
 	//reset
 	pDiskValuePage->valueDelCount = 0;
 	unsigned short** pKeyOffset = calloc(sizeof(unsigned short*), pDiskValuePage->valueLength);
-
+	int count = 0;
 	for (unsigned short l = 0; l < pDiskValuePage->valueSize; l++) {
 		PDiskValueElement pDiskTableElement = &pDiskValuePage->valueElement[l];
 		if (pDiskTableElement->valueOffset != 0) {
-			*pKeyOffset = &pDiskTableElement->valueOffset;
+			pKeyOffset[count++] = &pDiskTableElement->valueOffset;
 		}
 	}
 
 	plg_SortArrary(pKeyOffset, sizeof(unsigned short*), pDiskValuePage->valueLength, plg_SortDefaultUshortPtrCmp);
 
 	unsigned short nextOffest = FULLSIZE(pageSize) - 1;
-	for (int l = 0; l < pDiskValuePage->valueLength; l++) {
+	for (int l = 0; l < count; l++) {
 		if (pKeyOffset[l] == 0) {
 			break;
 		}
@@ -1790,17 +1798,16 @@ static unsigned int table_InsideAlter(void* pvTableHandle, char* key, short keyL
 	if ((*pSkipListPoint)[0].skipListAddr == nextElementPage) {
 		page = (*pSkipListPoint)[0].page;
 	} else {
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextElementPage, &page) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextElementPage, &page) == 0)
 			return 0;
 	}
-	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextElementPage, page);
+	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextElementPage, page);
 
 	//get PDiskTableKey
 	pDiskTableElement = (PDiskTableElement)POINTER(page, nextElementOffset);
 	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 	void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
 
-	assert(pDiskTableKey->valueType);
 	if (pDiskTableKey->valueType != valueType) {
 		return 0;
 	}
@@ -1817,7 +1824,7 @@ static unsigned int table_InsideAlter(void* pvTableHandle, char* key, short keyL
 
 	if (pDiskTableKey->valueType == VALUE_NORMAL)  {
 
-		if (pDiskTableKey->valueSize < length) {
+		if (pDiskTableKey->valueSize != length) {
 			return 0;
 		}
 
@@ -1826,10 +1833,7 @@ static unsigned int table_InsideAlter(void* pvTableHandle, char* key, short keyL
 
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)((unsigned char*)page);
 		PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
-		pDiskTablePage->usingLength -= (pDiskTableKey->valueSize - length);
-
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskPageHead->addr);
-		assert(plg_TableCheckSpace(page));
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskPageHead->addr);
 		return 1;
 	}
 
@@ -1852,17 +1856,16 @@ static unsigned int table_InsideAlterFroSet(void* pvTableHandle, char* key, shor
 	if ((*pSkipListPoint)[0].skipListAddr == nextElementPage) {
 		page = (*pSkipListPoint)[0].page;
 	} else {
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextElementPage, &page) == 0)
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextElementPage, &page) == 0)
 			return 0;
 	}
-	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextElementPage, page);
+	page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextElementPage, page);
 
 	//get PDiskTableKey
 	pDiskTableElement = (PDiskTableElement)POINTER(page, nextElementOffset);
 	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
 	void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
 
-	assert(pDiskTableKey->valueType);
 	if (pDiskTableKey->valueType != valueType) {
 		return 0;
 	}
@@ -1888,7 +1891,7 @@ static unsigned int table_InsideAlterFroSet(void* pvTableHandle, char* key, shor
 		PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 		pDiskTablePage->usingLength -= (pDiskTableKey->valueSize - length);
 
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskPageHead->addr);
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskPageHead->addr);
 		return 1;
 	}
 
@@ -1924,13 +1927,12 @@ static unsigned int table_InsideIsKeyExist(void* pvTableHandle, void* vKey, shor
 	unsigned short nextElementOffset = pDiskTableElement->nextElementOffset;
 
 	void* page;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextElementPage, &page) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextElementPage, &page) == 0)
 		return 0;
 
 	//get PDiskTableKey
 	pDiskTableElement = (PDiskTableElement)POINTER(page, nextElementOffset);
 	PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pDiskTableElement->keyOffset);
-	assert(pDiskTableKey->valueType);
 
 	//check size
 	if (keyLen != pDiskTableKey->keyStrSize) {
@@ -1962,13 +1964,12 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 
 	//To delete the data in the page, you also need to pagecopyonwrite the page. Is another way to write to a page.
 	if ((*pSkipListPoint)[0].skipListAddr) {
-		assert((*pSkipListPoint)[0].page);
-		void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, (*pSkipListPoint)[0].skipListAddr, (*pSkipListPoint)[0].page);
+		void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, (*pSkipListPoint)[0].skipListAddr, (*pSkipListPoint)[0].page);
 		if (page != (*pSkipListPoint)[0].page) {
 			(*pSkipListPoint)[0].page = page;
 			(*pSkipListPoint)[0].pDiskTableElement = (PDiskTableElement)POINTER(page, (*pSkipListPoint)[0].skipListOffset);
 		}
-		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, (*pSkipListPoint)[0].skipListAddr);
+		pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, (*pSkipListPoint)[0].skipListAddr);
 
 		curPageAddr = (*pSkipListPoint)[0].skipListAddr;
 		curPage = page;
@@ -1977,12 +1978,12 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		if (pTableHandle->pTableInFile->isSetHead) {
 			pTableInFile = pTableHandle->pTableInFile;
 		} else {
-			pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+			pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 		}
 		(*pSkipListPoint)[0].pDiskTableElement = &pTableInFile->tableHead[0];
 		pTableHandle->hitStamp = plg_GetCurrentSec();
 		if (!pTableHandle->pTableInFile->isSetHead) {
-			pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle->pageOperateHandle, pTableHandle->nameaTable);
+			pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle, pTableHandle->nameaTable);
 		}
 	}
 
@@ -2002,12 +2003,11 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		if (curPageAddr == nextElementPage) {
 			nextPage = curPage;
 		} else {
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextElementPage, &nextPage) == 0) { 
-				assert(0);
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextElementPage, &nextPage) == 0) { 
 				return 0;
 			}
-			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextElementPage, nextPage);
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, nextElementPage);
+			nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextElementPage, nextPage);
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, nextElementPage);
 		}
 		
 		//get PDiskTableKey
@@ -2015,8 +2015,8 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		PDiskTableElement pNextElement = (PDiskTableElement)POINTER(nextPage, nextElementOffset);
 		PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(nextPage, pNextElement->keyOffset);
 
-		assert(!pNextElement->currentLevel);
-		assert(pDiskTableKey->valueType);
+		plg_assert(plg_TableCheckSpace(nextPage));
+		plg_assert(plg_TableCheckLength(nextPage, pTableHandle->pageSize));
 		
 		unsigned short keyVlaueSize = sizeof(DiskTableKey) + pDiskTableKey->keyStrSize + pDiskTableKey->valueSize;
 		void* vluePtr = (unsigned char*)pDiskTableKey + sizeof(DiskTableKey) + pDiskTableKey->keyStrSize;
@@ -2045,10 +2045,11 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		//recycling space and del key string
 		if (pNextElement->keyOffset == pDiskTablePage->spaceAddr + pDiskTablePage->spaceLength) {
 			pDiskTablePage->spaceLength += keyVlaueSize;
+		} else {
+			pDiskTablePage->delSize += keyVlaueSize;
 		}
 		pDiskTablePage->usingLength -= keyVlaueSize;
 		memset(pDiskTableKey, 0, keyVlaueSize);
-		pDiskTablePage->delCount += 1;
 		
 		//init high loop element
 		curPageAddr = nextElementPage;
@@ -2080,41 +2081,57 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 				break;
 		} while (1);
 
+		plg_assert(plg_TableCheckLength(nextPage, pTableHandle->pageSize));
+
 		do {
 			if (pDiskTablePage->tableSize == 0) {
 				break;
 			}
+
 			//recycling tableSize
 			if (pDiskTablePage->element[pDiskTablePage->tableSize - 1].keyOffset == 0){
+
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].nextElementPage == 0);
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].nextElementOffset == 0);
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].highElementOffset == 0);
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].lowElementOffset == 0);
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].currentLevel == 0);
+				plg_assert(pDiskTablePage->element[pDiskTablePage->tableSize - 1].keyOffset == 0);
+
+				memset(&pDiskTablePage->element[pDiskTablePage->tableSize - 1], 0, sizeof(DiskTableElement));
 				pDiskTablePage->spaceAddr = OFFSET(nextPage, &pDiskTablePage->element[pDiskTablePage->tableSize - 1]);
 				pDiskTablePage->spaceLength += sizeof(DiskTableElement);
 				pDiskTablePage->tableSize -= 1;
+
 			} else {
 				break;
 			}
 		} while (1);
 
-		pTableHandle->pTableHandleCallBack->arrangementCheck(pTableHandle->pageOperateHandle, nextPage);
+		pTableHandle->pTableHandleCallBack->arrangementCheck(pTableHandle, nextPage);
+
 		if (pDiskTablePage->tableLength != 0) {
 
 			//To updat PDiskTableUsing
 			void* usingPage;
-			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0) {
-				assert(0);
+			if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, pDiskTablePage->usingPageAddr, &usingPage) == 0) {
 				return 0;
 			}
 				
-			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr, usingPage);
+			usingPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, pDiskTablePage->usingPageAddr, usingPage);
 
 			PDiskTableUsingPage pDiskTableUsingPage = (PDiskTableUsingPage)((unsigned char*)usingPage + sizeof(DiskPageHead));
 			PDiskTableUsing pDiskTableUsing = (PDiskTableUsing)POINTER(usingPage, pDiskTablePage->usingPageOffset);
 			
-			pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->spaceLength;
-			pDiskTableUsing->spaceLength = pDiskTablePage->spaceLength;
-			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, pDiskTablePage->usingPageAddr);
+			pDiskTableUsingPage->allSpace += (int)pDiskTablePage->spaceLength - pDiskTableUsing->usingSpaceLength;
+			pDiskTableUsing->usingSpaceLength = pDiskTablePage->spaceLength;
+			pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, pDiskTablePage->usingPageAddr);
 		} else {
 			table_DelPage(pTableHandle, curPageAddr);
 		}
+
+		plg_assert(plg_TableCheckSpace(nextPage));
+		plg_assert(plg_TableCheckLength(nextPage, pTableHandle->pageSize));
 	} while (1);
 
 	if (isBreak) {
@@ -2122,23 +2139,23 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 		//reset all tail point
 		for (int l = 0; l <= tailLevel; l++) {
 			if ((*pSkipListPoint)[l].skipListAddr) {
-				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, (*pSkipListPoint)[l].skipListAddr, (*pSkipListPoint)[l].page);
+				void* page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, (*pSkipListPoint)[l].skipListAddr, (*pSkipListPoint)[l].page);
 				if (page != (*pSkipListPoint)[l].page) {
 					(*pSkipListPoint)[l].page = page;
 					(*pSkipListPoint)[l].pDiskTableElement = (PDiskTableElement)POINTER(page, (*pSkipListPoint)[l].skipListOffset);
 				}
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, (*pSkipListPoint)[l].skipListAddr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, (*pSkipListPoint)[l].skipListAddr);
 			} else {
 				PTableInFile pTableInFile;
 				if (pTableHandle->pTableInFile->isSetHead) {
 					pTableInFile = pTableHandle->pTableInFile;
 				} else {
-					pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+					pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 				}
 				(*pSkipListPoint)[l].pDiskTableElement = &pTableInFile->tableHead[l];
 				pTableHandle->hitStamp = plg_GetCurrentSec();
 				if (!pTableHandle->pTableInFile->isSetHead) {
-					pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle->pageOperateHandle, pTableHandle->nameaTable);
+					pTableHandle->pTableHandleCallBack->addDirtyTable(pTableHandle, pTableHandle->nameaTable);
 				}
 			}
 
@@ -2148,24 +2165,22 @@ static unsigned int table_InsideDel(void* pvTableHandle, char* key, unsigned sho
 
 			//set prevElementPage prevElementOffset
 			if (l == 0 && tailPoint[l].addr) {
-				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle->pageOperateHandle, tailPoint[l].addr);
+				pTableHandle->pTableHandleCallBack->addDirtyPage(pTableHandle, tailPoint[l].addr);
 				void* tailPointPage;
-				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, tailPoint[l].addr, &tailPointPage) == 0) {
-					assert(0);
+				if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, tailPoint[l].addr, &tailPointPage) == 0) {
 					return 0;
 				}	
-				void* nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, tailPoint[l].addr, tailPointPage);
+				void* nextPage = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, tailPoint[l].addr, tailPointPage);
 				tailPoint[l].page = nextPage;
 				PDiskTableElement pNextDiskTableElement = (PDiskTableElement)POINTER(nextPage, tailPoint[l].offset);
-				assert(pNextDiskTableElement->keyOffset);
 				tailPoint[l].keyOffset = pNextDiskTableElement->keyOffset;
 				PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(nextPage, pNextDiskTableElement->keyOffset);
 				pDiskTableKey->prevElementPage = (*pSkipListPoint)[l].skipListAddr;
 				pDiskTableKey->prevElementOffset = (*pSkipListPoint)[l].skipListOffset;
 			}
 		}
-		assert(table_CheckElement(pvTableHandle, (*pSkipListPoint)[0].page, (*pSkipListPoint)[0].pDiskTableElement));
 	}
+
 	return 1;
 }
 
@@ -2274,7 +2289,6 @@ int plg_TableFind(void* pvTableHandle, void* vKey, short keyLen, void* pDictExte
 	}
 
 	if (pDiskTableKey->valueSize != 0 && pDictExten) {
-		assert(pDiskTableKey->valueType);
 		if (pDiskTableKey->valueType == VALUE_NORMAL && !isSet) {
 			plg_DictExtenAdd(pDictExten, pDiskTableKey->keyStr, pDiskTableKey->keyStrSize, vluePtr, pDiskTableKey->valueSize);
 			return pDiskTableKey->valueSize;
@@ -2293,7 +2307,6 @@ int plg_TableFind(void* pvTableHandle, void* vKey, short keyLen, void* pDictExte
 			free(bigValuePtr);
 			return pDiskKeyBigValue->allSize;
 		} else {
-			assert(0);
 			//thanks to redis
 			elog(log_error, "WRONGTYPE Operation against a key holding the wrong kind of value!");
 			return -1;
@@ -2376,7 +2389,7 @@ unsigned int plg_TableRename(void* pvTableHandle, void* vKey, short keyLen, void
 
 	//load table page retrun PDiskTableKey
 	void *prevPage = 0;
-	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, skipListPoint[0].skipListAddr, &prevPage) == 0)
+	if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, skipListPoint[0].skipListAddr, &prevPage) == 0)
 		return 0;
 
 	//get PDiskTableKey
@@ -2398,8 +2411,6 @@ unsigned int plg_TableRename(void* pvTableHandle, void* vKey, short keyLen, void
 	}
 
 	if (pDiskTableKey->valueSize != 0 ) {
-		assert(pDiskTableKey->valueType);
-
 		unsigned int r = 0;
 		do {
 			//find skip list point
@@ -2886,7 +2897,7 @@ void plg_TableClear(void* pvTableHandle, short recursive) {
 			}
 		}
 		plg_TableReleaseIterator(iter);
-		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle->pageOperateHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+		pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
 	} else {
 		pTableInFile = pTableHandle->pTableInFile;
 	}
@@ -2900,16 +2911,16 @@ void plg_TableClear(void* pvTableHandle, short recursive) {
 		}
 
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPageAddr, &page) == 0) {
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPageAddr, &page) == 0) {
 			break;
 		}
-		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextPageAddr, page);
+		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextPageAddr, page);
 
 		//find in page
 		PDiskPageHead pPageHead = (PDiskPageHead)((unsigned char*)page);
 		nextPageAddr = pPageHead->nextPage;
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pPageHead->addr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pPageHead->addr);
 	} while (1);
 
 	
@@ -2923,16 +2934,16 @@ void plg_TableClear(void* pvTableHandle, short recursive) {
 		}
 
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPageAddr, &page) == 0) {
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPageAddr, &page) == 0) {
 			break;
 		}
-		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextPageAddr, page);
+		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextPageAddr, page);
 
 		//find in page
 		PDiskPageHead pPageHead = (PDiskPageHead)((unsigned char*)page);
 		nextPageAddr = pPageHead->nextPage;
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pPageHead->addr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pPageHead->addr);
 	} while (1);
 	
 
@@ -2945,16 +2956,16 @@ void plg_TableClear(void* pvTableHandle, short recursive) {
 		}
 
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPageAddr, &page) == 0) {
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPageAddr, &page) == 0) {
 			break;
 		}
-		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextPageAddr, page);
+		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextPageAddr, page);
 
 		//find in page
 		PDiskPageHead pPageHead = (PDiskPageHead)((unsigned char*)page);
 		nextPageAddr = pPageHead->nextPage;
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pPageHead->addr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pPageHead->addr);
 	} while (1);
 	
 
@@ -2967,16 +2978,16 @@ void plg_TableClear(void* pvTableHandle, short recursive) {
 		}
 
 		void* page;
-		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle->pageOperateHandle, nextPageAddr, &page) == 0) {
+		if (pTableHandle->pTableHandleCallBack->findPage(pTableHandle, nextPageAddr, &page) == 0) {
 			break;
 		}
-		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle->pageOperateHandle, nextPageAddr, page);
+		page = pTableHandle->pTableHandleCallBack->pageCopyOnWrite(pTableHandle, nextPageAddr, page);
 
 		//find in page
 		PDiskPageHead pPageHead = (PDiskPageHead)((unsigned char*)page);
 		nextPageAddr = pPageHead->nextPage;
 
-		pTableHandle->pTableHandleCallBack->delPage(pTableHandle->pageOperateHandle, pPageHead->addr);
+		pTableHandle->pTableHandleCallBack->delPage(pTableHandle, pPageHead->addr);
 	} while (1);
 
 	plg_TableInitTableInFile(pTableInFile);
@@ -3261,13 +3272,9 @@ void plg_TableSetDel(void* pvTableHandle, void* vKey, short keyLen, void* pValue
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
-							assert(0);
-						}
+						plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile));
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
-							assert(0);
-						}
+						plg_TableDelForSet(pTableHandle, vKey, keyLen);
 					}
 				}
 			}
@@ -3304,13 +3311,9 @@ static void table_InsideSetDel(void* pvTableHandle, void* vKey, short keyLen, vo
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
-							assert(0);
-						}
+						plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile));
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
-							assert(0);
-						}
+						plg_TableDelForSet(pTableHandle, vKey, keyLen);
 					}
 				}
 			}
@@ -3347,13 +3350,9 @@ unsigned int plg_TableSetPop(void* pvTableHandle, void* vKey, short keyLen, void
 				pTableHandle->pTableInFile = pTableInFile;
 				if (memcmp(&tableInFile, &oldTableInFile, retValueLen) != 0) {
 					if (tableInFile.tablePageHead) {
-						if (0 == plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile))) {
-							assert(0);
-						}
+						plg_InsideTableAlterFroSet(pTableHandle, vKey, keyLen, VALUE_SETHEAD, &tableInFile, sizeof(TableInFile));
 					} else {
-						if (0 == plg_TableDelForSet(pTableHandle, vKey, keyLen)) {
-							assert(0);
-						}
+						plg_TableDelForSet(pTableHandle, vKey, keyLen);
 					}
 				}
 			}

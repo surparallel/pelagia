@@ -49,6 +49,8 @@ const char* GetLevelName(int level) {
 		return "ERROR";
 	} else if (level == log_warn) {
 		return "WARN";
+	} else if (level == log_stat) {
+		return "STAT";
 	} else if (level == log_fun) {
 		return "FUNCTION";
 	} else if (level == log_details) {

@@ -209,12 +209,13 @@ static int LGet(lua_State* L) {
 		elog(log_warn, "LGet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
 	}
 
-	const char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
+	char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
 	if (p != 0) {
 		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
+		free(p);
 	} else {
 		plg_Lvmpushnil(_plVMHandle, L);
-	}	
+	}
 	return 1;
 }
 
@@ -833,10 +834,11 @@ static int LSetRand(lua_State* L) {
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
-	const char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
+	char* p = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
 
 	if (p) {
 		plg_Lvmpushlstring(_plVMHandle, L, p, pLen);
+		free(p);
 	} else {
 		plg_Lvmpushnil(_plVMHandle, L);
 	}
@@ -1131,7 +1133,7 @@ static int LGet2(lua_State* L) {
 		elog(log_warn, "LGet2 Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
 	}
 
-	const char* pValue = plg_JobGet((void*)t, tLen, (void*)k, kLen, &valueLen);
+	char* pValue = plg_JobGet((void*)t, tLen, (void*)k, kLen, &valueLen);
 	if (pValue) {
 		if (rtype == TT_Double) {
 			lua_Number v;
@@ -1139,7 +1141,8 @@ static int LGet2(lua_State* L) {
 			plg_Lvmpushnumber(_plVMHandle, L, v);
 		} else if (rtype == TT_String) {
 			plg_Lvmpushlstring(_plVMHandle, L, pValue, valueLen);
-		} 
+		}
+		free(pValue);
 	} else {
 		plg_Lvmpushnil(_plVMHandle, L);
 	}
@@ -1862,14 +1865,16 @@ static int LSetRand2(lua_State* L) {
 		elog(log_warn, "LSetRand2 Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
 	}
 
-	const char* pValue = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
-
-	if (rtype == TT_Double) {
-		lua_Number v;
-		memcpy(&v, pValue, pLen);
-		plg_Lvmpushnumber(_plVMHandle, L, v);
-	} else if (rtype == TT_String) {
-		plg_Lvmpushlstring(_plVMHandle, L, pValue, pLen);
+	char* pValue = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
+	if (pValue) {
+		if (rtype == TT_Double) {
+			lua_Number v;
+			memcpy(&v, pValue, pLen);
+			plg_Lvmpushnumber(_plVMHandle, L, v);
+		} else if (rtype == TT_String) {
+			plg_Lvmpushlstring(_plVMHandle, L, pValue, pLen);
+		}
+		free(pValue);
 	}
 	return 1;
 }

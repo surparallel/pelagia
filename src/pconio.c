@@ -1,4 +1,4 @@
-/* equeue.h
+/* pconio.c - console
 *
 * Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>
 * All rights reserved.
@@ -16,17 +16,41 @@
 * You should have received a copy of the GNU Affero General Public License
 * along with this program.If not, see < https://www.gnu.org/licenses/>.
 */
+#include "pconio.h"
+#include "plateform.h"
 
-#ifndef __EQUEUE_H
-#define __EQUEUE_H
-
-typedef void(*QueuerDestroyFun)(void* value);
-void* plg_eqCreate();
-void plg_eqPush(void* pEventQueue, void* value);
-int plg_eqTimeWait(void* pEventQueue, long long sec, long long nsec);
-int plg_eqWait(void* pEventQueue);
-void* plg_eqPop(void* pEventQueue);
-void* plg_eqPopWithLen(void* pvEventQueue, unsigned int *len);
-void plg_eqDestory(void* pEventQueue, QueuerDestroyFun fun);
-
+void plg_GotoXY(int x, int y) {
+#ifdef _WIN32
+	COORD pos;
+	pos.X = x;
+	pos.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+#else
+	printf("\033[%d;%df", y, x);
 #endif
+}
+
+void plg_ClrScr() {
+#ifdef _WIN32
+	system("cls");
+#else
+	system("clear");
+#endif
+}
+
+
+void plg_Color(int c) {
+#ifdef _WIN32
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), c);
+#else
+	printf("%c[%dm", 0x1B, c);
+#endif
+}
+
+void plg_ClearColor() {
+#ifdef _WIN32
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
+#else
+	printf("\033[%dm", 0);
+#endif
+}

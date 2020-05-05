@@ -216,4 +216,20 @@ __inline int c99_snprintf(char *outBuf, unsigned int size, const char *format, .
 #define MB (unsigned int)(1 << 20)
 #define GB (unsigned int)(1 << 30)
 
-#define NOTUSED(t) do{long long u = (long long)t;u = u;}while(0)
+#define NOTUSED(V) ((void) V)
+
+#ifdef _WIN32
+#ifdef _DEBUG
+#ifdef _PLG_ASSERT_
+#define plg_assert assert
+#else
+#define plg_assert
+#endif
+#else
+#ifdef _PLG_ASSERT_
+#define plg_assert assert
+#else
+#define plg_assert
+#endif
+#endif
+#endif

@@ -23,15 +23,16 @@
 #define _PAGEAMOUNT_ 2
 #define FULLSIZE(PS) PS * 1024
 
-#define _ARRANGMENTTIME_ 100
+#define _ARRANGMENTTIME_ 5
 #define _ARRANGMENTPERCENTAGE_1 20
-#define _ARRANGMENTCOUNT_1 150
 #define _ARRANGMENTPERCENTAGE_2 40
-#define _ARRANGMENTCOUNT_2 600
 #define _ARRANGMENTPERCENTAGE_3 60
-#define _ARRANGMENTCOUNT_3 1000
 #define _ARRANGMENTPERCENTAGE_4 80
-#define _ARRANGMENTCOUNT_4 1500
+
+#define _ARRANGMENTCOUNT_1 80
+#define _ARRANGMENTCOUNT_2 60
+#define _ARRANGMENTCOUNT_3 40
+#define _ARRANGMENTCOUNT_4 20
 
 //page type
 enum PageType {
@@ -154,7 +155,7 @@ typedef struct _DiskTablePage
 	unsigned short spaceLength;
 	unsigned short usingLength;
 	unsigned long long arrangmentStamp;
-	unsigned int delCount;
+	unsigned short delSize;
 	DiskTableElement element[];
 } *PDiskTablePage, DiskTablePage;
 
@@ -185,7 +186,7 @@ Spacelength: equal to spacelength of disktablepage
 typedef struct _DiskTableUsing
 {
 	unsigned int pageAddr;
-	unsigned short spaceLength;
+	unsigned short usingSpaceLength;
 } *PDiskTableUsing, DiskTableUsing;
 
 /*

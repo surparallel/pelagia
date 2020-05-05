@@ -111,7 +111,7 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 #define dictSetVal(d, entry, _val_) do { \
     if ((d)->type->valDup) \
         (entry)->v.val = (d)->type->valDup((d)->privdata, _val_); \
-							    else \
+																															    else \
         (entry)->v.val = (_val_); \
 } while(0)
 
@@ -131,7 +131,7 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 #define dictSetKey(d, entry, _key_) do { \
     if ((d)->type->keyDup) \
         (entry)->key = (d)->type->keyDup((d)->privdata, _key_); \
-							    else \
+																															    else \
         (entry)->key = (_key_); \
 } while(0)
 
@@ -154,7 +154,7 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 	sds keyStr = plg_sdsFromLonglong(key);\
 	if (DICT_ERR == plg_dictAdd(d, keyStr, val)) {\
 		plg_sdsFree(keyStr);\
-			}\
+					}\
 } while (0);
 
 #define dictAddWithUint(d, key, val) do {\
@@ -162,7 +162,21 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 	*mkey = key;\
 	if (DICT_ERR == plg_dictAdd(d, mkey, val)) {\
 		free(mkey);\
-			}\
+					}\
+} while (0);
+
+#define dictAddValueWithUint(d, key, val) do {\
+	dictEntry * entry = plg_dictFind(d, key);\
+	if (entry) {\
+		unsigned int* mvalue = dictGetVal(entry);\
+		*mvalue += val;\
+	} else {\
+		unsigned int* mvalue = malloc(sizeof(unsigned int));\
+		*mvalue = val; \
+		if (DICT_ERR == plg_dictAdd(d, key, mvalue)) {\
+			free(mvalue); \
+		}\
+	}\
 } while (0);
 
 void* plg_DefaultUintPtr();

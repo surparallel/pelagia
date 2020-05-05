@@ -1,4 +1,4 @@
-/* equeue.h
+/* pconio.h - console
 *
 * Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>
 * All rights reserved.
@@ -17,16 +17,10 @@
 * along with this program.If not, see < https://www.gnu.org/licenses/>.
 */
 
-#ifndef __EQUEUE_H
-#define __EQUEUE_H
-
-typedef void(*QueuerDestroyFun)(void* value);
-void* plg_eqCreate();
-void plg_eqPush(void* pEventQueue, void* value);
-int plg_eqTimeWait(void* pEventQueue, long long sec, long long nsec);
-int plg_eqWait(void* pEventQueue);
-void* plg_eqPop(void* pEventQueue);
-void* plg_eqPopWithLen(void* pvEventQueue, unsigned int *len);
-void plg_eqDestory(void* pEventQueue, QueuerDestroyFun fun);
-
+#ifndef __CONIO_H
+#define __CONIO_H
+extern void plg_ClearColor();
+extern void plg_Color(int c);
+extern void plg_ClrScr();
+extern void plg_GotoXY(int x, int y);
 #endif

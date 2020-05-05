@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"27"
+#define VERSION_MINOR	"28"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	27
+#define VERSION_NUMMINOR	28
 
 #include "papidefine.h"
 
@@ -53,7 +53,8 @@ PELAGIA_API void plg_MngSetLuaDllPath(void* pManage, char* newLuaDllPath);
 PELAGIA_API void plg_MngSetDllPath(void* pManage, char* newDllPath);
 PELAGIA_API void plg_MngSetLuaHot(void* pvManage, short luaHot);
 PELAGIA_API void plg_MngSetAllNoSave(void* pvManage, short noSave);
-
+PELAGIA_API void plg_MngSetStat(void* pvManage, short stat);
+PELAGIA_API void plg_MngSetStatCheckTime(void* pvManage, short checkTime);
 
 PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);

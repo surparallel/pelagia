@@ -25,6 +25,7 @@
     <ClCompile Include="..\src\pbitarray.c" />
     <ClCompile Include="..\src\pcache.c" />
     <ClCompile Include="..\src\pcmp.c" />
+    <ClCompile Include="..\src\pconio.c" />
     <ClCompile Include="..\src\pcrc16.c" />
     <ClCompile Include="..\src\pcrc64.c" />
     <ClCompile Include="..\src\pdict.c" />
@@ -70,6 +71,7 @@
     <ClInclude Include="..\src\pcache.h" />
     <ClInclude Include="..\src\pcmd.h" />
     <ClInclude Include="..\src\pcmp.h" />
+    <ClInclude Include="..\src\pconio.h" />
     <ClInclude Include="..\src\pcrc16.h" />
     <ClInclude Include="..\src\pcrc64.h" />
     <ClInclude Include="..\src\pdict.h" />

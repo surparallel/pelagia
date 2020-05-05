@@ -36,7 +36,7 @@ CORE_O=	padlist.o pbase64.o pbaseall.o pbitarray.o pcache.o pcmp.o pcrc16.o pcrc
 	plibsys.o plistdict.o plocks.o plvm.o pmanage.o pmemorylist.o \
 	pmemorypool.o pquicksort.o prfesa.o psds.o psha1.o psimple.o psiphash.o \
 	pskiplist.o pstart.o pstringmatch.o ptable.o ptimesys.o prandomlevel.o \
-	psemaphore.o
+	psemaphore.o pconio.o
 
 BASE_O= $(CORE_O) $(MYOBJS)
 
@@ -160,4 +160,5 @@ ptable.o: ptable.c plateform.h pelog.h pinterface.h psds.h prandomlevel.h pquick
 ptimesys.o: ptimesys.c ptimesys.h
 prandomlevel.o: prandomlevel.c prandomlevel.h pinterface.h
 psemaphore.o: psemaphore.c psemaphore.h plateform.h
+pconio.o: pconio.c pconio.h plateform.h
 # (end of Makefile)

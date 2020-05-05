@@ -23,15 +23,15 @@
 #include "pinterface.h"
 
 typedef struct _TableHandleCallBack {
-	unsigned int(*findPage)(void* pageOperateHandle, unsigned int pageAddr, void** page);
-	unsigned int(*createPage)(void* pageOperateHandle, void** retPage, char type);
-	unsigned int(*delPage)(void* pageOperateHandle, unsigned int pageAddr);
-	unsigned int(*arrangementCheck)(void* pageOperateHandle, void* page);
-	void*(*pageCopyOnWrite)(void* pageOperateHandle, unsigned int pageAddr, void* page);
-	void(*addDirtyPage)(void* pageOperateHandle, unsigned int pageAddr);
-	void*(*tableCopyOnWrite)(void* pageOperateHandle, sds table, void* tableInFile);
-	void(*addDirtyTable)(void* pageOperateHandle, sds table);
-	void*(*findTableInFile)(void* pageOperateHandle, sds table, void* tableInFile);
+	unsigned int(*findPage)(void* pTableHandle, unsigned int pageAddr, void** page);
+	unsigned int(*createPage)(void* pTableHandle, void** retPage, char type);
+	unsigned int(*delPage)(void* pTableHandle, unsigned int pageAddr);
+	unsigned int(*arrangementCheck)(void* pTableHandle, void* page);
+	void*(*pageCopyOnWrite)(void* pTableHandle, unsigned int pageAddr, void* page);
+	void(*addDirtyPage)(void* pTableHandle, unsigned int pageAddr);
+	void*(*tableCopyOnWrite)(void* pTableHandle, sds table, void* tableInFile);
+	void(*addDirtyTable)(void* pTableHandle, sds table);
+	void*(*findTableInFile)(void* pTableHandle, sds table, void* tableInFile);
 }*PTableHandleCallBack, TableHandleCallBack;
 
 void* plg_TableCreateHandle(void* pTableInFile, void* pageOperateHandle, unsigned int pageSize,
@@ -43,12 +43,13 @@ int plg_TableHandleCmpFun(void* left, void* right);
 void* plg_TableName(void* pTableHandle);
 unsigned int plg_TableHitStamp(void* pTableHandle);
 void plg_TableResetHandle(void* pTableHandle, void* pTableInFile, sds tableName);
-
+void* plg_TableOperateHandle(void* pvTableHandle);
 void plg_TableArrangementPage(unsigned int pageSize, void* page);
 typedef int(*FindCmpFun)(void* key1, unsigned int key1Len, void* key2, unsigned int Key2Len);
 int plg_TablePrevFindCmpFun(void* key1, unsigned int key1Len, void* key2, unsigned int Key2Len);
 int plg_TableTailFindCmpFun(void* key1, unsigned int key1Len, void* key2, unsigned int Key2Len);
 unsigned int plg_TableFindWithName(void* pTableHandle, char* key, short keyLen, void* skipListPoint, FindCmpFun pFindCmpFun);
+int plg_TableCheckLength(void* page, unsigned int pageSize);
 
 //normal
 unsigned short plg_TableGetTableType(void* pvTableHandle);

@@ -53,14 +53,11 @@ recent:whether to retrieve the write cache or not. Write cache is not retrieved 
 listDictPageCache:cache pages
 pageDirty:dirty pages
 listDictTableHandle:table header data cache
-dictTableHandleDirty:table头数据缓存的脏记录
+Dicttablehandledirty: dirty record of table header data cache
 //transaction
-transaction_listDictPageCache:事务中的页缓存
-transaction_pageDirty:事务中的脏页
-transaction_listDictTableHandle:事务中的头数据缓存
-transaction_dictTableHandleDirty:事务中的头数据脏数据
-transaction_createPage:事务中创建的页为了回滚删除
-transaction_delPage:事务中删除的页,只有事务提交成功后才真正删除.
+transaction_listDictPageCache: page cache in transaction
+transaction_listDictTableInFile: header data cache in transaction
+transaction_delPage: a deleted page in a transaction. It can only be deleted after the transaction is submitted successfully
 */
 typedef struct _CacheHandle
 {
@@ -69,6 +66,7 @@ typedef struct _CacheHandle
 	void* mutexHandle;
 	short recent;
 	sds objectName;
+
 	//cache
 	unsigned int cachePercent;
 	unsigned int cacheInterval;
@@ -79,13 +77,21 @@ typedef struct _CacheHandle
 	ListDict* listTableHandle;
 	dict* dictTableHandleDirty;
 	dict* delPage;
+
 	//transaction
 	ListDict* transaction_listDictPageCache;
 	ListDict* transaction_listDictTableInFile;
 	dict* transaction_delPage;
 
+	//alloc memory
 	void* memoryListPage;
 	void* memoryListTable;
+
+	//Statistics
+	short isOpenStat;
+	dict* tableName_pageCount;
+	unsigned long long freeCacheCount;
+
 } *PCacheHandle, CacheHandle;
 
 static int PageCacheCmpFun(void* left, void* right) {
@@ -214,6 +220,11 @@ unsigned int cache_LoadPageFromFile(void* pvCacheHandle, unsigned int pageAddr, 
 	return 1;
 }
 
+void plg_CacheSetStat(void* pvCacheHandle, short stat) {
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	pCacheHandle->isOpenStat = stat;
+}
+
 static unsigned int cache_ArrangementCheckBigValue(void* pvCacheHandle, void* page) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
@@ -248,9 +259,9 @@ static unsigned int cache_ArrangementCheckBigValue(void* pvCacheHandle, void* pa
 	return 1;
 }
 
-static unsigned int cache_ArrangementCheck(void* pvCacheHandle, void* page) {
+static unsigned int cache_ArrangementCheck(void* pTableHandle, void* page) {
 
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
@@ -264,19 +275,23 @@ static unsigned int cache_ArrangementCheck(void* pvCacheHandle, void* page) {
 	}
 
 	unsigned long long sec = plg_GetCurrentSec();
-	if (pDiskTablePage->arrangmentStamp + _ARRANGMENTTIME_ < sec) {
+	if (pDiskTablePage->arrangmentStamp == 0) {
+		pDiskTablePage->arrangmentStamp = sec;
+	}
+
+	if (pDiskTablePage->arrangmentStamp + _ARRANGMENTTIME_ > sec) {
 		return 0;
 	}
 	pDiskTablePage->arrangmentStamp = sec;
 
 	unsigned int pageSize = FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTablePage);
-	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_1 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_1) {
+	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_1) {
 		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_2 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_2) {
+	} else if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_2) {
 		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_3 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_3) {
+	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_3) {
 		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskTablePage->spaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_4 && pDiskTablePage->delCount > _ARRANGMENTCOUNT_4) {
+	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_4) {
 		plg_TableArrangementPage(pCacheHandle->pageSize, page);
 	}
 
@@ -285,11 +300,10 @@ static unsigned int cache_ArrangementCheck(void* pvCacheHandle, void* page) {
 
 
 
-static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, void** page) {
+static unsigned int cache_FindPage(void* pTableHandle, unsigned int pageAddr, void** page) {
 
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	elog(log_fun, "cache_FindPage.pageAddr:%i recent:%i", pageAddr, pCacheHandle->recent);
-	assert(pageAddr);
 	if (pCacheHandle->recent) {
 		dictEntry* findTranPageEntry = plg_dictFind(plg_ListDictDict(pCacheHandle->transaction_listDictPageCache), &pageAddr);
 
@@ -298,7 +312,8 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 
 			PDiskPageHead leftPage = *page;
 			if (leftPage->type == TABLEPAGE) {
-				assert(plg_TableCheckSpace(leftPage));
+				plg_assert(plg_TableCheckLength(leftPage, pCacheHandle->pageSize));
+				plg_assert(plg_TableCheckSpace(leftPage));
 			}
 			leftPage->hitStamp = plg_GetCurrentSec();
 			return 1;
@@ -311,7 +326,6 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 	if (findPageEntry == 0) {
 		*page = plg_MemListPop(pCacheHandle->memoryListPage);
 		if (0 == cache_LoadPageFromFile(pCacheHandle, pageAddr, *page)) {
-			assert(0);
 			elog(log_error, "cache_FindPage.disk load page %i!", pageAddr);
 			plg_MemListPush(pCacheHandle->memoryListPage, *page);
 			return 0;
@@ -319,6 +333,9 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 			elog(log_details, "cache_FindPage.cache_LoadPageFromFile:%i", pageAddr);
 		}
 		PDiskPageHead leftPage = *page;
+		if (pCacheHandle->isOpenStat) {
+			dictAddValueWithUint(pCacheHandle->tableName_pageCount, plg_TableName(pTableHandle), 1);
+		}		
 		plg_ListDictAdd(pCacheHandle->listPageCache, &leftPage->addr, *page);
 	} else {
 		*page = plg_ListDictGetVal(findPageEntry);
@@ -326,31 +343,32 @@ static unsigned int cache_FindPage(void* pvCacheHandle, unsigned int pageAddr, v
 
 	PDiskPageHead leftPage = *page;
 	if (leftPage->type == TABLEPAGE) {
-		assert(plg_TableCheckSpace(leftPage));
+		plg_assert(plg_TableCheckLength(leftPage, pCacheHandle->pageSize));
+		plg_assert(plg_TableCheckSpace(leftPage));
 	}
 	leftPage->hitStamp = plg_GetCurrentSec();
 	return 1;
 }
 
 /*
-如果在写入文件时为不存在于文件末尾,
-则写入文件时会被创建.
-注意这个函数不立即写入文件,所以产生了与文件的不一致.
-这个函数不能进行bitpage的创建
+If it does not exist at the end of the file at the time of writing,
+Will be created when the file is written
+Note that this function does not write to the file immediately, so it is inconsistent with the file
+This function cannot create bitpage
 1, find in bitpage
 2, if no find to create bitpage
 3, sign bitpage
 4, create page
-retPage:返回的新建页的地址
-type:页类型
-prvID:页链的前一页
-nextID:前一页的页链的下一页地址
+Retpage: the address of the returned new page
+Type: page type
+Prvid: Previous page of page chain
+NextID: address of the next page of the page chain of the previous page
 */
-static unsigned int cache_CreatePage(void* pvCacheHandle,
+static unsigned int cache_CreatePage(void* pTableHandle,
 	void** retPage,
 	char type) {
 
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	unsigned int pageAddr = 0;
 	if (dictSize(pCacheHandle->transaction_delPage)) {
 
@@ -378,6 +396,9 @@ static unsigned int cache_CreatePage(void* pvCacheHandle,
 	pDiskPageHead->hitStamp = plg_GetCurrentSec();
 
 	//add to chache
+	if (pCacheHandle->isOpenStat) {
+		dictAddValueWithUint(pCacheHandle->tableName_pageCount, plg_TableName(pTableHandle), 1);
+	}
 	plg_ListDictAdd(pCacheHandle->transaction_listDictPageCache, &pDiskPageHead->addr, *retPage);
 	return 1;
 }
@@ -385,10 +406,15 @@ static unsigned int cache_CreatePage(void* pvCacheHandle,
 /*
 Inverse function of cache_CreatePage
 */
-static unsigned int cache_DelPage(void* pvCacheHandle, unsigned int pageAddr) {
+static unsigned int cache_DelPage(void* pTableHandle, unsigned int pageAddr) {
 
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	elog(log_fun, "cache_DelPage %i", pageAddr);
+
+	if (pCacheHandle->isOpenStat) {
+		dictAddValueWithUint(pCacheHandle->tableName_pageCount, plg_TableName(pTableHandle), -1);
+	}
+
 	//add to transaction
 	plg_ListDictDel(pCacheHandle->transaction_listDictPageCache, &pageAddr);
 
@@ -398,21 +424,23 @@ static unsigned int cache_DelPage(void* pvCacheHandle, unsigned int pageAddr) {
 }
 
 
-static void* cache_pageCopyOnWrite(void* pvCacheHandle, unsigned int pageAddr, void* page) {
+static void* cache_pageCopyOnWrite(void* pTableHandle, unsigned int pageAddr, void* page) {
 	
 	elog(log_fun, "cache_pageCopyOnWrite.pageAddr:%i", pageAddr);
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 	if (pDiskPageHead->type == TABLEPAGE) {
-		assert(plg_TableCheckSpace(page));
+		plg_assert(plg_TableCheckLength(page, pCacheHandle->pageSize));
+		plg_assert(plg_TableCheckSpace(page));
 	}
 
 	dictEntry* entry = plg_dictFind(plg_ListDictDict(pCacheHandle->transaction_listDictPageCache), &pageAddr);
 	if (entry) {
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)plg_ListDictGetVal(entry);
 		if (pDiskPageHead->type == TABLEPAGE) {
-			assert(plg_TableCheckSpace(pDiskPageHead));
+			plg_assert(plg_TableCheckLength(page, pCacheHandle->pageSize));
+			plg_assert(plg_TableCheckSpace(pDiskPageHead));
 		}
 		return pDiskPageHead;
 	} else {
@@ -420,17 +448,18 @@ static void* cache_pageCopyOnWrite(void* pvCacheHandle, unsigned int pageAddr, v
 		memcpy(copyPage, page, FULLSIZE(pCacheHandle->pageSize));
 		PDiskPageHead pDiskPageHead = (PDiskPageHead)copyPage;
 		if (pDiskPageHead->type == TABLEPAGE) {
-			assert(plg_TableCheckSpace(copyPage));
+			plg_assert(plg_TableCheckLength(page, pCacheHandle->pageSize));
+			plg_assert(plg_TableCheckSpace(copyPage));
 		}
 		plg_ListDictAdd(pCacheHandle->transaction_listDictPageCache, &pDiskPageHead->addr, copyPage);
 		return copyPage;
 	}
 }
 
-static void* cache_tableCopyOnWrite(void* pvCacheHandle, sds table, void* tableHead) {
+static void* cache_tableCopyOnWrite(void* pTableHandle, sds table, void* tableHead) {
 
 	elog(log_fun, "cache_tableCopyOnWrite.table:%s", table);
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	//check not is set type
 	dictEntry* entry = plg_dictFind(plg_ListDictDict(pCacheHandle->listTableHandle), table);
 	if (!entry) {
@@ -451,22 +480,22 @@ static void* cache_tableCopyOnWrite(void* pvCacheHandle, sds table, void* tableH
 /*
 cache 使用事务机制不需要提交脏页
 */
-static void cache_addDirtyPage(void* pvCacheHandle, unsigned int pageAddr) {
-	NOTUSED(pvCacheHandle);
+static void cache_addDirtyPage(void* pTableHandle, unsigned int pageAddr) {
+	NOTUSED(pTableHandle);
 	NOTUSED(pageAddr);
 	return;
 }
 
-static void cache_addDirtyTable(void* pvCacheHandle, sds table){
-	NOTUSED(pvCacheHandle);
+static void cache_addDirtyTable(void* pTableHandle, sds table){
+	NOTUSED(pTableHandle);
 	NOTUSED(table);
 	return;
 }
 
-static void* cache_findTableInFile(void* pvCacheHandle, sds table, void* tableInFile) {
+static void* cache_findTableInFile(void* pTableHandle, sds table, void* tableInFile) {
 	
 	elog(log_fun, "cache_findTableInFile.table:%s", table);
-	PCacheHandle pCacheHandle = pvCacheHandle;
+	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	//find in tran
 	if (pCacheHandle->recent) {
 		dictEntry* entry = plg_dictFind(plg_ListDictDict(pCacheHandle->transaction_listDictTableInFile), table);
@@ -488,6 +517,20 @@ static TableHandleCallBack tableHandleCallBack = {
 	cache_tableCopyOnWrite,
 	cache_addDirtyTable,
 	cache_findTableInFile
+};
+
+static void FreeCallback(void *privdata, void *val) {
+	DICT_NOTUSED(privdata);
+	free(val);
+}
+
+static dictType SdsDictType = {
+	sdsHashCallback,
+	NULL,
+	NULL,
+	sdsCompareCallback,
+	NULL,
+	FreeCallback
 };
 
 void* plg_CacheCreateHandle(void* pDiskHandle) {
@@ -515,6 +558,10 @@ void* plg_CacheCreateHandle(void* pDiskHandle) {
 	pCacheHandle->transaction_delPage = plg_dictCreate(plg_DefaultUintPtr(), NULL, DICT_MIDDLE);
 	pCacheHandle->memoryListPage = plg_MemListCreate(60, FULLSIZE(pCacheHandle->pageSize), 0);
 	pCacheHandle->memoryListTable = plg_MemListCreate(60, sizeof(TableInFile), 0);
+
+	pCacheHandle->tableName_pageCount = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	pCacheHandle->isOpenStat = 0;
+	pCacheHandle->freeCacheCount = 0;
 	return pCacheHandle;
 }
 
@@ -537,6 +584,8 @@ void plg_CacheDestroyHandle(void* pvCacheHandle) {
 	plg_MemListDestory(pCacheHandle->memoryListPage);
 	plg_MemListDestory(pCacheHandle->memoryListTable);
 	plg_MutexDestroyHandle(pCacheHandle->mutexHandle);
+
+	plg_dictRelease(pCacheHandle->tableName_pageCount);
 	free(pCacheHandle);
 }
 
@@ -1178,7 +1227,6 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 		dictEntry* diskNode = plg_dictFind(plg_ListDictDict(pCacheHandle->listPageCache), &pPFileParamPageInfo[l].pageId);
 		if (diskNode != 0) {
 			char* page = plg_ListDictGetVal(diskNode);
-			assert(pPFileParamPageInfo[l].pageId);
 			if (pPFileParamPageInfo[l].pageId != 0) {
 
 				PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
@@ -1197,6 +1245,46 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 
 	plg_FileFlushPage(fileHandle, pPFileParamPageInfo, memArrary, dirtySize);
 	return 1;
+}
+
+static unsigned int cache_PageCount(void* pvCacheHandle) {
+	PCacheHandle pCacheHandle = pvCacheHandle;
+
+	unsigned int r = 1;
+	if (pCacheHandle->isOpenStat) {
+		unsigned int pageCount = 0;
+		dictIterator* iter_pageCount = plg_dictGetSafeIterator(pCacheHandle->tableName_pageCount);
+		dictEntry* node_pageCount;
+		while ((node_pageCount = plg_dictNext(iter_pageCount)) != NULL) {
+			char* key = dictGetKey(node_pageCount);
+			pageCount += *(unsigned int*)dictGetVal(node_pageCount);
+			NOTUSED(key);
+		}
+		plg_dictReleaseIterator(iter_pageCount);
+		unsigned int size = dictSize(plg_ListDictDict(pCacheHandle->listPageCache));
+		r = (pageCount == (size + pCacheHandle->freeCacheCount));	
+	}
+	return r;
+}
+
+void plg_CachePageAllCount(void* pvCacheHandle, unsigned long long* cacheCount, unsigned long long* freeCacheCount) {
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	*cacheCount = dictSize(plg_ListDictDict(pCacheHandle->listPageCache));
+	*freeCacheCount = pCacheHandle->freeCacheCount;
+}
+
+void plg_CachePageCountPrint(void* pvCacheHandle, char** catSdsStr) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	dictIterator* iter_pageCount = plg_dictGetSafeIterator(pCacheHandle->tableName_pageCount);
+	dictEntry* node_pageCount;
+	while ((node_pageCount = plg_dictNext(iter_pageCount)) != NULL) {
+		char* key = dictGetKey(node_pageCount);
+		unsigned int* count = dictGetVal(node_pageCount);
+		*catSdsStr = plg_sdsCatPrintf(*catSdsStr, "%s:%d;", key, *count);
+	}
+	plg_dictReleaseIterator(iter_pageCount);
+	return;
 }
 
 /*
@@ -1279,6 +1367,9 @@ int plg_CacheCommit(void* pvCacheHandle) {
 	}
 	plg_dictReleaseIterator(itert_delpage);
 	plg_dictEmpty(pCacheHandle->transaction_delPage, NULL);
+
+	//pageCount
+	cache_PageCount(pCacheHandle);
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 
 	elog(log_details, "plg_CacheCommit.tableHead:%i delPage:%i", tableHead, delPage);
@@ -1312,11 +1403,15 @@ void plg_CacheSetPercent(void* pvCacheHandle, unsigned int percent){
 }
 
 /*
-整理页缓存,必须在清空所有事务和脏页后才能根据一定条件执行
+Defragment the page cache. You must clear all transactions and dirty pages before it can be executed according to certain conditions
 */
 static void cache_Arrange(void* pvCacheHandle) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
+	if (plg_DiskIsNoSave(pCacheHandle->pDiskHandle)) {
+		elog(log_details, "cache_Arrange but DiskIsNoSave");
+		return;
+	}
 	elog(log_fun, "cache_Arrange %U", pCacheHandle);
 	//check interval
 	unsigned long long stamp = plg_GetCurrentSec();
@@ -1338,6 +1433,7 @@ static void cache_Arrange(void* pvCacheHandle) {
 		nodePage = listPrevNode(nodePage);
 		if (stamp - pageHead->hitStamp > interval) {
 			plg_ListDictDel(pCacheHandle->listPageCache, &pageHead->addr);
+			pCacheHandle->freeCacheCount += 1;
 		}
 		if (++count > limite) {
 			break;
@@ -1408,6 +1504,7 @@ void plg_CacheFlush(void* pvCacheHandle) {
 
 	//process pCacheHandle->pageDirty;
 	plg_CacheFlushDirtyToFile(pCacheHandle);
+
 	cache_Arrange(pCacheHandle);
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 }
