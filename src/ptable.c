@@ -246,6 +246,7 @@ int plg_TableHandleCmpFun(void* left, void* right) {
 }
 
 int plg_TableCheckSpace(void* page) {
+	NOTUSED(page);
 	//PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 	unsigned short r = 0;// plg_crc16((unsigned char*)page + pDiskTablePage->spaceAddr, pDiskTablePage->spaceLength);
 	plg_assert(!r);
@@ -254,6 +255,7 @@ int plg_TableCheckSpace(void* page) {
 
 int plg_TableCheckLength(void* page, unsigned int pageSize) {
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
+	NOTUSED(pDiskPageHead);
 	PDiskTablePage pDiskTablePage = (PDiskTablePage)((unsigned char*)page + sizeof(DiskPageHead));
 
 	unsigned int pagesize = pDiskTablePage->delSize + pDiskTablePage->spaceLength + pDiskTablePage->usingLength + sizeof(DiskTablePage) + sizeof(DiskPageHead) + (pDiskTablePage->tableSize - pDiskTablePage->tableLength) * sizeof(DiskTableElement);

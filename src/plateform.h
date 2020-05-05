@@ -126,6 +126,7 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #include <limits.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <assert.h>
 #endif
 
 #ifdef _WIN32
@@ -223,13 +224,13 @@ __inline int c99_snprintf(char *outBuf, unsigned int size, const char *format, .
 #ifdef _PLG_ASSERT_
 #define plg_assert assert
 #else
-#define plg_assert
+#define plg_assert(_Expression) ((void)0)
 #endif
 #else
 #ifdef _PLG_ASSERT_
 #define plg_assert assert
 #else
-#define plg_assert
+#define plg_assert(_Expression) ((void)0)
 #endif
 #endif
 #endif

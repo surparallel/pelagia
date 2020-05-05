@@ -34,7 +34,9 @@ void plg_ClrScr() {
 #ifdef _WIN32
 	system("cls");
 #else
-	system("clear");
+	if (system("clear") == -1) {
+		elog(log_error, "faile cmd clear");
+	}
 #endif
 }
 

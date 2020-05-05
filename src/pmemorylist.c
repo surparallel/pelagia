@@ -100,7 +100,7 @@ void plg_MemListPush(void* pvMemoryListHandle, void* ptr) {
 
 	//add to hesdlist
 	PMemoryListNode pMemoryListNode = (PMemoryListNode)((char*)ptr - sizeof(MemoryListNode));
-	dictEntry* entry = plg_dictFind(pMemoryListHandle->dictPop, pMemoryListNode);
+	plg_assert(plg_dictFind(pMemoryListHandle->dictPop, pMemoryListNode));
 
 	pMemoryListNode->stamp = stamp;
 	pMemoryListNode->next = pMemoryListHandle->head;
