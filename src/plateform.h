@@ -220,7 +220,6 @@ __inline int c99_snprintf(char *outBuf, unsigned int size, const char *format, .
 #define NOTUSED(V) ((void) V)
 
 #ifdef _WIN32
-#ifdef _DEBUG
 #ifdef _PLG_ASSERT_
 #define plg_assert assert
 #else
@@ -231,6 +230,5 @@ __inline int c99_snprintf(char *outBuf, unsigned int size, const char *format, .
 #define plg_assert assert
 #else
 #define plg_assert(_Expression) ((void)0)
-#endif
 #endif
 #endif

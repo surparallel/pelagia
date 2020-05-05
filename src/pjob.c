@@ -606,21 +606,6 @@ static int job_IsTableAllowWrite(void* pvJobHandle, char* sdsTable) {
 	return plg_MngTableIsInOrder(pJobHandle->privateData, pJobHandle->pOrderName, plg_sdsLen(pJobHandle->pOrderName), sdsTable, plg_sdsLen(sdsTable));
 }
 
-extern int IntervalometerCmpFun(void* value1, void* value2);
-static int IntervalometerCmpFun(void* value1, void* value2) {
-
-	PIntervalometer pi1 = (PIntervalometer)value1;
-	PIntervalometer pi2 = (PIntervalometer)value2;
-
-	if (pi1->tim > pi2->tim) {
-		return 1;
-	} else if (pi1->tim == pi2->tim) {
-		return 0;
-	} else {
-		return -1;
-	}
-}
-
 static unsigned long long plg_JogActIntervalometer(void* pvJobHandle) {
 
 	PJobHandle pJobHandle = pvJobHandle;
