@@ -278,8 +278,10 @@ static void table_SetElementKeyOffset(void* page, void* pvZeroElement, unsigned 
 	}
 }
 
-int plg_SortPDiskTableElementCmp(PDiskTableElement* vv1, PDiskTableElement* vv2) {
+int plg_SortPDiskTableElementCmp(void* v1, void* v2) {
 
+	PDiskTableElement* vv1 = (PDiskTableElement*)v1;
+	PDiskTableElement* vv2 = (PDiskTableElement*)v2;
 	if ((*vv1) == 0) {
 		return 1;
 	} else if ((*vv2) == 0) {
