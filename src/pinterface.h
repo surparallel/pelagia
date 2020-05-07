@@ -24,15 +24,7 @@
 #define FULLSIZE(PS) PS * 1024
 
 #define _ARRANGMENTTIME_ 5
-#define _ARRANGMENTPERCENTAGE_1 20
-#define _ARRANGMENTPERCENTAGE_2 40
-#define _ARRANGMENTPERCENTAGE_3 60
-#define _ARRANGMENTPERCENTAGE_4 80
-
-#define _ARRANGMENTCOUNT_1 80
-#define _ARRANGMENTCOUNT_2 60
-#define _ARRANGMENTCOUNT_3 40
-#define _ARRANGMENTCOUNT_4 20
+#define _ARRANGMENTPERCENTAGE_ 5
 
 //page type
 enum PageType {
@@ -253,7 +245,7 @@ typedef struct _DiskValuePage
 	unsigned short valueSpaceLength;
 	unsigned short valueUsingLength;
 	unsigned long long valueArrangmentStamp;
-	unsigned int valueDelCount;
+	unsigned int valueDelSize;
 	DiskValueElement valueElement[];
 } *PDiskValuePage, DiskValuePage;
 

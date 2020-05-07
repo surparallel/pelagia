@@ -59,5 +59,6 @@ char* plg_JobTableNameWithJson();
 void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot);
 int plg_JobStartRouting(void* pvJobHandle);
 void plg_JobSetStat(void* pvJobHandle, short stat, unsigned long long checkTime);
+void plg_JobSetMaxQueue(void* pvJobHandle, unsigned int maxQueue);
 
 #endif

@@ -42,6 +42,7 @@
 #include "pdictexten.h"
 #include "ptimesys.h"
 #include "pjson.h"
+#include "pelagia.h"
 
 /*
 When it comes to transaction, the transaction to delete a page must be submitted immediately, otherwise the address of the page in the file will be wrong
@@ -246,13 +247,7 @@ static unsigned int cache_ArrangementCheckBigValue(void* pvCacheHandle, void* pa
 	pDiskValuePage->valueArrangmentStamp = sec;
 
 	unsigned int pageSize = FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTablePage);
-	if (((float)pDiskValuePage->valueSpaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_1 && pDiskValuePage->valueDelCount > _ARRANGMENTCOUNT_1) {
-		plg_TableArrangmentBigValue(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskValuePage->valueSpaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_2 && pDiskValuePage->valueDelCount > _ARRANGMENTCOUNT_2) {
-		plg_TableArrangmentBigValue(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskValuePage->valueSpaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_3 && pDiskValuePage->valueDelCount > _ARRANGMENTCOUNT_3) {
-		plg_TableArrangmentBigValue(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskValuePage->valueSpaceLength / pageSize * 100) > _ARRANGMENTPERCENTAGE_4 && pDiskValuePage->valueDelCount > _ARRANGMENTCOUNT_4) {
+	if (((float)pDiskValuePage->valueDelSize / pageSize) * 100 > _ARRANGMENTPERCENTAGE_) {
 		plg_TableArrangmentBigValue(pCacheHandle->pageSize, page);
 	}
 
@@ -285,13 +280,7 @@ static unsigned int cache_ArrangementCheck(void* pTableHandle, void* page) {
 	pDiskTablePage->arrangmentStamp = sec;
 
 	unsigned int pageSize = FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTablePage);
-	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_1) {
-		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_2) {
-		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_3) {
-		plg_TableArrangementPage(pCacheHandle->pageSize, page);
-	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_4) {
+	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTPERCENTAGE_) {
 		plg_TableArrangementPage(pCacheHandle->pageSize, page);
 	}
 

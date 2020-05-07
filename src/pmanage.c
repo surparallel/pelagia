@@ -108,9 +108,12 @@ typedef struct _Manage
 	//noSave
 	short noSave;
 
-	//
+	//stat
 	short isOpenStat;
 	unsigned long long checkTime;
+
+	//
+	unsigned int maxQueue;
 } *PManage, Manage;
 
 static void listSdsFree(void *ptr) {
@@ -446,6 +449,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath, pManage->luaHot);
 		plg_JobSetStat(pJobHandle, pManage->isOpenStat, pManage->checkTime);
 		plg_JobSetPrivate(pJobHandle, pvManage);
+		plg_JobSetMaxQueue(pJobHandle, pManage->maxQueue);
 		plg_listAddNodeHead(pManage->listJob, pJobHandle);
 	}
 
@@ -1033,6 +1037,11 @@ void plg_MngSetStat(void* pvManage, short stat) {
 	pManage->isOpenStat = stat;
 }
 
+void plg_MngSetMaxQueue(void* pvManage, unsigned int maxQueue) {
+	PManage pManage = pvManage;
+	pManage->maxQueue = maxQueue;
+}
+
 void plg_MngSetStatCheckTime(void* pvManage, short checkTime) {
 	PManage pManage = pvManage;
 	pManage->checkTime = checkTime;
@@ -1066,6 +1075,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 
 	pManage->dictTableName = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 	
+	pManage->maxQueue = 0;
 	pManage->isOpenStat = 0;
 	pManage->checkTime = 5000;
 	pManage->order_tableName = plg_DictSetCreate(plg_DefaultSdsDictPtr(), DICT_MIDDLE, plg_DefaultSdsDictPtr(), DICT_MIDDLE);

@@ -54,6 +54,25 @@ void* plg_eqCreate() {
 	return pEventQueue;
 }
 
+int plg_eqIfNoPush(void* pvEventQueue, void* value, unsigned int maxQueue) {
+
+	unsigned r = 0;
+	PEventQueue pEventQueue = pvEventQueue;
+	MutexLock(pEventQueue->mutexHandle, pEventQueue->objecName);
+	if (maxQueue && listLength(pEventQueue->listQueue) > maxQueue) {
+	} else {
+		r = 1;
+		plg_listAddNodeHead(pEventQueue->listQueue, value);
+	}
+	MutexUnlock(pEventQueue->mutexHandle, pEventQueue->objecName);
+
+	if (r && sem_post(&pEventQueue->semaphore) != 0) {
+		elog(log_error, "semaphore post failut!");
+		return r;
+	}
+	return r;
+}
+
 void plg_eqPush(void* pvEventQueue, void* value) {
 
 	PEventQueue pEventQueue = pvEventQueue;

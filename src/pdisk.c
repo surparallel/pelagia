@@ -279,13 +279,7 @@ static unsigned int plg_DiskArrangementCheck(void* pTableHandle, void* page) {
 	pDiskTablePage->arrangmentStamp = sec;
 
 	unsigned int pageSize = FULLSIZE(pDiskHandle->diskHead->pageSize) - sizeof(DiskPageHead) - sizeof(DiskTablePage);
-	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_1) {
-		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_2) {
-		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_3) {
-		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
-	} else 	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTCOUNT_4) {
+	if (((float)pDiskTablePage->delSize / pageSize * 100) > _ARRANGMENTPERCENTAGE_) {
 		plg_TableArrangementPage(pDiskHandle->diskHead->pageSize, page);
 	}
 

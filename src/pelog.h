@@ -39,7 +39,6 @@ short plg_LogGetMaxLevel();
 short plg_LogGetMinLevel();
 char* plg_LogGetTimForm();
 
-void plg_LogSetErrFile();
 void plg_LogSetErrCallBack(ErrFun errFun);
 
 void plg_LogInit();

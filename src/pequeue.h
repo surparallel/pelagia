@@ -23,6 +23,7 @@
 typedef void(*QueuerDestroyFun)(void* value);
 void* plg_eqCreate();
 void plg_eqPush(void* pEventQueue, void* value);
+int plg_eqIfNoPush(void* pvEventQueue, void* value, unsigned int maxQueue);
 int plg_eqTimeWait(void* pEventQueue, long long sec, long long nsec);
 int plg_eqWait(void* pEventQueue);
 void* plg_eqPop(void* pEventQueue);

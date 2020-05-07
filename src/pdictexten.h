@@ -20,39 +20,4 @@
 #ifndef __RESULT_H
 #define __RESULT_H
 
-//return pDictExten
-void* plg_DictExtenCreate();
-void* plg_DictExtenSubCreate(void* pDictExten, void* key, unsigned int keyLen);
-
-void plg_DictExtenDestroy(void* pDictExten);
-int plg_DictExtenAdd(void* pDictExten, void* key, unsigned int keyLen, void* value, unsigned int valueLen);
-void plg_DictExtenDel(void* pDictExten, void* key, unsigned int keyLen);
-void* plg_DictExtenSub(void* entry);
-int plg_DictExtenSize(void* pDictExten);
-
-//create iterator
-void* plg_DictExtenGetIterator(void* pDictExten);
-void plg_DictExtenReleaseIterator(void* iter);
-
-//return entry
-void* plg_DictExtenFind(void* pDictExten, void* key, unsigned int keyLen);
-void* plg_DictExtenNext(void* iter);
-void* plg_DictExtenGetHead(void* pDictExten);
-int plg_DictExtenIsSub(void* entry);
-
-//reurn buffer
-void* plg_DictExtenValue(void* entry, unsigned int *valueLen);
-void* plg_DictExtenKey(void* entry, unsigned int *keyLen);
-
-//help for 'C' ansi
-void* plg_DictExtenSubCreateForChar(void* pDictExten, char* key);
-int plg_DictExtenAddForChar(void* pDictExten, char* key, void* value, unsigned int valueLen);
-void plg_DictExtenDelForChar(void* pDictExten, char* key);
-void* plg_DictExtenFindForChar(void* pDictExten, char* key);
-int plg_DictExtenAddForCharWithInt(void* pDictExten, char* key, int value);
-int plg_DictExtenAddForCharWithUInt(void* pDictExten, char* key, unsigned int value);
-int plg_DictExtenAddForCharWithShort(void* pDictExten, char* key, short value);
-int plg_DictExtenAddForCharWithLL(void* pDictExten, char* key, long long value);
-int plg_DictExtenAddForCharWithDouble(void* pDictExten, char* key, double value);
-
 #endif

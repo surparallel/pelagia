@@ -29,6 +29,7 @@
 #include "pdict.h"
 #include "pdictexten.h"
 #include "pquicksort.h"
+#include "pelagia.h"
 
 typedef struct _DictExten
 {

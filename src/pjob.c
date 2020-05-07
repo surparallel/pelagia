@@ -178,6 +178,8 @@ typedef struct _JobHandle
 	unsigned int statistics_eventQueueLength;
 	dict* order_msg;
 
+	unsigned int maxQueue;
+
 } *PJobHandle, JobHandle;
 
 static char* TString[] = {
@@ -429,6 +431,7 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->flush_interval = 5*60;
 	pJobHandle->flush_count = 1;
 	pJobHandle->flush_lastCount = 0;
+	pJobHandle->maxQueue = 0;
 
 	pJobHandle->luaPath = luaPath;
 
@@ -574,7 +577,13 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 	
 	dictEntry* entryOrder = plg_dictFind(pJobHandle->order_equeue, pOrderPacket->order);
 	if (entryOrder) {
-		plg_eqPush(dictGetVal(entryOrder), pOrderPacket);
+		if (0 == plg_eqIfNoPush(dictGetVal(entryOrder), pOrderPacket, pJobHandle->maxQueue)) {
+			plg_sdsFree(pOrderPacket->order);
+			plg_sdsFree(pOrderPacket->value);
+			free(pOrderPacket);
+			
+			elog(log_error, "Queue limit exceeded for %i", pJobHandle->maxQueue);
+		}
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
 		}
@@ -658,6 +667,11 @@ void plg_JobSetStat(void* pvJobHandle, short stat, unsigned long long checkTime)
 	PJobHandle pJobHandle = pvJobHandle;
 	pJobHandle->isOpenStat = stat;
 	pJobHandle->statistics_frequency = checkTime;
+}
+
+void plg_JobSetMaxQueue(void* pvJobHandle, unsigned int maxQueue){
+	PJobHandle pJobHandle = pvJobHandle;
+	pJobHandle->maxQueue = maxQueue;
 }
 
 static void plg_LogStat(void* pvJobHandle, unsigned long long passTime) {
@@ -760,7 +774,7 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 			long long secs = timer / 1000;
 			long long msecs = (timer % 1000) * (1000 * 1000);
 			if (-1 == plg_eqTimeWait(pJobHandle->eQueue, secs, msecs)) {
-				timer = plg_JogActIntervalometer(pJobHandle);	
+				timer = plg_JogActIntervalometer(pJobHandle);
 			}
 		}
 

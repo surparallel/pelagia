@@ -264,6 +264,37 @@ int plg_TableCheckLength(void* page, unsigned int pageSize) {
 	return pagesize == FULLSIZE(pageSize);
 }
 
+static void table_SetElementKeyOffset(void* page, void* pvZeroElement, unsigned short keyOffset) {
+	
+	PDiskTableElement pZeroElement = pvZeroElement;
+	PDiskTableElement pHighElement = pZeroElement;
+	while (1) {
+		pHighElement->keyOffset = keyOffset;
+		if (pHighElement->highElementOffset == 0) {
+			break;
+		}
+		pHighElement = (PDiskTableElement)POINTER(page, pHighElement->highElementOffset);
+
+	}
+}
+
+int plg_SortPDiskTableElementCmp(PDiskTableElement* vv1, PDiskTableElement* vv2) {
+
+	if ((*vv1) == 0) {
+		return 1;
+	} else if ((*vv2) == 0) {
+		return -1;
+	}
+
+	if ((*vv1)->keyOffset > (*vv2)->keyOffset) {
+		return -1;
+	} else if ((*vv1)->keyOffset == (*vv2)->keyOffset) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
 void plg_TableArrangementPage(unsigned int pageSize, void* page){
 
 	elog(log_fun, "plg_TableArrangementPage");
@@ -272,30 +303,32 @@ void plg_TableArrangementPage(unsigned int pageSize, void* page){
 	plg_assert(plg_TableCheckLength(page, pageSize));
 	plg_assert(plg_TableCheckSpace(page));
 
-	unsigned short** pKeyOffset = calloc(sizeof(unsigned short*), pDiskTablePage->tableLength);
+	PDiskTableElement* pElement = calloc(sizeof(PDiskTableElement), pDiskTablePage->tableLength);
 
 	int count = 0;
 	for (unsigned short l = 0; l < pDiskTablePage->tableSize; l++) {
 		PDiskTableElement pDiskTableElement = &pDiskTablePage->element[l];
 		if (pDiskTableElement->currentLevel == 0 && pDiskTableElement->keyOffset != 0) {		
-			pKeyOffset[count++] = &pDiskTableElement->keyOffset;
+			pElement[count++] = pDiskTableElement;
 		}
 	}
 
 	if (count) {
-		plg_SortArrary(pKeyOffset, sizeof(unsigned short*), pDiskTablePage->tableLength, plg_SortDefaultUshortPtrCmp);
+		plg_SortArrary(pElement, sizeof(unsigned short*), pDiskTablePage->tableLength, plg_SortPDiskTableElementCmp);
 
 		unsigned short nextOffest = FULLSIZE(pageSize);
 		for (int l = 0; l < count; l++) {
-			PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, *pKeyOffset[l]);
+			PDiskTableKey pDiskTableKey = (PDiskTableKey)POINTER(page, pElement[l]->keyOffset);
 			unsigned short allSize = sizeof(DiskTableKey) + pDiskTableKey->keyStrSize + pDiskTableKey->valueSize;
-			unsigned short tail = *pKeyOffset[l] + allSize;
+			unsigned short tail = pElement[l]->keyOffset + allSize;
 			if (tail != nextOffest) {
 				unsigned short move = nextOffest - tail;
 				memmove((unsigned char*)pDiskTableKey + move, pDiskTableKey, allSize);
-				nextOffest = *pKeyOffset[l] = OFFSET(page, (unsigned char*)pDiskTableKey + move);
+				nextOffest = pElement[l]->keyOffset = OFFSET(page, (unsigned char*)pDiskTableKey + move);
+
+				table_SetElementKeyOffset(page, pElement[l], pElement[l]->keyOffset);
 			} else {
-				nextOffest = *pKeyOffset[l];
+				nextOffest = pElement[l]->keyOffset;
 			}
 		};
 
@@ -305,7 +338,7 @@ void plg_TableArrangementPage(unsigned int pageSize, void* page){
 	pDiskTablePage->delSize = 0;
 
 	plg_assert(plg_TableCheckLength(page, pageSize));
-	free(pKeyOffset);
+	free(pElement);
 }
 
 /*
@@ -1678,9 +1711,9 @@ static int table_DelBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBigVa
 
 		if (pDiskValuePage->valueSpaceAddr + pDiskValuePage->valueSpaceLength == pDiskValueElement->valueOffset) {
 			pDiskValuePage->valueSpaceLength += valuePtr->valueSize;
+		} else {
+			pDiskValuePage->valueDelSize += valuePtr->valueSize;
 		}
-
-		pDiskValuePage->valueDelCount += 1;
 		pDiskValuePage->valueLength -= 1;
 		nextPage = pDiskValueElement->nextElementPage;
 		nextOffset = pDiskValueElement->nextElementOffset;
@@ -1747,41 +1780,48 @@ static void* table_GetBigValue(void* pvTableHandle, PDiskKeyBigValue pDiskKeyBig
 	}	
 }
 
-void plg_TableArrangmentBigValue(unsigned int pageSize, void* page) {
+void plg_TableArrangmentBigValue(unsigned int pageSize, void* page){
 
+	elog(log_fun, "plg_TableArrangementPage");
 	PDiskValuePage pDiskValuePage = (PDiskValuePage)((unsigned char*)page + sizeof(DiskPageHead));
 
-	//reset
-	pDiskValuePage->valueDelCount = 0;
-	unsigned short** pKeyOffset = calloc(sizeof(unsigned short*), pDiskValuePage->valueLength);
+	plg_assert(plg_TableCheckLength(page, pageSize));
+	plg_assert(plg_TableCheckSpace(page));
+
+	PDiskValueElement* pElement = calloc(sizeof(PDiskValueElement), pDiskValuePage->valueLength);
+
 	int count = 0;
 	for (unsigned short l = 0; l < pDiskValuePage->valueSize; l++) {
-		PDiskValueElement pDiskTableElement = &pDiskValuePage->valueElement[l];
-		if (pDiskTableElement->valueOffset != 0) {
-			pKeyOffset[count++] = &pDiskTableElement->valueOffset;
+		PDiskValueElement pDiskValueElement = &pDiskValuePage->valueElement[l];
+		if (pDiskValueElement->valueOffset != 0) {
+			pElement[count++] = pDiskValueElement;
 		}
 	}
 
-	plg_SortArrary(pKeyOffset, sizeof(unsigned short*), pDiskValuePage->valueLength, plg_SortDefaultUshortPtrCmp);
+	if (count) {
+		plg_SortArrary(pElement, sizeof(unsigned short*), pDiskValuePage->valueLength, plg_SortPDiskTableElementCmp);
 
-	unsigned short nextOffest = FULLSIZE(pageSize) - 1;
-	for (int l = 0; l < count; l++) {
-		if (pKeyOffset[l] == 0) {
-			break;
-		}
-		PDiskBigValue pDiskBigValue = (PDiskBigValue)POINTER(page, *pKeyOffset[l]);
-		unsigned short allSize = sizeof(DiskBigValue) + pDiskBigValue->valueSize;
-		unsigned short tail = *pKeyOffset[l] + allSize;
-		if (tail != nextOffest) {
-			unsigned short move = nextOffest - tail;
-			memmove((unsigned char*)pDiskBigValue + move, pDiskBigValue, allSize);
-			nextOffest = *pKeyOffset[l] = OFFSET(page, (unsigned char*)pDiskBigValue + move);
-		} else {
-			nextOffest = *pKeyOffset[l];
-		}
-	};
-	pDiskValuePage->valueSpaceAddr += nextOffest - (pDiskValuePage->valueSpaceAddr + pDiskValuePage->valueSpaceLength);
-	free(pKeyOffset);
+		unsigned short nextOffest = FULLSIZE(pageSize);
+		for (int l = 0; l < count; l++) {
+			PDiskBigValue pDiskBigValue = (PDiskBigValue)POINTER(page, pElement[l]->valueOffset);
+			unsigned short allSize = sizeof(DiskBigValue) + pDiskBigValue->valueSize;
+			unsigned short tail = pElement[l]->valueOffset + allSize;
+			if (tail != nextOffest) {
+				unsigned short move = nextOffest - tail;
+				memmove((unsigned char*)pDiskBigValue + move, pDiskBigValue, allSize);
+				nextOffest = pElement[l]->valueOffset = OFFSET(page, (unsigned char*)pDiskBigValue + move);
+			} else {
+				nextOffest = pElement[l]->valueOffset;
+			}
+		};
+
+		pDiskValuePage->valueSpaceAddr += nextOffest - (pDiskValuePage->valueSpaceAddr + pDiskValuePage->valueSpaceLength);
+		memset(POINTER(page, pDiskValuePage->valueSpaceAddr), 0, pDiskValuePage->valueSpaceLength);
+	}
+	pDiskValuePage->valueDelSize = 0;
+
+	plg_assert(plg_TableCheckLength(page, pageSize));
+	free(pElement);
 }
 
 /*
@@ -2311,7 +2351,7 @@ int plg_TableFind(void* pvTableHandle, void* vKey, short keyLen, void* pDictExte
 			free(bigValuePtr);
 			return pDiskKeyBigValue->allSize;
 		} else {
-			//thanks to redis
+			plg_assert(0);
 			elog(log_error, "WRONGTYPE Operation against a key holding the wrong kind of value!");
 			return -1;
 		}

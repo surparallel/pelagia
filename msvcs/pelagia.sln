@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pelagia", "pelagia.vcxproj"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pthread", "..\deps\pthreads.2\pthread.vcxproj", "{492F3BFB-174E-4BE2-AE51-97DA090EDB3B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pelagialib", "pelagiadll.vcxproj", "{64758291-5F06-45CD-823E-724ECD819C43}"
+	ProjectSection(ProjectDependencies) = postProject
+		{492F3BFB-174E-4BE2-AE51-97DA090EDB3B} = {492F3BFB-174E-4BE2-AE51-97DA090EDB3B}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -34,6 +39,14 @@ Global
 		{492F3BFB-174E-4BE2-AE51-97DA090EDB3B}.Release|Win32.Build.0 = Release|Win32
 		{492F3BFB-174E-4BE2-AE51-97DA090EDB3B}.Release|x64.ActiveCfg = Release|x64
 		{492F3BFB-174E-4BE2-AE51-97DA090EDB3B}.Release|x64.Build.0 = Release|x64
+		{64758291-5F06-45CD-823E-724ECD819C43}.Debug|Win32.ActiveCfg = Debug|Win32
+		{64758291-5F06-45CD-823E-724ECD819C43}.Debug|Win32.Build.0 = Debug|Win32
+		{64758291-5F06-45CD-823E-724ECD819C43}.Debug|x64.ActiveCfg = Debug|x64
+		{64758291-5F06-45CD-823E-724ECD819C43}.Debug|x64.Build.0 = Debug|x64
+		{64758291-5F06-45CD-823E-724ECD819C43}.Release|Win32.ActiveCfg = Release|Win32
+		{64758291-5F06-45CD-823E-724ECD819C43}.Release|Win32.Build.0 = Release|Win32
+		{64758291-5F06-45CD-823E-724ECD819C43}.Release|x64.ActiveCfg = Release|x64
+		{64758291-5F06-45CD-823E-724ECD819C43}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

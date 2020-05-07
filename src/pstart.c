@@ -103,15 +103,15 @@ static void EnumJson(pJSON * root, void* pManage)
 			EnumOrderJson(item, pManage);
 		else
 		{
-			if (strcmp(item->string, "MaxTableWeight")==0) {
+			if (strcmp(item->string, "maxTableWeight")==0) {
 				plg_MngSetMaxTableWeight(pManage, item->valueint);
-			} else 	if (strcmp(item->string, "LuaPath") == 0) {
+			} else 	if (strcmp(item->string, "luaPath") == 0) {
 				plg_MngSetLuaPath(pManage, item->valuestring);
-			} else 	if (strcmp(item->string, "LuaDllPath") == 0) {
+			} else 	if (strcmp(item->string, "luaDllPath") == 0) {
 				plg_MngSetLuaDllPath(pManage, item->valuestring);
-			} else 	if (strcmp(item->string, "DllPath") == 0) {
+			} else 	if (strcmp(item->string, "dllPath") == 0) {
 				plg_MngSetDllPath(pManage, item->valuestring);
-			} else 	if (strcmp(item->string, "LuaHot") == 0) {
+			} else 	if (strcmp(item->string, "luaHot") == 0) {
 				plg_MngSetLuaHot(pManage, item->valueint);
 			} else 	if (strcmp(item->string, "nosave") == 0) {
 				plg_MngSetAllNoSave(pManage, item->valueint);
@@ -119,6 +119,8 @@ static void EnumJson(pJSON * root, void* pManage)
 				plg_MngSetStat(pManage, item->valueint);
 			} else 	if (strcmp(item->string, "checkTime") == 0) {
 				plg_MngSetStatCheckTime(pManage, item->valueint);
+			} else 	if (strcmp(item->string, "maxQueue") == 0) {
+				plg_MngSetMaxQueue(pManage, item->valueint);
 			}
 		}
 	}
@@ -205,4 +207,10 @@ unsigned int plg_NVersion() {
 
 unsigned int plg_MVersion() {
 	return VERSION_NUMMAJOR;
+}
+
+void plg_Version() {
+	printf("pelagia version \"" VERSION_MAJOR "." VERSION_MINOR "\"\n");
+	printf("Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>\n");
+	printf("* All rights reserved. *\n");
 }
