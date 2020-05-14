@@ -269,7 +269,7 @@ unsigned int job_MaxQueue() {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 	return pJobHandle->maxQueue;
@@ -281,7 +281,7 @@ void* job_ManageEqueue() {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 	return pJobHandle->pManageEqueue;
@@ -293,7 +293,7 @@ void plg_JobSetExitThread(char value) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 	pJobHandle->exitThread = value;
@@ -305,7 +305,7 @@ void plg_JobSetDonotFlush() {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 	pJobHandle->donotFlush = 1;
@@ -317,7 +317,7 @@ void plg_JobSetDonotCommit() {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 	pJobHandle->donotCommit = 1;
@@ -428,7 +428,7 @@ void* plg_JobGetPrivate() {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 	return pJobHandle->privateData;
@@ -609,7 +609,7 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		
 		return 0;
 	}
@@ -1066,7 +1066,7 @@ unsigned short plg_JobGetTableType(void* table, short tableLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1090,7 +1090,7 @@ unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short t
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1123,7 +1123,7 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1160,7 +1160,7 @@ unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, vo
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1198,7 +1198,7 @@ void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned 
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1236,7 +1236,7 @@ unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1269,7 +1269,7 @@ unsigned int plg_JobLength(void* table, short tableLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	unsigned int len = 0;
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1294,7 +1294,7 @@ unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short ke
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1328,7 +1328,7 @@ unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short key
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1352,7 +1352,7 @@ unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen,
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1383,7 +1383,7 @@ void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigne
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1405,7 +1405,7 @@ void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite,
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1427,7 +1427,7 @@ void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen,
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1449,7 +1449,7 @@ void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1471,7 +1471,7 @@ void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyL
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1496,7 +1496,7 @@ unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	unsigned int r = 0;
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1528,7 +1528,7 @@ void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pVa
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1552,7 +1552,7 @@ void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1591,7 +1591,7 @@ void plg_JobTableClear(void* table, short tableLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1621,7 +1621,7 @@ unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, v
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1653,7 +1653,7 @@ void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* be
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1675,7 +1675,7 @@ void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* b
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1697,7 +1697,7 @@ void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* 
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1720,7 +1720,7 @@ unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	unsigned int len = 0;
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1744,7 +1744,7 @@ unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short ke
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1769,7 +1769,7 @@ void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void*
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1792,7 +1792,7 @@ void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigne
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1831,7 +1831,7 @@ void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pVa
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1860,7 +1860,7 @@ void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1901,7 +1901,7 @@ unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short key
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -1925,7 +1925,7 @@ void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1947,7 +1947,7 @@ void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* k
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1975,7 +1975,7 @@ void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyD
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -1997,7 +1997,7 @@ void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* 
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -2026,7 +2026,7 @@ void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -2048,7 +2048,7 @@ void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* k
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -2077,7 +2077,7 @@ void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, vo
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -2107,7 +2107,7 @@ void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 
@@ -2127,7 +2127,7 @@ char* plg_JobCurrentOrder(short* orderLen) {
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return 0;
 	}
 
@@ -2142,7 +2142,7 @@ void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, sho
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
 	
 	if (!pJobHandle) {
-		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
 		return;
 	}
 

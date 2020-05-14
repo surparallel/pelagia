@@ -30,7 +30,7 @@ enum OutPutLevel
 	log_all,
 };
 
-typedef void (*ErrFun)(int level, const char* describe, const char* time, const char* fileName, int line);
+typedef void (*ErrFun)(int level, const char* describe, const char* fileName, int line);
 
 void plg_LogSetError(int level, char* describe, const char* fileName, int line);
 char* plg_LogFormatDescribe(char const *fmt, ...);

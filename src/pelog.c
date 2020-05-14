@@ -27,7 +27,7 @@
 #include "pfilesys.h"
 #include "pelagia.h"
 
-static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line);
+static void plg_LogErrFunPrintf(int level, const char* describe, const char* fileName, int line);
 static ErrFun _errFun = plg_LogErrFunPrintf;
 static short _setMaxlevel = log_warn;
 static short _setMinlevel = log_error;
@@ -203,7 +203,7 @@ static void CreateLogFile(PLogFileHandle pLogFileHandle) {
 	pLogFileHandle->fileSec = plg_GetCurrentSec();
 }
 
-static void plg_LogErrFunFile(int level, const char* describe, const char* time, const char* fileName, int line) {
+static void plg_LogErrFunFile(int level, const char* describe, const char* fileName, int line) {
 
 	PLogFileHandle pLogFileHandle = plg_LocksGetLogFile();
 	if (pLogFileHandle == 0) {
@@ -226,18 +226,18 @@ static void plg_LogErrFunFile(int level, const char* describe, const char* time,
 	}
 
 	if (pLogFileHandle->outputFile) {
-		sds t = plg_GetTimForm();
-		fprintf(pLogFileHandle->outputFile, "%s %s (%s-%d) %s\n", t, GetLevelName(level), fileName, line, describe);
+		sds time = plg_GetTimForm();
+		fprintf(pLogFileHandle->outputFile, "%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
 		fflush(pLogFileHandle->outputFile);
-		plg_sdsFree(t);
+		plg_sdsFree(time);
 	}
 }
 
-static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line) {
+static void plg_LogErrFunPrintf(int level, const char* describe, const char* fileName, int line) {
 	
-	sds t = plg_GetTimForm();
-	printf("%s %s (%s-%d) %s\n", t, GetLevelName(level), fileName, line, describe);
-	plg_sdsFree(t);
+	sds time = plg_GetTimForm();
+	printf("%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
+	plg_sdsFree(time);
 }
 
 void plg_LogSetErrCallBack(ErrFun errFun) {
@@ -250,11 +250,8 @@ void plg_LogSetErrCallBack(ErrFun errFun) {
 }
 
 void plg_LogSetError(int level, char* describe, const char* fileName, int line) {
-
 	if (_errFun != NULL && listHandle) {
-		sds time = plg_sdsCatFmt(plg_sdsEmpty(), "%U", plg_GetCurrentSec());
-		_errFun(level, describe, time, fileName, line);
-		plg_sdsFree(time);
+		_errFun(level, describe, fileName, line);
 	}
 }
 
