@@ -30,14 +30,20 @@ typedef struct _SafeMutex
 	pthread_mutex_t lock;
 }*PSafeMutex, SafeMutex;
 
-static pthread_key_t exclusionZone;
-static pthread_key_t environmental;
-static pthread_key_t logfile;
+static pthread_key_t exclusionZone = 0;
+static pthread_key_t environmental = 0;
+static pthread_key_t logfile = 0;
 
 void plg_LocksCreate() {
-	pthread_key_create(&exclusionZone, NULL);
-	pthread_key_create(&environmental, NULL);
-	pthread_key_create(&logfile, NULL);
+	if (0 != pthread_key_create(&exclusionZone, NULL)) {
+		plg_assert(0);
+	}
+	if (0 != pthread_key_create(&environmental, NULL)) {
+		plg_assert(0);
+	}
+	if (0 != pthread_key_create(&logfile, NULL)) {
+		plg_assert(0);
+	}
 }
 
 void plg_LocksDestroy() {
@@ -51,8 +57,8 @@ char plg_LocksEntry(void* pvSafeMutex) {
 	PSafeMutex pSafeMutex = pvSafeMutex;
 	//Currently internal thread needs to check lock status
 	if (plg_LocksGetSpecific() != 0) {
+		plg_assert(exclusionZone);
 		list* ptr = pthread_getspecific(exclusionZone);
-
 		//Current non lock state enters lock state creation
 		if (ptr == 0) {
 			ptr = plg_listCreate(LIST_MIDDLE);
@@ -82,6 +88,7 @@ char plg_LocksLeave(void* pvSafeMutex) {
 	PSafeMutex pSafeMutex = pvSafeMutex;
 	//Currently internal thread needs to check lock status
 	if (plg_LocksGetSpecific() != 0) {
+		plg_assert(exclusionZone);
 		list* ptr = pthread_getspecific(exclusionZone);
 		
 		//Repeated release will result in a critical error
@@ -108,18 +115,26 @@ char plg_LocksLeave(void* pvSafeMutex) {
 }
 
 void plg_LocksSetSpecific(void* ptr) {
+	plg_assert(ptr);
+	plg_assert(environmental);
 	pthread_setspecific(environmental, ptr);
 }
 
 void* plg_LocksGetSpecific() {
-	return pthread_getspecific(environmental);
+	if (!environmental) {
+		return 0;
+	}
+	void* ptr = pthread_getspecific(environmental);
+	return ptr;
 }
 
 void plg_LocksSetLogFile(void* ptr) {
+	plg_assert(logfile);
 	pthread_setspecific(logfile, ptr);
 }
 
 void* plg_LocksGetLogFile() {
+	plg_assert(logfile);
 	return pthread_getspecific(logfile);
 }
 
@@ -131,6 +146,7 @@ void* plg_MutexCreateHandle(unsigned int rank) {
 }
 
 void plg_MutexThreadDestroy() {
+	plg_assert(exclusionZone);
 	list* ptr = pthread_getspecific(exclusionZone);
 	if (ptr != 0) {
 		plg_listRelease(ptr);

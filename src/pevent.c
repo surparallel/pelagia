@@ -21,6 +21,7 @@
 #include "pjob.h"
 #include "pequeue.h"
 #include "psds.h"
+#include "pelagia.h"
 
 void plg_eventFree(void* ptr) {
 	plg_sdsFree(ptr);
@@ -37,6 +38,11 @@ void plg_EventDestroyHandle(void* pEventHandle) {
 void plg_EventSend(void* pEventHandle, const char* value, unsigned int valueLen) {
 	sds sdsvalue = plg_sdsNewLen(value, valueLen);
 	plg_eqPush(pEventHandle, sdsvalue);
+}
+
+void plg_EventSendWithMax(void* pEventHandle, const char* value, unsigned int valueLen, unsigned int maxQueue) {
+	sds sdsvalue = plg_sdsNewLen(value, valueLen);
+	plg_eqIfNoPush(pEventHandle, sdsvalue, maxQueue);
 }
 
 int plg_EventTimeWait(void* pEventHandle, long long sec, int nsec) {

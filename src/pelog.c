@@ -17,6 +17,7 @@
 * along with this program.If not, see < https://www.gnu.org/licenses/>.
 */
 
+#include <pthread.h>
 #include "plateform.h"
 #include "pelog.h"
 #include "psds.h"
@@ -24,6 +25,7 @@
 #include "ptimesys.h"
 #include "padlist.h"
 #include "pfilesys.h"
+#include "pelagia.h"
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line);
 static ErrFun _errFun = plg_LogErrFunPrintf;
@@ -57,20 +59,6 @@ const char* GetLevelName(int level) {
 		return "DETAILS";
 	}
 	return "NULL";
-}
-
-char* plg_LogGetTimForm() {
-
-	time_t tt;
-	time(&tt);
-	tt = tt + 8 * 3600;//transform the time zone
-	struct tm* t = gmtime(&tt);
-
-	sds x = plg_sdsCatPrintf(plg_sdsEmpty(), "%04d-%02d-%02d %02d:%02d:%02d",
-		t->tm_year + 1900, t->tm_mon + 1,
-		t->tm_mday, t->tm_hour,
-		t->tm_min, t->tm_sec);
-	return x;
 }
 
 char* plg_LogFormatDescribe(char const *fmt, ...) {
@@ -197,16 +185,17 @@ static void CreateLogFile(PLogFileHandle pLogFileHandle) {
 		fclose(pLogFileHandle->outputFile);
 	}
 
-	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%U_%U_%U", _outDir, _outFile, mutexHandle, plg_GetCurrentSec(), pLogFileHandle->threadFlag);
+	sds d = plg_GetDayForm();
+	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%s_%U_%U", _outDir, _outFile, d, mutexHandle, pthread_self().p);
 	pLogFileHandle->outputFile = fopen_t(fielPath, "ab");
+	plg_sdsFree(d);
+	plg_sdsFree(fielPath);
 
 	if (!pLogFileHandle->outputFile) {
 		pLogFileHandle->outputFile = NULL;
 		plg_LogSetErrCallBack(NULL);
 		return;
 	}
-
-	plg_sdsFree(fielPath);
 	pLogFileHandle->fileSec = plg_GetCurrentSec();
 }
 
@@ -231,27 +220,20 @@ static void plg_LogErrFunFile(int level, const char* describe, const char* time,
 	if (csec - pLogFileHandle->fileSec > 60 * 60 * 24) {
 		CreateLogFile(pLogFileHandle);
 	}
-	fprintf(pLogFileHandle->outputFile, "%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
-	fflush(pLogFileHandle->outputFile);
+
+	if (pLogFileHandle->outputFile) {
+		sds t = plg_GetTimForm();
+		fprintf(pLogFileHandle->outputFile, "%s %s (%s-%d) %s\n", t, GetLevelName(level), fileName, line, describe);
+		fflush(pLogFileHandle->outputFile);
+		plg_sdsFree(t);
+	}
 }
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* time, const char* fileName, int line) {
 	
-	printf("%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
-}
-
-char* plg_LogGetTimFormDay() {
-
-	time_t tt;
-	time(&tt);
-	tt = tt + 8 * 3600;//transform the time zone
-
-	struct tm* t = gmtime(&tt);
-
-	sds x = plg_sdsCatPrintf(plg_sdsEmpty(), "%04d-%02d-%02d",
-		t->tm_year + 1900, t->tm_mon + 1,
-		t->tm_mday);
-	return x;
+	sds t = plg_GetTimForm();
+	printf("%s %s (%s-%d) %s\n", t, GetLevelName(level), fileName, line, describe);
+	plg_sdsFree(t);
 }
 
 void plg_LogSetErrCallBack(ErrFun errFun) {
@@ -294,7 +276,9 @@ void plg_LogDestroy() {
 	listNode* node;
 	while ((node = plg_listNext(iter)) != NULL) {
 		PLogFileHandle pLogFileHandle = listNodeValue(node);
-		fclose(pLogFileHandle->outputFile);
+		if (pLogFileHandle->outputFile != NULL) {
+			fclose(pLogFileHandle->outputFile);
+		}
 		free(pLogFileHandle);
 	}
 	plg_listReleaseIterator(iter);

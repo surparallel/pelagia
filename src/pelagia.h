@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"29"
+#define VERSION_MINOR	"31"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	29
+#define VERSION_NUMMINOR	31
 
 #include "papidefine.h"
 
@@ -61,6 +61,7 @@ PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);
 PELAGIA_API int plg_MngRemoteCall(void* pManage, char* order, short orderLen, char* value, short valueLen);
 PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv);
+PELAGIA_API int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen);
 
 //manage check API
 PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
@@ -78,6 +79,7 @@ PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
 PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 PELAGIA_API void plg_JobForceCommit();
+PELAGIA_API void plg_JobMemoryFree(void* ptr);//for plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand
 
 //system
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);
@@ -96,7 +98,7 @@ PELAGIA_API unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* k
 PELAGIA_API void plg_JobTableClear(void* table, short tableLen);
 PELAGIA_API unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen, void* newKey, short newKeyLen);
 
-PELAGIA_API void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);
+PELAGIA_API void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen);//need free
 PELAGIA_API unsigned int plg_JobLength(void* table, short tableLen);
 PELAGIA_API unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short keyLen);
 PELAGIA_API void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigned int left, unsigned int right, void* pDictExten);
@@ -105,7 +107,7 @@ PELAGIA_API void plg_JobRang(void* table, short tableLen, void* beginKey, short 
 PELAGIA_API void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten);
 PELAGIA_API void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten);
 PELAGIA_API void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten);
-PELAGIA_API void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen);
+PELAGIA_API void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen);//need free
 
 //set db
 PELAGIA_API unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);
@@ -136,6 +138,7 @@ PELAGIA_API int plg_EventWait(void* pEventHandle);
 PELAGIA_API void plg_EventSend(void* pEventHandle, const char* value, unsigned int valueLen);
 PELAGIA_API void* plg_EventRecvAlloc(void* pEventHandle, unsigned int* valueLen);
 PELAGIA_API void plg_EventFreePtr(void* ptr);
+PELAGIA_API void plg_EventSendWithMax(void* pEventHandle, const char* value, unsigned int valueLen, unsigned int maxQueue);
 
 //DictExten
 PELAGIA_API void* plg_DictExtenCreate();

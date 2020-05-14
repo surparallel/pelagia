@@ -37,7 +37,6 @@ char* plg_LogFormatDescribe(char const *fmt, ...);
 void plg_LogFreeForm(void* s);
 short plg_LogGetMaxLevel();
 short plg_LogGetMinLevel();
-char* plg_LogGetTimForm();
 
 void plg_LogSetErrCallBack(ErrFun errFun);
 

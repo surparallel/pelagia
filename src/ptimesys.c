@@ -18,6 +18,7 @@
 */
 #include "plateform.h"
 #include "ptimesys.h"
+#include "psds.h"
 
 #ifdef _WIN32
 void usleep(unsigned long usec)
@@ -76,4 +77,40 @@ void plg_GetTime(long long *sec, int *usec)
 	*sec = tv.tv_sec;
 	*usec = tv.tv_usec;
 #endif
+}
+
+char* plg_GetTimForm() {
+
+	time_t tt;
+	time(&tt);
+	tt = tt + 8 * 3600;//transform the time zone
+	struct tm rt;
+#ifdef _WIN32
+	gmtime_s(&rt, &tt);
+#else
+	gmtime_r(&tt, &rt);
+#endif
+	sds x = plg_sdsCatPrintf(plg_sdsEmpty(), "%04d-%02d-%02d_%02d:%02d:%02d",
+		rt.tm_year + 1900, rt.tm_mon + 1,
+		rt.tm_mday, rt.tm_hour,
+		rt.tm_min, rt.tm_sec);
+	return x;
+}
+
+char* plg_GetDayForm() {
+
+	time_t tt;
+	time(&tt);
+	tt = tt + 8 * 3600;//transform the time zone
+	struct tm rt;
+#ifdef _WIN32
+	gmtime_s(&rt, &tt);
+#else
+	gmtime_r(&tt, &rt);
+#endif
+
+	sds x = plg_sdsCatPrintf(plg_sdsEmpty(), "%04d-%02d-%02d",
+		rt.tm_year + 1900, rt.tm_mon + 1,
+		rt.tm_mday);
+	return x;
 }

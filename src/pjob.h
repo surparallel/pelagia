@@ -51,6 +51,7 @@ void plg_JobPrintOrder(void* pvJobHandle);
 
 //Operating system interface
 void* job_Handle();
+unsigned int job_MaxQueue();
 void plg_JobSetExitThread(char value);
 void* job_ManageEqueue();
 void plg_JobSetPrivate(void* pJobHandle, void* privateData);

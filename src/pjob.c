@@ -263,10 +263,27 @@ void* job_Handle() {
 	return plg_LocksGetSpecific();
 }
 
+unsigned int job_MaxQueue() {
+
+	CheckUsingThread(0);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+	return pJobHandle->maxQueue;
+}
+
 void* job_ManageEqueue() {
 
 	CheckUsingThread(0);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
 	return pJobHandle->pManageEqueue;
 }
 
@@ -274,6 +291,11 @@ void plg_JobSetExitThread(char value) {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
 	pJobHandle->exitThread = value;
 }
 
@@ -281,6 +303,11 @@ void plg_JobSetDonotFlush() {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
 	pJobHandle->donotFlush = 1;
 }
 
@@ -288,6 +315,11 @@ void plg_JobSetDonotCommit() {
 
 	CheckUsingThread(NORET);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
 	pJobHandle->donotCommit = 1;
 }
 
@@ -394,6 +426,11 @@ void* plg_JobGetPrivate() {
 
 	CheckUsingThread(0);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
 	return pJobHandle->privateData;
 }
 
@@ -571,6 +608,12 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 	CheckUsingThread(0);
 
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		
+		return 0;
+	}
+
 	POrderPacket pOrderPacket = malloc(sizeof(OrderPacket));
 	pOrderPacket->order = plg_sdsNewLen(order, orderLen);
 	pOrderPacket->value = plg_sdsNewLen(value, valueLen);
@@ -582,7 +625,7 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 			plg_sdsFree(pOrderPacket->value);
 			free(pOrderPacket);
 			
-			elog(log_error, "Queue limit exceeded for %i", pJobHandle->maxQueue);
+			elog(log_error, "plg_MngRemoteCall Queue limit exceeded for %i", pJobHandle->maxQueue);
 		}
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
@@ -899,9 +942,10 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 }
 
 int plg_JobStartRouting(void* pvJobHandle) {
-
 	pthread_t pid;
-	return pthread_create(&pid, NULL, plg_JobThreadRouting, pvJobHandle);
+	int r = pthread_create(&pid, NULL, plg_JobThreadRouting, pvJobHandle);
+	elog(log_fun, "plg_JobStartRouting %U %U", pvJobHandle, pid.p);
+	return r;
 }
 
 /*
@@ -1019,6 +1063,12 @@ unsigned short plg_JobGetTableType(void* table, short tableLen) {
 	CheckUsingThread(0);
 	unsigned short r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1037,6 +1087,12 @@ unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short t
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1064,6 +1120,12 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 	CheckUsingThread(0);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1090,10 +1152,17 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 First check the running cache
 */
 unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen) {
-
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSet %s %s", table, key);
+	
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1122,8 +1191,16 @@ Get set type will fail
 void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobGet %s %s", table, key);
+
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1153,8 +1230,15 @@ void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned 
 unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobDel %s %s", table, key);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1178,9 +1262,16 @@ unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 
 unsigned int plg_JobLength(void* table, short tableLen) {
 
-	unsigned int len = 0;
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobLength %s", table);
+
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	unsigned int len = 0;
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1196,8 +1287,16 @@ unsigned int plg_JobLength(void* table, short tableLen) {
 unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short keyLen, void* value, unsigned int valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSetIfNoExit %s %s", table, key);
+
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1222,8 +1321,16 @@ unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short ke
 unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short keyLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobIsKeyExist %s %s", table, key);
+
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1239,8 +1346,15 @@ unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short key
 unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen, void* newKey, short newKeyLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobRename %s %s %s", table, key, newKey);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1264,7 +1378,14 @@ unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen,
 void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigned int left, unsigned int right, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobLimite %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1279,7 +1400,14 @@ void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigne
 void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobLimite %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1294,7 +1422,14 @@ void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite,
 void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobRang %s %s %s", table, beginKey, endKey);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1309,7 +1444,14 @@ void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen,
 void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobPoint %s %s", table, beginKey);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1324,7 +1466,14 @@ void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen
 void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobPattern %s %s %s", table, beginKey, endKey);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1340,9 +1489,16 @@ First check the running cache
 */
 unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 
-	unsigned int r = 0;
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobMultiSet %s", table);
+
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	unsigned int r = 0;
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1366,7 +1522,15 @@ unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobMultiGet %s", table);
+
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1381,8 +1545,16 @@ void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pVa
 void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobRand %s", table);
+
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1414,7 +1586,14 @@ void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen) {
 void plg_JobTableClear(void* table, short tableLen) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobTableClear %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1436,8 +1615,15 @@ void plg_JobTableClear(void* table, short tableLen) {
 unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSAdd %s %s", table, key);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);	
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1462,7 +1648,14 @@ unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, v
 void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSRang %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1477,7 +1670,14 @@ void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* be
 void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, unsigned int direction, unsigned int offset, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSPoint %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1492,7 +1692,14 @@ void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* b
 void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen, unsigned int left, unsigned int right, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSLimite %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1506,9 +1713,16 @@ void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* 
 
 unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen) {
 
-	unsigned int len = 0;
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSLength %s %s", table, key);
+
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	unsigned int len = 0;
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1524,8 +1738,15 @@ unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen
 unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSIsKeyExist %s %s", table, key);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1542,7 +1763,15 @@ unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short ke
 void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void* pDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSMembers %s %s", table, key);
+
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1557,8 +1786,15 @@ void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void*
 void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSRand %s %s", table, key);
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1590,7 +1826,14 @@ void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigne
 void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pValueDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSDel %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1611,8 +1854,15 @@ void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pVa
 void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned int* valueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSPop %s %s", table, key);
 	void* ptr = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1645,8 +1895,15 @@ void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned
 unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short keyLen, void* beginValue, short beginValueLen, void* endValue, short endValueLen) {
 
 	CheckUsingThread(0);
+	elog(log_fun, "plg_JobSRangCount %s %s", table, key);
 	unsigned int r = 0;
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1663,7 +1920,14 @@ unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short key
 void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSUion %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1678,7 +1942,14 @@ void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSUionStore %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
 	if (valueEntry != 0) {
@@ -1699,7 +1970,14 @@ void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* k
 void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSInter %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1714,7 +1992,14 @@ void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyD
 void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSInterStore %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1736,7 +2021,14 @@ void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* 
 void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDictExten) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSDiff %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1751,7 +2043,14 @@ void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* key, short keyLen) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSDiff %s %s", table, key);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1773,7 +2072,14 @@ void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* k
 void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, void* desKey, short desKeyLen, void* value, short valueLen) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobSMove %s %s %s", table, srcKey, desKey);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1796,7 +2102,14 @@ void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, vo
 void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot) {
 
 	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobTableMembersWithJson %s", table);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	sds sdsTable = plg_sdsNewLen(table, tableLen);
 
 	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
@@ -1811,6 +2124,11 @@ void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot) {
 char* plg_JobCurrentOrder(short* orderLen) {
 	CheckUsingThread(0);
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return 0;
+	}
 
 	*orderLen = plg_sdsLen(pJobHandle->pOrderName);
 	return pJobHandle->pOrderName;
@@ -1821,6 +2139,12 @@ void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, sho
 
 	unsigned long long milli = plg_GetCurrentMilli();
 	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle %i", errno);
+		return;
+	}
+
 	PIntervalometer pPIntervalometer = malloc(sizeof(Intervalometer));
 	pPIntervalometer->Order = plg_sdsNewLen(order, orderLen);
 	pPIntervalometer->Value = plg_sdsNewLen(value, valueLen);
@@ -1866,6 +2190,10 @@ char** plg_JobTableName(short* tableLen) {
 	}
 
 	return plg_MngOrderAllTable(pManage, orderName, orderLen, tableLen);
+}
+
+void plg_JobMemoryFree(void* ptr) {
+	free(ptr);
 }
 
 

@@ -850,27 +850,39 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 	CheckUsingThread(0);
 
 	PManage pManage = pvManage;
-	POrderPacket POrderPacket = malloc(sizeof(OrderPacket));
-	POrderPacket->order = plg_sdsNewLen(order, orderLen);
-	POrderPacket->value = plg_sdsNewLen(value, valueLen);
+	POrderPacket pOrderPacket = malloc(sizeof(OrderPacket));
+	pOrderPacket->order = plg_sdsNewLen(order, orderLen);
+	pOrderPacket->value = plg_sdsNewLen(value, valueLen);
 
-	dictEntry* entry = plg_dictFind(pManage->order_equeue, POrderPacket->order);
+	dictEntry* entry = plg_dictFind(pManage->order_equeue, pOrderPacket->order);
 	if (entry) {
-		plg_eqPush(dictGetVal(entry), POrderPacket);
-		r = 1;
+		r = plg_eqIfNoPush(dictGetVal(entry), pOrderPacket, pManage->maxQueue);
+		if (r == 0) {
+			plg_sdsFree(pOrderPacket->order);
+			plg_sdsFree(pOrderPacket->value);
+			free(pOrderPacket);
+
+			elog(log_error, "plg_MngRemoteCall Queue limit exceeded for %i", pManage->maxQueue);
+		}
 	} else {
 
-		dictEntry* entryPrcess = plg_dictFind(pManage->order_process, POrderPacket->order);
+		dictEntry* entryPrcess = plg_dictFind(pManage->order_process, pOrderPacket->order);
 		if (entryPrcess) {
 			void* equeue = plg_MngRandJobEqueue(pvManage);
-			plg_eqPush(equeue, POrderPacket);
-			r = 1;
+			r = plg_eqIfNoPush(equeue, pOrderPacket, pManage->maxQueue);
+			if (r == 0) {
+				plg_sdsFree(pOrderPacket->order);
+				plg_sdsFree(pOrderPacket->value);
+				free(pOrderPacket);
+
+				elog(log_error, "plg_MngRemoteCall Queue limit exceeded for %i", pManage->maxQueue);
+			}
 		} else {
 			elog(log_error, "plg_MngRemoteCall.Order:%s not found", order);
 
-			plg_sdsFree(POrderPacket->order);
-			plg_sdsFree(POrderPacket->value);
-			free(POrderPacket);
+			plg_sdsFree(pOrderPacket->order);
+			plg_sdsFree(pOrderPacket->value);
+			free(pOrderPacket);
 		}
 	}
 
@@ -919,6 +931,27 @@ int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* 
 	free(bEventHandle);
 	pJson_Delete(root);
 
+	return ret;
+}
+
+int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen) {
+
+	NOTUSED(jsonLen);
+	int ret = 0;
+	pJSON* root = pJson_Parse(json);
+	if (!root) {
+		elog(log_error, "plg_MngRemoteCallWithJson: parse json");
+		return ret;
+	}
+
+	char* bEventHandle = plg_B64Encode((unsigned char*)&eventHandle, sizeof(void*));
+	pJson_AddStringToObject(root, "event", bEventHandle);
+
+	char* cValue = pJson_Print(root);
+	ret = plg_MngRemoteCall(pvManage, order, orderLen, cValue, strlen(cValue));
+
+	free(bEventHandle);
+	pJson_Delete(root);
 	return ret;
 }
 

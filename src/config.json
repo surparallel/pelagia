@@ -1,8 +1,8 @@
 {
 "dbPath":"",
 "core":1,
-"maxTableWeight":100,
-"luaDllPath":"./liblua.so",
+"MaxTableWeight":100,
+"LuaDllPath":"./liblua.so",
 
 "o1":{
     "orderType":"lua",

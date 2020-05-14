@@ -2089,7 +2089,7 @@ static int LEventSend(lua_State* L) {
 	if (up == 101021) {
 		printf("%s\n", v);
 	} else {
-		plg_EventSend(p , v, vLen);
+		plg_EventSendWithMax(p, v, vLen, job_MaxQueue());
 	}
 	
 	free(buff);

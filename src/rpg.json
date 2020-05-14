@@ -1,0 +1,123 @@
+{
+"dbPath":"",
+"core":3,
+"maxTableWeight":100,
+"luaDllPath":"./lua5.1.dll",
+"logLevel":3,
+"logOutput":"file",
+"nosave":1,
+"luaHot":0,
+"stat":1,
+
+"entry":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"entry",
+    "weight":1,
+    "occupy":{
+        "weight":1
+        },
+    "x":{
+        "weight":1
+        },
+    "y":{
+        "weight":1
+        }
+    },
+"add_tick":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"add_tick",
+    "weight":1,
+    "tick":{
+        "weight":1
+        }
+    },
+"play_move":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"play_move",
+    "weight":1,
+    "occupy":{
+        "weight":1
+        },
+    "x":{
+        "weight":1
+        },
+    "y":{
+        "weight":1
+        }
+    },
+"init":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"init",
+    "weight":1,
+    "type":{
+        "weight":1
+        },
+    "hp":{
+        "weight":1
+        },
+    "global":{
+        "weight":1
+        }
+    },
+"play_attack":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"play_attack",
+    "weight":1,
+    "hp":{
+        "weight":1
+        }
+    },
+"npc_attack":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"npc_attack",
+    "weight":1,
+    "hp":{
+        "weight":1
+        }
+    },
+"npc_move":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"npc_move",
+    "weight":1,
+    "occupy":{
+        "weight":1
+        },
+    "x":{
+        "weight":1
+        },
+    "y":{
+        "weight":1
+        }
+    },
+"npc_tick":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"npc_tick",
+    "weight":1,
+    "tick":{
+        "weight":1
+        }
+    },
+"test":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"test",
+    "weight":1
+    },
+"test2":{
+    "orderType":"lua",
+    "file":"rpg.lua",
+    "fun":"test2",
+    "weight":1,
+    "tick":{
+        "weight":1
+        }
+    }
+}

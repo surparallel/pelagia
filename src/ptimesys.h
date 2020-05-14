@@ -33,5 +33,7 @@ void usleep(unsigned long usec);
 unsigned long long plg_GetCurrentMilli();
 unsigned long long plg_GetCurrentSec();
 void plg_GetTime(long long *sec, int *usec);
+char* plg_GetTimForm();
+char* plg_GetDayForm();
 
 #endif

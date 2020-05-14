@@ -1,10 +1,10 @@
 {
 "dbPath":"",
 "core":1,
-"maxTableWeight":100,
-"luaDllPath":"./liblua.so",
-"logOutput": "print",
-"logLevel":0,
+"MaxTableWeight":100,
+"LuaDllPath":"./liblua.so",
+"LogOutput": "print",
+"LogLevel":0,
 
 "benchmark":{
     "orderType":"lua",
