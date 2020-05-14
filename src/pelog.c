@@ -185,8 +185,12 @@ static void CreateLogFile(PLogFileHandle pLogFileHandle) {
 		fclose(pLogFileHandle->outputFile);
 	}
 
+	unsigned long long job_id = (unsigned long long)plg_LocksGetSpecific();
+	if (job_id == 0) {
+		job_id = pLogFileHandle->threadFlag;
+	}
 	sds d = plg_GetDayForm();
-	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%s_%U_%U", _outDir, _outFile, d, mutexHandle, pthread_self().p);
+	sds fielPath = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s_%s_%U_%U", _outDir, _outFile, d, mutexHandle, job_id);
 	pLogFileHandle->outputFile = fopen_t(fielPath, "ab");
 	plg_sdsFree(d);
 	plg_sdsFree(fielPath);

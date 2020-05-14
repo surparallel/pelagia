@@ -772,10 +772,10 @@ static void plg_LogStat(void* pvJobHandle, unsigned long long passTime) {
 
 static void* plg_JobThreadRouting(void* pvJobHandle) {
 
-	elog(log_fun, "plg_JobThreadRouting");
-
 	PJobHandle pJobHandle = pvJobHandle;
 	plg_LocksSetSpecific(pJobHandle);
+	
+	elog(log_fun, "plg_JobThreadRouting");
 
 	//init
 	void* sdsKey = plg_sdsNew("init");
@@ -944,7 +944,8 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 int plg_JobStartRouting(void* pvJobHandle) {
 	pthread_t pid;
 	int r = pthread_create(&pid, NULL, plg_JobThreadRouting, pvJobHandle);
-	elog(log_fun, "plg_JobStartRouting %U %U", pvJobHandle, pid.p);
+
+	elog(log_fun, "plg_JobStartRouting %U", pvJobHandle);
 	return r;
 }
 
