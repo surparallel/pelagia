@@ -60,6 +60,10 @@ After decompression, enter the msvcs directory and open pelagia.sln for compilat
 
 ## Using Pelagia as a Control and Dao framework on the client
 
-Pelagia is data and logic management tool for clients. By separating view and control, software complexity is reduced, development efficiency and view performance are improved.
+An example of unity can be found here
+<a href="https://github.com/surparallel/unity_example_of_pelagia">https://github.com/surparallel/unity_example_of_pelagia</a>
 
+Pelagia is data and logic management tool for clients. By separating view and control, software complexity is reduced, development efficiency and view performance are improved.
 <a href="https://surparallel.org"><img src="https://github.com/surparallel/pelagia_websit/blob/master/img/view_control_dao.jpg"></a>
+
+
