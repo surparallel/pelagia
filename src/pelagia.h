@@ -74,12 +74,12 @@ PELAGIA_API void plg_MngPrintAllDetails(void* pvManage, void* fileHandle);
 PELAGIA_API void plg_MemoryFree(void* ptr);//for plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand
 
 //nead free using plg_MemoryFree(void*);
-PELAGIA_API char* plg_MngPrintAllStatusJson(void* pvManage, unsigned int* length);
-PELAGIA_API char* plg_MngPrintAllJobStatusJson(void* pvManage, unsigned int* length);
-PELAGIA_API char* plg_MngPrintAllJobDetailsJson(void* pvManage, unsigned int* length);
-PELAGIA_API char* plg_MngPrintPossibleAllocJson(void* pvManage, unsigned int* length);
-PELAGIA_API char* plg_MngPrintAllJobOrderJson(void* pvManage, unsigned int* length);
-PELAGIA_API char* plg_MngPrintAllDetailsJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintAllStatusJson(void* pvManage);
+PELAGIA_API char* plg_MngPrintAllJobStatusJson(void* pvManage);
+PELAGIA_API char* plg_MngPrintAllJobDetailsJson(void* pvManage);
+PELAGIA_API char* plg_MngPrintPossibleAllocJson(void* pvManage);
+PELAGIA_API char* plg_MngPrintAllJobOrderJson(void* pvManage);
+PELAGIA_API char* plg_MngPrintAllDetailsJson(void* pvManage);
 
 //for ptrProcess of plg_MngAddOrder;
 typedef int(*RoutingFun)(char* value, short valueLen);

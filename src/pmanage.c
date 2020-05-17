@@ -1209,7 +1209,7 @@ void plg_MngSetMaxTableWeight(void* pvManage, unsigned int maxTableWeight) {
 	pManage->maxTableWeight = maxTableWeight;
 }
 
-char* plg_MngPrintAllJobStatusJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintAllJobStatusJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1230,14 +1230,13 @@ char* plg_MngPrintAllJobStatusJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintAllJobStatus(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintAllJobStatusJson(pvManage, &length);
+	char* ps = plg_MngPrintAllJobStatusJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 
 }
 
-char* plg_MngPrintAllJobDetailsJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintAllJobDetailsJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1258,14 +1257,13 @@ char* plg_MngPrintAllJobDetailsJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintAllJobDetails(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintAllJobDetailsJson(pvManage, &length);
+	char* ps = plg_MngPrintAllJobDetailsJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 
 }
 
-char* plg_MngPrintAllJobOrderJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintAllJobOrderJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1286,13 +1284,12 @@ char* plg_MngPrintAllJobOrderJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintAllJobOrder(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintAllJobOrderJson(pvManage, &length);
+	char* ps = plg_MngPrintAllJobOrderJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 }
 
-char* plg_MngPrintAllStatusJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintAllStatusJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1317,13 +1314,12 @@ char* plg_MngPrintAllStatusJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintAllStatus(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintAllStatusJson(pvManage, &length);
+	char* ps = plg_MngPrintAllStatusJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 }
 
-char* plg_MngPrintAllDetailsJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintAllDetailsJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1356,8 +1352,7 @@ char* plg_MngPrintAllDetailsJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintAllDetails(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintAllDetailsJson(pvManage, &length);
+	char* ps = plg_MngPrintAllDetailsJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 }
@@ -1366,7 +1361,7 @@ void plg_MngPrintAllDetails(void* pvManage, void* fileHandle) {
 loop event_dictTableName
 core: number core
 */
-char* plg_MngPrintPossibleAllocJson(void* pvManage, unsigned int* length) {
+char* plg_MngPrintPossibleAllocJson(void* pvManage) {
 
 	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
@@ -1507,8 +1502,7 @@ char* plg_MngPrintPossibleAllocJson(void* pvManage, unsigned int* length) {
 void plg_MngPrintPossibleAlloc(void* pvManage, void* fileHandle) {
 
 	FILE* f = fileHandle;
-	unsigned int length;
-	char* ps = plg_MngPrintPossibleAllocJson(pvManage, &length);
+	char* ps = plg_MngPrintPossibleAllocJson(pvManage);
 	fwrite(ps, 1, strlen(ps), f);
 	free(ps);
 }
