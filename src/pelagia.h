@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"31"
+#define VERSION_MINOR	"32"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	31
+#define VERSION_NUMMINOR	32
 
 #include "papidefine.h"
 
@@ -64,11 +64,22 @@ PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orde
 PELAGIA_API int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen);
 
 //manage check API
-PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
-PELAGIA_API void plg_MngPrintAllJobStatus(void* pManage);
-PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage);
-PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage);
-PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage);
+PELAGIA_API void plg_MngPrintAllStatus(void* pManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintAllJobStatus(void* pManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintAllDetails(void* pvManage, void* fileHandle);
+
+PELAGIA_API void plg_MemoryFree(void* ptr);//for plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand
+
+//nead free using plg_MemoryFree(void*);
+PELAGIA_API char* plg_MngPrintAllStatusJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintAllJobStatusJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintAllJobDetailsJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintPossibleAllocJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintAllJobOrderJson(void* pvManage, unsigned int* length);
+PELAGIA_API char* plg_MngPrintAllDetailsJson(void* pvManage, unsigned int* length);
 
 //for ptrProcess of plg_MngAddOrder;
 typedef int(*RoutingFun)(char* value, short valueLen);
@@ -79,7 +90,6 @@ PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
 PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 PELAGIA_API void plg_JobForceCommit();
-PELAGIA_API void plg_JobMemoryFree(void* ptr);//for plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand
 
 //system
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);

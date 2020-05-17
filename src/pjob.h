@@ -45,9 +45,9 @@ char plg_JobCheckIsType(enum ThreadType threadType);
 char plg_JobCheckUsingThread();
 char* plg_TT2String(unsigned short tt);
 
-void plg_JobPrintStatus(void* pJobHandle);
-void plg_JobPrintDetails(void* pJobHandle);
-void plg_JobPrintOrder(void* pvJobHandle);
+void plg_JobPrintStatus(void* pJobHandle, void* vJson);
+void plg_JobPrintDetails(void* pJobHandle, void* vJson);
+void plg_JobPrintOrder(void* pvJobHandle, void* vJson);
 
 //Operating system interface
 void* job_Handle();

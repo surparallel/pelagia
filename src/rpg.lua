@@ -638,13 +638,13 @@ function test(param)
   local dvalue = json.decode(param)
 
   local map_init_Arg = {};
-  map_init_Arg.global_x = 100;
-  map_init_Arg.global_y = 100;--id
-  map_init_Arg.view_x = 10;
-  map_init_Arg.view_y = 10;
-  map_init_Arg.npc_count = 8000;
-  map_init_Arg.food_count = 300;
-  map_init_Arg.wall_count = 300;
+  map_init_Arg.global_x = 10;
+  map_init_Arg.global_y = 10;--id
+  map_init_Arg.view_x = 8;
+  map_init_Arg.view_y = 8;
+  map_init_Arg.npc_count = 80;
+  map_init_Arg.food_count = 3;
+  map_init_Arg.wall_count = 3;
   map_init_Arg.event = dvalue.event;
   local json_arg = json.encode(map_init_Arg);
   pelagia.RemoteCall("init", json_arg)

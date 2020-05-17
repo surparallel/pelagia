@@ -35,6 +35,7 @@
 #include "plvm.h"
 #include "pquicksort.h"
 #include "pelagia.h"
+#include "pjson.h"
 
 /*
 Thread model can be divided into two ways: asynchronous and synchronous
@@ -927,7 +928,6 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 
 			elog(log_details, "ThreadType:%i.plg_JobThreadRouting.exitThread:%i", pJobHandle->threadType, pJobHandle->exitThread);
 			void* pManage = pJobHandle->privateData;
-			plg_JobDestoryHandle(pJobHandle);
 			pthread_detach(pthread_self());
 			plg_MngSendExit(pManage);
 			plg_MutexThreadDestroy();
@@ -1001,59 +1001,77 @@ char plg_JobCheckUsingThread() {
 	return 0;
 }
 
-void plg_JobPrintStatus(void* pvJobHandle) {
+void plg_JobPrintStatus(void* pvJobHandle, void* vJson) {
 
+	pJSON* root = vJson;
 	PJobHandle pJobHandle = pvJobHandle;
-	printf("order_equeue:%d lcache:%d o_process:%d table_cache:%d aweight:%d uevent:%d uprocess:%d\n",
-		dictSize(pJobHandle->order_equeue),
-		dictSize(pJobHandle->dictCache),
-		dictSize(pJobHandle->order_process),
-		dictSize(pJobHandle->tableName_cacheHandle),
-		pJobHandle->allWeight,
-		listLength(pJobHandle->userEvent),
-		listLength(pJobHandle->userProcess));
+	pJson_AddNumberToObject(root, "order_equeue", dictSize(pJobHandle->order_equeue));
+	pJson_AddNumberToObject(root, "dictCache", dictSize(pJobHandle->dictCache));
+	pJson_AddNumberToObject(root, "order_process", dictSize(pJobHandle->order_process));
+	pJson_AddNumberToObject(root, "tableName_cacheHandle", dictSize(pJobHandle->tableName_cacheHandle));
+	pJson_AddNumberToObject(root, "allWeight", pJobHandle->allWeight);
+	pJson_AddNumberToObject(root, "userEvent", listLength(pJobHandle->userEvent));
+	pJson_AddNumberToObject(root, "userProcess", listLength(pJobHandle->userProcess));
 }
 
-void plg_JobPrintDetails(void* pvJobHandle) {
+void plg_JobPrintDetails(void* pvJobHandle, void* vJson) {
 	
+	pJSON* root = vJson;
 	PJobHandle pJobHandle = pvJobHandle;
-	printf("--------pJobHandle:%p equeue:%p--------\n", pJobHandle, pJobHandle->eQueue);
-	printf("pJobHandle->tableName_cacheHandle>>>>>>>>>>\n");
+	pJSON* job = pJson_CreateObject();
+	sds eq = plg_sdsCatPrintf(plg_sdsEmpty(), "%p", pJobHandle->eQueue);
+	pJson_AddItemToObject(root, eq, job);
+	plg_sdsFree(eq);
+
+	pJSON* tableName_cacheHandle = pJson_CreateObject();
+	pJson_AddItemToObject(job, "tableName_cacheHandle", tableName_cacheHandle);
+
 	dictIterator* dictIter = plg_dictGetSafeIterator(pJobHandle->tableName_cacheHandle);
 	dictEntry* dictNode;
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
+		sds eq = plg_sdsCatPrintf(plg_sdsEmpty(), "%p", dictGetVal(dictNode));
+		pJson_AddStringToObject(tableName_cacheHandle, (char*)dictGetKey(dictNode), eq);
+		plg_sdsFree(eq);
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<<<<<<<<<<pJobHandle->tableName_cacheHandle\n");
 
-	printf("pJobHandle->dictCache>>>>>>>>>>>\n");
+	pJSON* dictCache = pJson_CreateObject();
+	pJson_AddItemToObject(job, "dictCache", dictCache);
 	dictIter = plg_dictGetSafeIterator(pJobHandle->dictCache);
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
+		sds eq = plg_sdsCatPrintf(plg_sdsEmpty(), "%p", dictGetVal(dictNode));
+		pJson_AddStringToObject(dictCache, (char*)dictGetKey(dictNode), eq);
+		plg_sdsFree(eq);
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<<<<<<<<<<pJobHandle->dictCache\n");
 
-	printf("pJobHandle->order_equeue>>>>>>>>>>>\n");
+	pJSON* order_equeue = pJson_CreateObject();
+	pJson_AddItemToObject(job, "order_equeue", order_equeue);
 	dictIter = plg_dictGetSafeIterator(pJobHandle->order_equeue);
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
-		printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
+		sds eq = plg_sdsCatPrintf(plg_sdsEmpty(), "%p", dictGetVal(dictNode));
+		pJson_AddStringToObject(order_equeue, (char*)dictGetKey(dictNode), eq);
+		plg_sdsFree(eq);
 	}
 	plg_dictReleaseIterator(dictIter);
-	printf("<<<<<<<<<<pJobHandle->order_equeue\n");
+
 }
 
-void plg_JobPrintOrder(void* pvJobHandle) {
+void plg_JobPrintOrder(void* pvJobHandle, void* vJson) {
 
+	pJSON* root = vJson;
 	PJobHandle pJobHandle = pvJobHandle;
-	printf("pJobHandle:%p %p\n", pJobHandle, pJobHandle->eQueue);
+
+	pJSON* job = pJson_CreateArray();
+	sds eq = plg_sdsCatPrintf(plg_sdsEmpty(), "%p", pJobHandle->eQueue);
+	pJson_AddItemToObject(root, eq, job);
+	plg_sdsFree(eq);
 
 	dictIterator* dictIter = plg_dictGetSafeIterator(pJobHandle->order_equeue);
 	dictEntry* dictNode;
 	while ((dictNode = plg_dictNext(dictIter)) != NULL) {
 		if (dictGetVal(dictNode) == pJobHandle->eQueue) {
-			printf("%s %p\n", (char*)dictGetKey(dictNode), dictGetVal(dictNode));
+			pJson_AddItemToArray(job, pJson_CreateString((char*)dictGetKey(dictNode)));
 		}
 	}
 	plg_dictReleaseIterator(dictIter);
@@ -2193,7 +2211,7 @@ char** plg_JobTableName(short* tableLen) {
 	return plg_MngOrderAllTable(pManage, orderName, orderLen, tableLen);
 }
 
-void plg_JobMemoryFree(void* ptr) {
+void plg_MemoryFree(void* ptr) {
 	free(ptr);
 }
 

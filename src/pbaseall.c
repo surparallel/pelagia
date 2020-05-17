@@ -689,9 +689,7 @@ void plg_BaseAll() {
 		}
 	}
 
-	plg_MngPrintAllStatus(pManage);
 	plg_MngAllocJob(pManage, 1);
-	plg_MngPrintAllJobStatus(pManage);
 	plg_MngStarJob(pManage);
 	printf("\n-----------------manage create-----------------\n");
 

@@ -757,6 +757,7 @@ int plg_MngSetNoShare(void* pvManage, char* nameTable, short nameTableLen, unsig
 Because of the check mode, create and star are separated
 Users can adjust the number of cores according to the results. If they are not satisfied, they can
 Recreate EJB after destroyjob
+Because there is a read-only order with random access, it should be reserved for empty jobs
 */
 int plg_MngStarJob(void* pvManage) {
 
@@ -1208,66 +1209,123 @@ void plg_MngSetMaxTableWeight(void* pvManage, unsigned int maxTableWeight) {
 	pManage->maxTableWeight = maxTableWeight;
 }
 
-void plg_MngPrintAllJobStatus(void* pvManage) {
+char* plg_MngPrintAllJobStatusJson(void* pvManage, unsigned int* length) {
 
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
-	printf("job size: %d\n", listLength(pManage->listJob));
+	pJson_AddNumberToObject(root, "size", listLength(pManage->listJob));
 	//listjob
 	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 	listNode* jobNode;
 	while ((jobNode = plg_listNext(jobIter)) != NULL) {
-		plg_JobPrintStatus(listNodeValue(jobNode));
+		plg_JobPrintStatus(listNodeValue(jobNode), root);
 	}
 	plg_listReleaseIterator(jobIter);
+
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
 }
 
-void plg_MngPrintAllJobDetails(void* pvManage) {
+void plg_MngPrintAllJobStatus(void* pvManage, void* fileHandle) {
 
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintAllJobStatusJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
+
+}
+
+char* plg_MngPrintAllJobDetailsJson(void* pvManage, unsigned int* length) {
+
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
-	printf("job size: %d\n", listLength(pManage->listJob));
+	pJson_AddNumberToObject(root, "size", listLength(pManage->listJob));
 	//listjob
 	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 	listNode* jobNode;
 	while ((jobNode = plg_listNext(jobIter)) != NULL) {
-		plg_JobPrintDetails(listNodeValue(jobNode));
+		plg_JobPrintDetails(listNodeValue(jobNode), root);
 	}
 	plg_listReleaseIterator(jobIter);
+
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
 }
 
-void plg_MngPrintAllJobOrder(void* pvManage) {
+void plg_MngPrintAllJobDetails(void* pvManage, void* fileHandle) {
 
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintAllJobDetailsJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
+
+}
+
+char* plg_MngPrintAllJobOrderJson(void* pvManage, unsigned int* length) {
+
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
-	printf("job size: %d\n", listLength(pManage->listJob));
+	pJson_AddNumberToObject(root, "size", listLength(pManage->listJob));
 	//listjob
 	listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 	listNode* jobNode;
 	while ((jobNode = plg_listNext(jobIter)) != NULL) {
-		plg_JobPrintOrder(listNodeValue(jobNode));
+		plg_JobPrintOrder(listNodeValue(jobNode), root);
 	}
 	plg_listReleaseIterator(jobIter);
+
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
 }
 
-void plg_MngPrintAllStatus(void* pvManage) {
+void plg_MngPrintAllJobOrder(void* pvManage, void* fileHandle) {
 
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintAllJobOrderJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
+}
+
+char* plg_MngPrintAllStatusJson(void* pvManage, unsigned int* length) {
+
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
-	printf("ldisk:%d ljob:%d lorder:%d lprocess:%d dtable:%d order_process:%d o_equeue:%d o_table:%d table_disk:%d file_count:%d job_destroy_c:%d f_d_c:%d\n",
-		listLength(pManage->listDisk),
-		listLength(pManage->listJob),
-		listLength(pManage->listOrder),
-		listLength(pManage->listProcess),
-		dictSize(pManage->dictTableName),
-		dictSize(pManage->order_process),
-		dictSize(pManage->order_equeue),
-		plg_DictSetSize(pManage->order_tableName),
-		dictSize(pManage->tableName_diskHandle),
-		pManage->fileCount,
-		pManage->jobDestroyCount,
-		pManage->fileDestroyCount
-		);
+	pJson_AddNumberToObject(root, "listDisk", listLength(pManage->listDisk));
+	pJson_AddNumberToObject(root, "listJob", listLength(pManage->listJob));
+	pJson_AddNumberToObject(root, "listOrder", listLength(pManage->listOrder));
+	pJson_AddNumberToObject(root, "listProcess", listLength(pManage->listProcess));
+	pJson_AddNumberToObject(root, "dictTableName", dictSize(pManage->dictTableName));
+	pJson_AddNumberToObject(root, "order_process", dictSize(pManage->order_process));
+	pJson_AddNumberToObject(root, "order_equeue", dictSize(pManage->order_equeue));
+	pJson_AddNumberToObject(root, "order_tableName", plg_DictSetSize(pManage->order_tableName));
+	pJson_AddNumberToObject(root, "tableName_diskHandle", dictSize(pManage->tableName_diskHandle));
+	pJson_AddNumberToObject(root, "fileCount", pManage->fileCount);
+	pJson_AddNumberToObject(root, "jobDestroyCount", pManage->jobDestroyCount);
+	pJson_AddNumberToObject(root, "fileDestroyCount", pManage->fileDestroyCount);
+
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
 }
 
-void plg_MngPrintAllDetails(void* pvManage) {
+void plg_MngPrintAllStatus(void* pvManage, void* fileHandle) {
 
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintAllStatusJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
+}
+
+char* plg_MngPrintAllDetailsJson(void* pvManage, unsigned int* length) {
+
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
 	dict * table = plg_DictSetDict(pManage->order_tableName);
 
@@ -1275,140 +1333,184 @@ void plg_MngPrintAllDetails(void* pvManage) {
 	dictEntry* tableNode;
 	while ((tableNode = plg_dictNext(tableIter)) != NULL) {
 
-		printf("\norder:%s ", (char*)dictGetKey(tableNode));
+		pJSON* table = pJson_CreateArray();
+		pJson_AddItemToObject(root, (char*)dictGetKey(tableNode), table);
 
 		dict* value = dictGetVal(tableNode);
-
 		dictIterator* valueIter = plg_dictGetSafeIterator(value);
 		dictEntry* valueNode;
 		while ((valueNode = plg_dictNext(valueIter)) != NULL) {
-			printf("table:%s", (char*)dictGetKey(valueNode));
+
+			pJSON* tableName = pJson_CreateString((char*)dictGetKey(valueNode));
+			pJson_AddItemToArray(table, tableName);
 		}
 		plg_dictReleaseIterator(valueIter);
 	}
 	plg_dictReleaseIterator(tableIter);
-	printf("\n");
+
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
+}
+
+void plg_MngPrintAllDetails(void* pvManage, void* fileHandle) {
+
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintAllDetailsJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
 }
 
 /*
 loop event_dictTableName
 core: number core
 */
-void plg_MngPrintPossibleAlloc(void* pvManage) {
+char* plg_MngPrintPossibleAllocJson(void* pvManage, unsigned int* length) {
 
+	pJSON* root = pJson_CreateObject();
 	PManage pManage = pvManage;
 	void* pDictTableName = plg_DictSetCreate(plg_DefaultUintPtr(), DICT_MIDDLE, plg_DefaultSdsDictPtr(), DICT_MIDDLE);
 	void* pDictOrder = plg_DictSetCreate(plg_DefaultUintPtr(), DICT_MIDDLE, plg_DefaultSdsDictPtr(), DICT_MIDDLE);
-
 	//listOrder
+	int breakDup = 0;
+	listIter* eventIterDup = 0;
 	listIter* eventIter = plg_listGetIterator(pManage->listOrder, AL_START_HEAD);
 	listNode* eventNode;
-	while ((eventNode = plg_listNext(eventIter)) != NULL) {
 
-		//process
-		dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, listNodeValue(eventNode));
-		if (EventProcessEntry == 0) {
-			continue;
-		}
+	do {
+		//listOrder
+		while ((eventNode = plg_listNext(eventIter)) != NULL) {
 
-		//loop dictTableName
-		char nextContinue = 0;
-		dictIterator* jobIter = plg_dictGetIterator((dict*)plg_DictSetDict(pDictTableName));
-		dictEntry* jobNode;
-		while ((jobNode = plg_dictNext(jobIter)) != NULL) {
-
-			//Judge whether there is intersection
-			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			if (!table) {
+			//process
+			dictEntry * EventProcessEntry = plg_dictFind(pManage->order_process, listNodeValue(eventNode));
+			if (EventProcessEntry == 0) {
 				continue;
 			}
-			dictIterator* tableIter = plg_dictGetSafeIterator(table);
-			dictEntry* tableNode;
-			while ((tableNode = plg_dictNext(tableIter)) != NULL) {
-				
-				//Find the intersection in dicttablename, and merge together if there is any
-				if (plg_DictSetIn(pDictTableName, dictGetKey(jobNode), dictGetKey(tableNode))) {
-					dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
-					dictEntry* tableLoopNode;
-					while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
-						plg_DictSetAdd(pDictTableName, dictGetKey(jobNode), dictGetKey(tableLoopNode));
-					}
-					plg_dictReleaseIterator(tableLoopIter);
 
-					plg_DictSetAdd(pDictOrder, dictGetKey(jobNode), dictGetKey(EventProcessEntry));
-					nextContinue = 1;
+			//loop dictTableName
+			char nextContinue = 0;
+			dictIterator* jobIter = plg_dictGetIterator((dict*)plg_DictSetDict(pDictTableName));
+			dictEntry* jobNode;
+			while ((jobNode = plg_dictNext(jobIter)) != NULL) {
+
+				//Judge whether there is intersection
+				dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
+				if (!table) {
+					continue;
+				}
+				dictIterator* tableIter = plg_dictGetSafeIterator(table);
+				dictEntry* tableNode;
+				while ((tableNode = plg_dictNext(tableIter)) != NULL) {
+
+					//Find the intersection in dicttablename, and merge together if there is any
+					if (plg_DictSetIn(pDictTableName, dictGetKey(jobNode), dictGetKey(tableNode))) {
+						dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
+						dictEntry* tableLoopNode;
+						while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
+							plg_DictSetAdd(pDictTableName, dictGetKey(jobNode), dictGetKey(tableLoopNode));
+						}
+						plg_dictReleaseIterator(tableLoopIter);
+
+						plg_DictSetAdd(pDictOrder, dictGetKey(jobNode), dictGetKey(EventProcessEntry));
+						nextContinue = 1;
+						break;
+					}
+				}
+				plg_dictReleaseIterator(tableIter);
+				if (nextContinue) {
 					break;
 				}
 			}
-			plg_dictReleaseIterator(tableIter);
+			plg_dictReleaseIterator(jobIter);
 			if (nextContinue) {
-				break;
+				continue;
+			}
+
+			if (!breakDup) {
+				breakDup = 1;
+				eventIterDup = plg_listIteratorDup(eventIter);
+				//Create new and merge not found
+				do {
+					unsigned int* key = malloc(sizeof(unsigned int));
+					*key = dictSize((dict*)plg_DictSetDict(pDictTableName));
+					unsigned int* key2 = malloc(sizeof(unsigned int));
+					*key2 = *key;
+
+					dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
+					if (table) {
+						dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
+						dictEntry* tableLoopNode;
+						while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
+							plg_DictSetAdd(pDictTableName, key, dictGetKey(tableLoopNode));
+						}
+						plg_dictReleaseIterator(tableLoopIter);
+
+						plg_DictSetAdd(pDictOrder, key2, dictGetKey(EventProcessEntry));
+					}
+
+				} while (0);
 			}
 		}
-		plg_dictReleaseIterator(jobIter);
-		if (nextContinue) {
+		plg_listReleaseIterator(eventIter);
+		if (breakDup) {
+			breakDup = 0;
+			eventIter = eventIterDup;
 			continue;
+		} else {
+			break;
 		}
-
-		//Create new and merge not found
-		do {
-			unsigned int* key = malloc(sizeof(unsigned int));
-			*key = dictSize((dict*)plg_DictSetDict(pDictTableName));
-			unsigned int* key2 = malloc(sizeof(unsigned int));
-			*key2 = *key;
-
-			dict * table = plg_DictSetValue(pManage->order_tableName, listNodeValue(eventNode));
-			if (table) {
-				dictIterator* tableLoopIter = plg_dictGetSafeIterator(table);
-				dictEntry* tableLoopNode;
-				while ((tableLoopNode = plg_dictNext(tableLoopIter)) != NULL) {
-					plg_DictSetAdd(pDictTableName, key, dictGetKey(tableLoopNode));
-				}
-				plg_dictReleaseIterator(tableLoopIter);
-
-				plg_DictSetAdd(pDictOrder, key2, dictGetKey(EventProcessEntry));
-			}
-
-		} while (0);
-	}
-	plg_listReleaseIterator(eventIter);
+	} while (1);
 
 	//Print all results
-	printf("all order group: %d\n", dictSize((dict*)plg_DictSetDict(pDictTableName)));
+	pJson_AddNumberToObject(root, "size", dictSize((dict*)plg_DictSetDict(pDictTableName)));
+	pJSON* allGroup = pJson_CreateArray();
+	pJson_AddItemToObject(root, "group", allGroup);
+
 	dictIterator* jobIter = plg_dictGetIterator((dict*)plg_DictSetDict(pDictTableName));
 	dictEntry* jobNode;
 	while ((jobNode = plg_dictNext(jobIter)) != NULL) {
 
-		printf("group %d:\n", *(unsigned int*)dictGetKey(jobNode));
+		pJSON* group = pJson_CreateObject();
+		pJson_AddItemToArray(allGroup, group);
 
-		printf("order:\n");
+		pJSON* order = pJson_CreateArray();
+		pJson_AddItemToObject(group, "order", order);
+
 		dictIterator* orderIter = plg_dictGetIterator((dict*)plg_DictSetValue(pDictOrder, dictGetKey(jobNode)));
 		dictEntry* orderNode;
 		while ((orderNode = plg_dictNext(orderIter)) != NULL) {
-
-			printf("%s ", (char*)dictGetKey(orderNode));
+			pJson_AddItemToArray(order, pJson_CreateString((char*)dictGetKey(orderNode)));
 		}
 		plg_dictReleaseIterator(orderIter);
 
-		printf("\n");
+		pJSON* table = pJson_CreateArray();
+		pJson_AddItemToObject(group, "table", table);
 
-		printf("table:\n");
 		dictIterator* tableIter = plg_dictGetIterator((dict*)plg_DictSetValue(pDictTableName, dictGetKey(jobNode)));
 		dictEntry* tableNode;
 		while ((tableNode = plg_dictNext(tableIter)) != NULL) {
-
-			printf("%s ", (char*)dictGetKey(tableNode));
+			pJson_AddItemToArray(table, pJson_CreateString((char*)dictGetKey(tableNode)));
 		}
 		plg_dictReleaseIterator(tableIter);
-
-		printf("\n");
 	}
 	plg_dictReleaseIterator(jobIter);
 	//free
 	plg_DictSetDestroy(pDictTableName);
 	plg_DictSetDestroy(pDictOrder);
-	return;
+	
+	char* ps = pJson_Print(root);
+	pJson_Delete(root);
+	return ps;
+}
 
+void plg_MngPrintPossibleAlloc(void* pvManage, void* fileHandle) {
+
+	FILE* f = fileHandle;
+	unsigned int length;
+	char* ps = plg_MngPrintPossibleAllocJson(pvManage, &length);
+	fwrite(ps, 1, strlen(ps), f);
+	free(ps);
 }
 
 typedef struct _Param

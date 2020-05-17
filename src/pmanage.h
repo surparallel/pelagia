@@ -27,7 +27,6 @@ void plg_MngAddUserEvent(void* pvManage, char* nevent, short neventLen, void* eq
 void* plg_MngJobHandle(void* pvManage);
 char plg_MngCheckUsingThread();
 int plg_MngSetTableParent(void* pvManage, char* nameTable, short nameTableLen, char* parent, short parentLen);
-void plg_MngPrintAllDetails(void* pvManage);
 int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName);
 
 void plg_MngOutJson(char* fileName, char* outJson);

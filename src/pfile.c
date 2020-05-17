@@ -240,12 +240,20 @@ unsigned int plg_FileFlushPage(void* pvFileHandle, void* pPFileParamPageInfo, vo
 
 void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 
-	if (len % _MASKCOMPRESS_ != 0 || len / _MASKCOMPRESS_ % 8 != 0) {
+	if (len % _MASKCOMPRESS_ != 0) {
 		elog(log_error, "plg_MaskMalloc Len(%d) and _MASKCOMPRESS_(%d) don't match", len, _MASKCOMPRESS_);
 		return 0;
 	}
-	
-	int outLen = len / _MASKCOMPRESS_ / 8 + 1;
+
+	int outLen;
+	if (len / _MASKCOMPRESS_  <=  8) {
+		outLen = 1;
+	} else if ( len / _MASKCOMPRESS_ % 8 == 0 ) {
+		outLen = len / _MASKCOMPRESS_ / 8;
+	} else {
+		outLen = len / _MASKCOMPRESS_ / 8 + 1;
+	}
+
 	int count = len / _MASKCOMPRESS_;
 	PMaskPage ptrMask;
 	char *tmp;
@@ -274,7 +282,7 @@ void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 
 void plg_MaskCmp(void* ptrVMask, char* src, char* des, int len) {
 
-	if (len % _MASKCOMPRESS_ != 0 || len / _MASKCOMPRESS_ % 8 != 0) {
+	if (len % _MASKCOMPRESS_ != 0) {
 		elog(log_error, "plg_MaskMalloc Len(%d) and _MASKCOMPRESS_(%d) don't match", len, _MASKCOMPRESS_);
 		return;
 	}

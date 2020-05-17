@@ -1055,9 +1055,9 @@ unsigned int plg_CacheTableSetRangCount(void* pvCacheHandle, sds sdsTable, void*
 }
 
 /*
-不支持跨表的集合操作
-如果两个集合不是一个类型那么不需要联合
-如果两个集合是一个类型必然可以在一个表
+Cross table collection operations are not supported
+If two sets are not of the same type, no union is required
+If two sets are of the same type, they must be in the same table
 */
 unsigned int plg_CacheTableSetUion(void* pvCacheHandle, sds sdsTable, void* pSetDictExten, void* pKeyDictExten, short recent) {
 
