@@ -46,7 +46,9 @@ void plg_Color(int c) {
 #ifdef _WIN32
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), c);
 #else
-	printf("%c[%dm", 0x1B, c);
+	int m = c % 8;
+	m += 30;
+	printf("\033[%dm", m);
 #endif
 }
 
@@ -54,6 +56,6 @@ void plg_ClearColor() {
 #ifdef _WIN32
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
 #else
-	printf("\033[%dm", 0);
+	puts("\033[0m");
 #endif
 }

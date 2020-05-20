@@ -178,6 +178,7 @@ typedef struct _JobHandle
 	unsigned long long statistics_frequency;
 	unsigned int statistics_eventQueueLength;
 	dict* order_msg;
+	dict* order_byte;
 
 	unsigned int maxQueue;
 
@@ -446,6 +447,7 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->dictCache = plg_dictCreate(&PtrDictType, NULL, DICT_MIDDLE);
 	pJobHandle->order_runCount = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 	pJobHandle->order_msg = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	pJobHandle->order_byte = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 
 	pJobHandle->tranCache = plg_listCreate(LIST_MIDDLE);
 	pJobHandle->tranFlush = plg_listCreate(LIST_MIDDLE);
@@ -525,6 +527,7 @@ void plg_JobDestoryHandle(void* pvJobHandle) {
 	plg_listRelease(pJobHandle->pListIntervalometer);
 	plg_dictRelease(pJobHandle->order_runCount);
 	plg_dictRelease(pJobHandle->order_msg);
+	plg_dictRelease(pJobHandle->order_byte);
 
 	if (pJobHandle->luaHandle) {
 		plg_LvmDestory(pJobHandle->luaHandle);
@@ -630,6 +633,7 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 		}
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
+			dictAddValueWithUint(pJobHandle->order_byte, dictGetKey(entryOrder), valueLen);
 		}
 		return 1;
 	} else {
@@ -638,6 +642,7 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &order);
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
+			dictAddValueWithUint(pJobHandle->order_byte, dictGetKey(entryOrder), valueLen);
 		}
 		return r;
 	}
@@ -720,30 +725,51 @@ void plg_JobSetMaxQueue(void* pvJobHandle, unsigned int maxQueue){
 
 static void plg_LogStat(void* pvJobHandle, unsigned long long passTime) {
 
+	pJSON* root = pJson_CreateObject();
 	PJobHandle pJobHandle = pvJobHandle;
-	sds outPut = plg_sdsEmpty();
-	outPut = plg_sdsCatPrintf(outPut, "<- time:%llu  queue:%u->", passTime, pJobHandle->statistics_eventQueueLength);
+
+	pJSON* orderJson = pJson_CreateObject();
+	pJson_AddItemToObject(root, "order", orderJson);
+	pJson_AddNumberToObject(orderJson, "time", passTime);
+	pJson_AddNumberToObject(orderJson, "queue", pJobHandle->statistics_eventQueueLength);
 	pJobHandle->statistics_eventQueueLength = 0;
 
-	dictIterator* iter_runCount = plg_dictGetSafeIterator(pJobHandle->order_runCount);
-	dictEntry* node_runCount;
-	while ((node_runCount = plg_dictNext(iter_runCount)) != NULL) {
-		char* key = dictGetKey(node_runCount);
-		unsigned int* count = dictGetVal(node_runCount);
-		outPut = plg_sdsCatPrintf(outPut, "%s:%i;", key, *count);
+	if (dictSize(pJobHandle->order_runCount)){
+		pJSON* runJson = pJson_CreateObject();
+		pJson_AddItemToObject(orderJson, "run", runJson);
+		dictIterator* iter_runCount = plg_dictGetSafeIterator(pJobHandle->order_runCount);
+		dictEntry* node_runCount;
+		while ((node_runCount = plg_dictNext(iter_runCount)) != NULL) {
+			char* key = dictGetKey(node_runCount);
+			unsigned int* count = dictGetVal(node_runCount);
+			pJson_AddNumberToObject(runJson, key, *count);
+		}
+		plg_dictReleaseIterator(iter_runCount);
 	}
-	plg_dictReleaseIterator(iter_runCount);
 
-	outPut = plg_sdsCatPrintf(outPut, "<- msg->");
-	dictIterator* iter_msg = plg_dictGetSafeIterator(pJobHandle->order_msg);
-	dictEntry* node_msg;
-	while ((node_msg = plg_dictNext(iter_msg)) != NULL) {
-		char* key = dictGetKey(node_msg);
-		unsigned int* count = dictGetVal(node_msg);
-		outPut = plg_sdsCatPrintf(outPut, "%s:%i;", key, *count);
+	if (dictSize(pJobHandle->order_msg)){
+		pJSON* callJson = pJson_CreateObject();
+		pJson_AddItemToObject(orderJson, "call", callJson);
+		dictIterator* iter_msg = plg_dictGetSafeIterator(pJobHandle->order_msg);
+		dictEntry* node_msg;
+		while ((node_msg = plg_dictNext(iter_msg)) != NULL) {
+			char* key = dictGetKey(node_msg);
+			unsigned int* count = dictGetVal(node_msg);
+
+			unsigned int byte = 0;
+			dictEntry*node_byte = plg_dictFind(pJobHandle->order_byte, key);
+			if (node_byte) {
+				byte = *(unsigned int*)dictGetVal(node_byte);
+			}
+
+			pJSON* callItemJson = pJson_CreateObject();
+			pJson_AddItemToObject(callJson, key, callItemJson);
+			pJson_AddNumberToObject(callItemJson, "count", *count);
+			pJson_AddNumberToObject(callItemJson, "byte", byte);
+		}
+		plg_dictReleaseIterator(iter_msg);
 	}
-	plg_dictReleaseIterator(iter_msg);
-	
+
 	unsigned long long allCacheCount = 0;
 	unsigned long long allFreeCacheCount = 0;
 	
@@ -758,17 +784,23 @@ static void plg_LogStat(void* pvJobHandle, unsigned long long passTime) {
 	}
 	plg_dictReleaseIterator(iter_cache);
 
-	outPut = plg_sdsCatPrintf(outPut, "<- cache:%llu free:%llu->", allCacheCount, allFreeCacheCount);
+	pJSON* cacheJson = pJson_CreateObject();
+	pJson_AddItemToObject(root, "cache", cacheJson);
+	pJson_AddNumberToObject(cacheJson, "cache", allCacheCount);
+	pJson_AddNumberToObject(cacheJson, "free", allFreeCacheCount);
 
-	iter_cache = plg_dictGetSafeIterator(pJobHandle->dictCache);
-	while ((node_cache = plg_dictNext(iter_cache)) != NULL) {
-		plg_CachePageCountPrint(dictGetVal(node_cache), &outPut);
+	if (dictSize(pJobHandle->dictCache)) {
+		iter_cache = plg_dictGetSafeIterator(pJobHandle->dictCache);
+		while ((node_cache = plg_dictNext(iter_cache)) != NULL) {
+			plg_CachePageCountPrint(dictGetVal(node_cache), cacheJson);
+		}
+		plg_dictReleaseIterator(iter_cache);
 	}
-	plg_dictReleaseIterator(iter_cache);
 
-	outPut = plg_sdsCatPrintf(outPut, "<-");
+	char* outPut = pJson_PrintUnformatted(root);
+	pJson_Delete(root);
 	elog(log_stat, "%s", outPut);
-	plg_sdsFree(outPut);
+	free(outPut);
 }
 
 static void* plg_JobThreadRouting(void* pvJobHandle) {

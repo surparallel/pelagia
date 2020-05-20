@@ -102,10 +102,10 @@ char plg_LocksLeave(void* pvSafeMutex) {
 					elog(log_error, "plg_LocksLeave.lock lose");
 					return 0;
 				}
+				plg_listDelNode(ptr, node);
+				return 1;
 			}
-			plg_listDelNode(ptr, node);
-			return 1;
-
+			return 0;
 		} else {
 			return 0;
 		}

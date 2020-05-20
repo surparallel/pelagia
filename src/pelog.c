@@ -26,6 +26,7 @@
 #include "padlist.h"
 #include "pfilesys.h"
 #include "pelagia.h"
+#include "pconio.h"
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* fileName, int line);
 static ErrFun _errFun = plg_LogErrFunPrintf;
@@ -235,9 +236,15 @@ static void plg_LogErrFunFile(int level, const char* describe, const char* fileN
 
 static void plg_LogErrFunPrintf(int level, const char* describe, const char* fileName, int line) {
 	
+	if (level == log_error) {
+		plg_Color(73);
+	}
 	sds time = plg_GetTimForm();
 	printf("%s %s (%s-%d) %s\n", time, GetLevelName(level), fileName, line, describe);
 	plg_sdsFree(time);
+	if (level == log_error) {
+		plg_ClearColor();
+	}
 }
 
 void plg_LogSetErrCallBack(ErrFun errFun) {

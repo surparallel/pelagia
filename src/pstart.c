@@ -22,6 +22,7 @@
 #include "pjson.h"
 #include "pelagia.h"
 #include "psds.h"
+#include "pconio.h"
 
 static void EnumTableJson(pJSON * root, void* pManage, char* order)
 {
@@ -210,7 +211,10 @@ unsigned int plg_MVersion() {
 }
 
 void plg_Version() {
+	
+	plg_Color(11);
 	printf("pelagia version \"" VERSION_MAJOR "." VERSION_MINOR "\"\n");
 	printf("Copyright(C) 2019 - 2020, sun shuo <sun.shuo@surparallel.org>\n");
 	printf("* All rights reserved. *\n");
+	plg_ClearColor();
 }

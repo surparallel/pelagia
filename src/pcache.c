@@ -90,8 +90,13 @@ typedef struct _CacheHandle
 
 	//Statistics
 	short isOpenStat;
+	//memory leak
 	dict* tableName_pageCount;
 	unsigned long long freeCacheCount;
+
+	//Data usage intensity
+	dict* tableName_readPage;
+	dict* tableName_writePage;
 
 } *PCacheHandle, CacheHandle;
 
@@ -293,6 +298,10 @@ static unsigned int cache_FindPage(void* pTableHandle, unsigned int pageAddr, vo
 
 	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
 	elog(log_fun, "cache_FindPage.pageAddr:%i recent:%i", pageAddr, pCacheHandle->recent);
+
+	if (pCacheHandle->isOpenStat) {
+		dictAddValueWithUint(pCacheHandle->tableName_readPage, plg_TableName(pTableHandle), 1);
+	}
 	if (pCacheHandle->recent) {
 		dictEntry* findTranPageEntry = plg_dictFind(plg_ListDictDict(pCacheHandle->transaction_listDictPageCache), &pageAddr);
 
@@ -387,6 +396,7 @@ static unsigned int cache_CreatePage(void* pTableHandle,
 	//add to chache
 	if (pCacheHandle->isOpenStat) {
 		dictAddValueWithUint(pCacheHandle->tableName_pageCount, plg_TableName(pTableHandle), 1);
+		dictAddValueWithUint(pCacheHandle->tableName_readPage, plg_TableName(pTableHandle), 1);
 	}
 	plg_ListDictAdd(pCacheHandle->transaction_listDictPageCache, &pDiskPageHead->addr, *retPage);
 	return 1;
@@ -417,6 +427,11 @@ static void* cache_pageCopyOnWrite(void* pTableHandle, unsigned int pageAddr, vo
 	
 	elog(log_fun, "cache_pageCopyOnWrite.pageAddr:%i", pageAddr);
 	PCacheHandle pCacheHandle = plg_TableOperateHandle(pTableHandle);
+
+	if (pCacheHandle->isOpenStat) {
+		dictAddValueWithUint(pCacheHandle->tableName_readPage, plg_TableName(pTableHandle), -1);
+		dictAddValueWithUint(pCacheHandle->tableName_writePage, plg_TableName(pTableHandle), 1);
+	}
 
 	PDiskPageHead pDiskPageHead = (PDiskPageHead)page;
 	if (pDiskPageHead->type == TABLEPAGE) {
@@ -549,6 +564,8 @@ void* plg_CacheCreateHandle(void* pDiskHandle) {
 	pCacheHandle->memoryListTable = plg_MemListCreate(60, sizeof(TableInFile), 0);
 
 	pCacheHandle->tableName_pageCount = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	pCacheHandle->tableName_readPage = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
+	pCacheHandle->tableName_writePage = plg_dictCreate(&SdsDictType, NULL, DICT_MIDDLE);
 	pCacheHandle->isOpenStat = 0;
 	pCacheHandle->freeCacheCount = 0;
 	return pCacheHandle;
@@ -575,6 +592,8 @@ void plg_CacheDestroyHandle(void* pvCacheHandle) {
 	plg_MutexDestroyHandle(pCacheHandle->mutexHandle);
 
 	plg_dictRelease(pCacheHandle->tableName_pageCount);
+	plg_dictRelease(pCacheHandle->tableName_readPage);
+	plg_dictRelease(pCacheHandle->tableName_writePage);
 	free(pCacheHandle);
 }
 
@@ -1175,7 +1194,7 @@ unsigned int plg_CacheTableMembersWithJson(void* pvCacheHandle, sds sdsTable, vo
 /*
 flush dirty page to file
 */
-unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
+unsigned int cacheFlushDirtyToFile(void* pvCacheHandle) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;
 	if (plg_DiskIsNoSave(pCacheHandle->pDiskHandle)) {
@@ -1238,7 +1257,6 @@ unsigned int plg_CacheFlushDirtyToFile(void* pvCacheHandle) {
 
 static unsigned int cache_PageCount(void* pvCacheHandle) {
 	PCacheHandle pCacheHandle = pvCacheHandle;
-
 	unsigned int r = 1;
 	if (pCacheHandle->isOpenStat) {
 		unsigned int pageCount = 0;
@@ -1258,21 +1276,48 @@ static unsigned int cache_PageCount(void* pvCacheHandle) {
 
 void plg_CachePageAllCount(void* pvCacheHandle, unsigned long long* cacheCount, unsigned long long* freeCacheCount) {
 	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 	*cacheCount = dictSize(plg_ListDictDict(pCacheHandle->listPageCache));
 	*freeCacheCount = pCacheHandle->freeCacheCount;
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 }
 
-void plg_CachePageCountPrint(void* pvCacheHandle, char** catSdsStr) {
+void plg_CachePageCountPrint(void* pvCacheHandle, void* vroot) {
 
+	pJSON* root = vroot;
 	PCacheHandle pCacheHandle = pvCacheHandle;
-	dictIterator* iter_pageCount = plg_dictGetSafeIterator(pCacheHandle->tableName_pageCount);
-	dictEntry* node_pageCount;
-	while ((node_pageCount = plg_dictNext(iter_pageCount)) != NULL) {
-		char* key = dictGetKey(node_pageCount);
-		unsigned int* count = dictGetVal(node_pageCount);
-		*catSdsStr = plg_sdsCatPrintf(*catSdsStr, "%s:%d;", key, *count);
+
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	dictIterator* iter_readPage = plg_dictGetSafeIterator(pCacheHandle->tableName_readPage);
+	dictEntry* node_readPage;
+	while ((node_readPage = plg_dictNext(iter_readPage)) != NULL) {
+		char* key = dictGetKey(node_readPage);
+		unsigned int* count = dictGetVal(node_readPage);
+
+		unsigned int pageCount = 0;
+		dictEntry* node_pageCount = plg_dictFind(pCacheHandle->tableName_pageCount, key);
+		if (node_pageCount) {
+			pageCount = *(unsigned int*)dictGetVal(node_pageCount);
+		}
+
+		unsigned int writePage = 0;
+		dictEntry* node_writePage = plg_dictFind(pCacheHandle->tableName_writePage, key);
+		if (node_writePage) {
+			writePage = *(unsigned int*)dictGetVal(node_writePage);
+		}
+
+		pJSON* keyJson = pJson_CreateObject();
+		pJson_AddItemToObject(root, key, keyJson);
+		pJson_AddNumberToObject(keyJson, "read", *count);
+		pJson_AddNumberToObject(keyJson, "write", writePage);
+		pJson_AddNumberToObject(keyJson, "count", pageCount);
 	}
-	plg_dictReleaseIterator(iter_pageCount);
+	plg_dictReleaseIterator(iter_readPage);
+
+	plg_dictEmpty(pCacheHandle->tableName_writePage, 0);
+	plg_dictEmpty(pCacheHandle->tableName_readPage, 0);
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+
 	return;
 }
 
@@ -1492,7 +1537,7 @@ void plg_CacheFlush(void* pvCacheHandle) {
 	plg_dictEmpty(pCacheHandle->delPage, NULL);
 
 	//process pCacheHandle->pageDirty;
-	plg_CacheFlushDirtyToFile(pCacheHandle);
+	cacheFlushDirtyToFile(pCacheHandle);
 
 	cache_Arrange(pCacheHandle);
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
