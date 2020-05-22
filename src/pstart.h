@@ -21,5 +21,5 @@
 
 //return pManage
 //void* plg_StartFromJsonFile(char* jsonFile);
-
+void plg_Version();
 #endif

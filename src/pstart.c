@@ -135,7 +135,7 @@ static void* plg_StartFromJson(const char* jsonStr) {
 		return 0;
 	}
 
-	pJSON * logoutput = pJson_GetObjectItem(root, "LogOutput");
+	pJSON * logoutput = pJson_GetObjectItem(root, "logOutput");
 	if (logoutput) {
 		if (strcmp(logoutput->valuestring, "file") == 0) {
 			plg_LogSetErrFile();
@@ -144,7 +144,7 @@ static void* plg_StartFromJson(const char* jsonStr) {
 		}
 	}
 
-	pJSON * loglevel = pJson_GetObjectItem(root, "LogLevel");
+	pJSON * loglevel = pJson_GetObjectItem(root, "logLevel");
 	if (loglevel && (log_null <= loglevel->valueint && loglevel->valueint <= log_all)) {
 		plg_LogSetMaxLevel(loglevel->valueint);
 	}

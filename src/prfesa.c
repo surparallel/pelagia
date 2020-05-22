@@ -164,7 +164,7 @@ void PRFESA(void) {
 		plg_MngAddTable(pManage, order, strlen(order), table, strlen(table));
 	}
 
-	plg_MngPrintAllStatus(pManage, stdout);
+	plg_MngPrintAllStatus(pManage);
 	plg_MngAllocJob(pManage, TEST_CORE);
 	plg_MngStarJob(pManage);
 	printf("\n-----------------manage create-----------------\n");

@@ -20,20 +20,12 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"33"
+#define VERSION_MINOR	"34"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	33
+#define VERSION_NUMMINOR	34
 
 #include "papidefine.h"
-
-//for script and json output format and input check
-enum TableType {
-	TT_Byte = 0,
-	TT_Double,
-	TT_String,
-	TT_Set
-};
 
 //user manage API
 PELAGIA_API void* plg_MngCreateHandle(char* dbPath, short dbPahtLen);
@@ -64,14 +56,16 @@ PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orde
 PELAGIA_API int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen);
 
 //manage check API
-PELAGIA_API void plg_MngPrintAllStatus(void* pManage, void* fileHandle);
-PELAGIA_API void plg_MngPrintAllJobStatus(void* pManage, void* fileHandle);
-PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage, void* fileHandle);
-PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage, void* fileHandle);
-PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage, void* fileHandle);
-PELAGIA_API void plg_MngPrintAllDetails(void* pvManage, void* fileHandle);
+PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
+PELAGIA_API void plg_MngPrintAllJobStatus(void* pManage);
+PELAGIA_API void plg_MngPrintAllJobDetails(void* pManage);
+PELAGIA_API void plg_MngPrintPossibleAlloc(void* pManage);
+PELAGIA_API void plg_MngPrintAllJobOrder(void* pvManage);
+PELAGIA_API void plg_MngPrintAllDetails(void* pvManage);
 
-PELAGIA_API void plg_MemoryFree(void* ptr);//for plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand
+//plg_JobTableName  plg_JobGet  plg_JobRand plg_JobSPop plg_JobSRand plg_MngPrintAllStatusJson plg_MngPrintAllJobStatusJson plg_MngPrintAllJobDetailsJson
+//plg_MngPrintPossibleAllocJson plg_MngPrintAllJobOrderJson plg_MngPrintAllDetailsJson
+PELAGIA_API void plg_MemoryFree(void* ptr);
 
 //nead free using plg_MemoryFree(void*);
 PELAGIA_API char* plg_MngPrintAllStatusJson(void* pvManage);
@@ -87,15 +81,24 @@ PELAGIA_API void* plg_JobCreateFunPtr(RoutingFun funPtr);
 PELAGIA_API void* plg_JobCreateLua(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
+
+//system
 PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 PELAGIA_API void plg_JobForceCommit();
-
-//system
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
 PELAGIA_API void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
+
+//for script and json output format and input check
+enum TableType {
+	TT_Byte = 0,
+	TT_Double,
+	TT_String,
+	TT_Set
+};
+
 PELAGIA_API unsigned short plg_JobGetTableType(void* table, short tableLen);
 PELAGIA_API unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short tableType);
 PELAGIA_API unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned short tableType);
@@ -198,6 +201,4 @@ PELAGIA_API void plg_LogSetOutFile(char* outFile);
 //version
 PELAGIA_API unsigned int plg_NVersion();
 PELAGIA_API unsigned int plg_MVersion();
-PELAGIA_API void plg_Version();
-
 #endif

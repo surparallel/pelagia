@@ -1227,11 +1227,11 @@ char* plg_MngPrintAllJobStatusJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintAllJobStatus(void* pvManage, void* fileHandle) {
+void plg_MngPrintAllJobStatus(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintAllJobStatusJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 
 }
@@ -1254,11 +1254,11 @@ char* plg_MngPrintAllJobDetailsJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintAllJobDetails(void* pvManage, void* fileHandle) {
+void plg_MngPrintAllJobDetails(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintAllJobDetailsJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 
 }
@@ -1281,11 +1281,11 @@ char* plg_MngPrintAllJobOrderJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintAllJobOrder(void* pvManage, void* fileHandle) {
+void plg_MngPrintAllJobOrder(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintAllJobOrderJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 }
 
@@ -1311,11 +1311,11 @@ char* plg_MngPrintAllStatusJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintAllStatus(void* pvManage, void* fileHandle) {
+void plg_MngPrintAllStatus(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintAllStatusJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 }
 
@@ -1349,11 +1349,11 @@ char* plg_MngPrintAllDetailsJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintAllDetails(void* pvManage, void* fileHandle) {
+void plg_MngPrintAllDetails(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintAllDetailsJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 }
 
@@ -1499,11 +1499,11 @@ char* plg_MngPrintPossibleAllocJson(void* pvManage) {
 	return ps;
 }
 
-void plg_MngPrintPossibleAlloc(void* pvManage, void* fileHandle) {
+void plg_MngPrintPossibleAlloc(void* pvManage) {
 
-	FILE* f = fileHandle;
 	char* ps = plg_MngPrintPossibleAllocJson(pvManage);
-	fwrite(ps, 1, strlen(ps), f);
+	puts(ps);
+	puts("\n");
 	free(ps);
 }
 

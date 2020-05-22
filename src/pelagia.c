@@ -265,8 +265,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "pas")) {
 		if (_pManage != 0) {
-			plg_MngPrintAllStatus(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintAllStatus(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
@@ -274,8 +273,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "pajs")) {
 		if (_pManage != 0) {
-			plg_MngPrintAllJobStatus(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintAllJobStatus(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
@@ -283,8 +281,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "pajd")) {
 		if (_pManage != 0) {
-			plg_MngPrintAllJobDetails(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintAllJobDetails(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
@@ -292,8 +289,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "ppa")) {
 		if (_pManage != 0) {
-			plg_MngPrintPossibleAlloc(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintPossibleAlloc(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
@@ -301,8 +297,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "pajo")) {
 		if (_pManage != 0) {
-			plg_MngPrintAllJobOrder(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintAllJobOrder(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
@@ -310,8 +305,7 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 	}
 	else if (!strcasecmp(command, "paod")) {
 		if (_pManage != 0) {
-			plg_MngPrintAllDetails(_pManage, stdout);
-			puts("\n");
+			plg_MngPrintAllDetails(_pManage);
 		} else{
 			printf("Manage is not initialized. Please call iwj for initialization\n");
 		}
