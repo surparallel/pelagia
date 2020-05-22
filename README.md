@@ -33,7 +33,11 @@ plg_JobSDiffStore
 ## Related resources
 
 Pelagia website: https://surparallel.org
-Manual: <a href="https://surparallel.org/pelagia_c_api_manual_0.33.html">pelagia c api manual 0.33 html</a> <a href="https://github.com/surparallel/pelagia/releases/download/release_src_0.31/pelagia_c_api_manual_0.33.pdf">pelagia c api manual 0.33.pdf</a> <a href="https://surparallel.org/Pelagia_lua_0.33.html">pelagia lua api manual 0.33 html</a> <a href="https://github.com/surparallel/pelagia/releases/download/release_src_0.31/Pelagia_lua_0.33.pdf">pelagia lua api manual 0.33.pdf</a>
+Manual: 
+<a href="https://surparallel.org/pelagia_c_api_manual_0.33.html">pelagia c api manual 0.33(html)</a> 
+<a href="https://github.com/surparallel/pelagia/releases/download/release_src_0.31/pelagia_c_api_manual_0.33.pdf">pelagia c api manual 0.33(pdf)</a> 
+<a href="https://surparallel.org/Pelagia_lua_0.33.html">pelagia lua api manual 0.33(html)</a> 
+<a href="https://github.com/surparallel/pelagia/releases/download/release_src_0.31/Pelagia_lua_0.33.pdf">pelagia lua api manual 0.33(pdf)</a>
 
 ## Example
 
