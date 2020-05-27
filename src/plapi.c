@@ -114,7 +114,7 @@ static int LSet(lua_State* L) {
 
 static int LMultiSet(lua_State* L) {
 	
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -402,7 +402,7 @@ static int LPattern(lua_State* L) {
 
 static int LMembers(lua_State* L) {
 
-	size_t tLen, kLen, keLen, pLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -433,7 +433,7 @@ static int LMembers(lua_State* L) {
 
 static int LMultiGet(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -542,7 +542,7 @@ static int LSetPop(lua_State* L) {
 
 static int LSetDel(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
@@ -564,7 +564,7 @@ static int LSetDel(lua_State* L) {
 
 static int LSetUionStore(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -587,7 +587,7 @@ static int LSetUionStore(lua_State* L) {
 
 static int LSetInterStore(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -610,7 +610,7 @@ static int LSetInterStore(lua_State* L) {
 
 static int LSetDiffStore(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -796,7 +796,7 @@ static int LSetRangCount(lua_State* L) {
 
 static int LSetUion(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -833,7 +833,7 @@ static int LSetUion(lua_State* L) {
 
 static int LSetInter(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -870,7 +870,7 @@ static int LSetInter(lua_State* L) {
 
 static int LSetDiff(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -927,7 +927,7 @@ static int LSet2(lua_State* L) {
 
 static int LMultiSet2(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1264,7 +1264,7 @@ static int LPattern2(lua_State* L) {
 
 static int LMultiGet2(lua_State* L) {
 	
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -1387,7 +1387,7 @@ static int LSetPop2(lua_State* L) {
 
 static int LSetDel2(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 	const char* k = plg_Lvmchecklstring(_plVMHandle, L, 2, &kLen);
 
@@ -1409,7 +1409,7 @@ static int LSetDel2(lua_State* L) {
 
 static int LSetUionStore2(lua_State* L) {
 	
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1432,7 +1432,7 @@ static int LSetUionStore2(lua_State* L) {
 
 static int LSetInterStore2(lua_State* L) {
 	
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1455,7 +1455,7 @@ static int LSetInterStore2(lua_State* L) {
 
 static int LSetDiffStore2(lua_State* L) {
 
-	size_t tLen, kLen, vLen;
+	size_t tLen, kLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1664,7 +1664,7 @@ static int LSetRangCount2(lua_State* L) {
 
 static int LSetUion2(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -1708,7 +1708,7 @@ static int LSetUion2(lua_State* L) {
 
 static int LSetInter2(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
@@ -1751,7 +1751,7 @@ static int LSetInter2(lua_State* L) {
 
 static int LSetDiff2(lua_State* L) {
 
-	size_t tLen, kLen;
+	size_t tLen;
 	const char* t = plg_Lvmchecklstring(_plVMHandle, L, 1, &tLen);
 
 	unsigned rtype = 0;
