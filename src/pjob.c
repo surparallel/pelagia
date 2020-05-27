@@ -1535,6 +1535,27 @@ void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyL
 	plg_sdsFree(sdsTable);
 }
 
+void plg_JobMembers(void* table, short tableLen, void* pDictExten) {
+
+	CheckUsingThread(NORET);
+	elog(log_fun, "plg_JobMembers %s", table);
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
+		return;
+	}
+
+	sds sdsTable = plg_sdsNewLen(table, tableLen);
+	dictEntry* valueEntry = plg_dictFind(pJobHandle->tableName_cacheHandle, sdsTable);
+	if (valueEntry != 0) {
+		plg_CacheTableMembers(dictGetVal(valueEntry), sdsTable, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
+	} else {
+		elog(log_error, "plg_JobMembers.Cannot access table <%s>!", sdsTable);
+	}
+	plg_sdsFree(sdsTable);
+}
+
 /*
 First check the running cache
 */

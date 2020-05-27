@@ -32,6 +32,10 @@ void* plg_LvmGetL(void* plVMHandle);
 void plg_LvmSetL(void* pvlVMHandle, void* L);
 void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL_Reg *l);
 short plg_LvmGetV(void* plVMHandle);
+void plg_Lvmcreatetable(void* pvlVMHandle, void *L, int narr, int nrec);
+int plg_Lvmnext(void* pvlVMHandle, void *L, int idx);
+
+int plg_LvmTableNext(void* plVMHandle, void* L, int i, char **k, char **sv, double *dv);
 
 //lua api
 void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len, unsigned short *tt);

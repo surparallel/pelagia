@@ -75,6 +75,7 @@ unsigned int plg_TableRand(void* pTableHandle, void* pDictExten);
 void plg_TableClear(void* pTableHandle, short recursive);
 unsigned short plg_TableBigValueSize();
 void plg_TablePoint(void* pvTableHandle, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten);
+void plg_TableMembers(void* pvTableHandle, void* pDictExten);
 
 //set
 unsigned int plg_TableSetAdd(void* pTableHandle, void* vKey, short keyLen, void* vValue, short valueLen);

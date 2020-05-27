@@ -43,6 +43,7 @@ void plg_CacheTableMultiFind(void* pvCacheHandle, char* sdsTable, void* pKeyDict
 unsigned int plg_CacheTableRand(void* pvCacheHandle, char* sdsTable, void* pDictExten, short recent);
 void plg_CacheTableClear(void* pvCacheHandle, char* sdsTable);
 void plg_CacheTablePoint(void* pvCacheHandle, sds sdsTable, void* beginKey, short beginKeyLen, unsigned int direction, unsigned int offset, void* pDictExten, short recent);
+void plg_CacheTableMembers(void* pvCacheHandle, sds sdsTable, void* pDictExten, short recent);
 
 //set
 unsigned int plg_CacheTableSetAdd(void* pvCacheHandle, char* sdsTable, void* vKey, short keyLen, void* vValue, short valueLen);

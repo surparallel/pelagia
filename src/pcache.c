@@ -910,6 +910,19 @@ void plg_CacheTablePattern(void* pvCacheHandle, sds sdsTable, void* beginKey, sh
 	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
 }
 
+void plg_CacheTableMembers(void* pvCacheHandle, sds sdsTable, void* pDictExten, short recent) {
+
+	PCacheHandle pCacheHandle = pvCacheHandle;
+	MutexLock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+	pCacheHandle->recent = recent;
+	void* pTableHandle = cahce_GetTableHandle(pCacheHandle, sdsTable);
+	if (pTableHandle != 0) {
+		plg_TableMembers(pTableHandle, pDictExten);
+	}
+	pCacheHandle->recent = 1;
+	MutexUnlock(pCacheHandle->mutexHandle, pCacheHandle->objectName);
+}
+
 void plg_CacheTableClear(void* pvCacheHandle, sds sdsTable) {
 
 	PCacheHandle pCacheHandle = pvCacheHandle;

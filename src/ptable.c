@@ -2695,7 +2695,7 @@ static unsigned int table_RangCount(void* pvTableHandle, void* beginKey, short b
 	return count;
 }
 
-static void table_Members(void* pvTableHandle, void* pDictExten) {
+void plg_TableMembers(void* pvTableHandle, void* pDictExten) {
 
 	PTableHandle pTableHandle = pvTableHandle;
 	void* iter = plg_TableGetIteratorWithKey(pTableHandle, NULL, 0);
@@ -3257,7 +3257,7 @@ void plg_TableSetMembers(void* pvTableHandle, void* vKey, short keyLen, void* pI
 				memcpy(&tableInFile, valuePtr, retValueLen);
 
 				pTableHandle->pTableInFile = &tableInFile;
-				table_Members(pTableHandle, pInDictExten);
+				plg_TableMembers(pTableHandle, pInDictExten);
 			}
 		}
 	}
@@ -3461,7 +3461,7 @@ void plg_TableSetUion(void* pvTableHandle, void* pSetDictExten, void* pKeyDictEx
 					memcpy(&tableInFile, valuePtr, retValueLen);
 
 					pTableHandle->pTableInFile = &tableInFile;
-					table_Members(pTableHandle, pKeyDictExten);
+					plg_TableMembers(pTableHandle, pKeyDictExten);
 				}
 			}
 		}
@@ -3519,7 +3519,7 @@ void plg_TableSetInter(void* pvTableHandle, void* pSetDictExten, void* pKeyDictE
 
 					//find inter
 					if (plg_DictExtenSize(pKeyDictExten) == 0) {
-						table_Members(pTableHandle, pKeyDictExten);
+						plg_TableMembers(pTableHandle, pKeyDictExten);
 					} else {
 						void* dictInterIter = plg_DictExtenGetIterator(pKeyDictExten);
 						void* dictInterNode;
@@ -3591,7 +3591,7 @@ void plg_TableSetDiff(void* pvTableHandle, void* pSetDictExten, void* pKeyDictEx
 
 					//find diff
 					if (plg_DictExtenSize(pKeyDictExten) == 0) {
-						table_Members(pTableHandle, pKeyDictExten);
+						plg_TableMembers(pTableHandle, pKeyDictExten);
 					} else {
 						void* dictInterIter = plg_DictExtenGetIterator(pKeyDictExten);
 						void* dictInterNode;

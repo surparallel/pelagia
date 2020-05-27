@@ -106,8 +106,7 @@ function base(param)
     c6 = "c",
   }
 
-  local kvjson = json.encode(kv);
-  pelagia.MultiSet("t0", kvjson)
+  pelagia.MultiSet("t0", kv)
   r = pelagia.Get("t0", "c")
   if ( r == "b") then
     error = 0;
@@ -120,8 +119,7 @@ function base(param)
 
   --multiset and limite
   error = 1;
-  local rjson = pelagia.Limite("t0", "c3", 2, 2);
-  kv = json.decode(rjson);
+  kv = pelagia.Limite("t0", "c3", 2, 2);
   if ( kv.c1 == "c") then
     error = 0;
   end
@@ -133,8 +131,7 @@ function base(param)
 
   --mulitiset and order
   error = 1;
-  rjson = pelagia.Order("t0", 0, 1);
-  kv = json.decode(rjson);
+  kv = pelagia.Order("t0", 0, 1);
   if ( kv.a == "b") then
     error = 0;
   end
@@ -145,8 +142,7 @@ function base(param)
   end
 
   error = 1;
-  rjson = pelagia.Order("t0", 1, 1);
-  kv = json.decode(rjson);
+  kv = pelagia.Order("t0", 1, 1);
   if ( kv.c6 == "c") then
     error = 0;
   end
@@ -158,8 +154,7 @@ function base(param)
 
   --mulitiset and rang
   error = 1;
-  rjson = pelagia.Rang("t0", "c1", "c1");
-  kv = json.decode(rjson);
+  kv = pelagia.Rang("t0", "c1", "c1");
   if ( kv.c1 ~= nil) then
     error = 0;
   end
@@ -171,12 +166,11 @@ function base(param)
 
   --mulitiset and MultiGet
   error = 1;
-  local kv = {
+  local pv = {
     "c1"
   }
-  local kjson = json.encode(kv)
-  kvjson = pelagia.MultiGet("t0", kjson)
-  kv = json.decode(kvjson);
+
+  kv = pelagia.MultiGet("t0", pv)
   if( kv.c1 ~= nil) then
     error = 0;
   end
@@ -188,8 +182,7 @@ function base(param)
 
   --mulitiset and Pattern
   error =  1;
-  local kvjson = pelagia.Pattern("t0", "c1", "c1", "?1")
-  kv = json.decode(kvjson);
+  kv= pelagia.Pattern("t0", "c1", "c1", "?1")
   if( kv.c1 ~= nil) then
     error = 0;
   end
@@ -218,8 +211,7 @@ function base(param)
 
   --SetAdd and SetRang
   error = 1;
-  rjson = pelagia.SetRang("t1", "a", "b", "b");
-  kv = json.decode(rjson);
+  kv = pelagia.SetRang("t1", "a", "b", "b");
   if ( kv.b ~= nil) then
     error = 0;
   end
@@ -237,8 +229,7 @@ function base(param)
 
   --SetAdd and SetLimit
   error = 1;
-  rjson = pelagia.SetLimite("t1", "a", "b", 1, 1);
-  kv = json.decode(rjson);
+  kv = pelagia.SetLimite("t1", "a", "b", 1, 1);
   if ( kv.b ~= nil) then
     error = 0;
   end
@@ -256,8 +247,7 @@ function base(param)
 
   --SetAdd and SetMembers
   error = 1;
-  rjson = pelagia.SetMembers("t1", "a");
-  kv = json.decode(rjson);
+  kv = pelagia.SetMembers("t1", "a");
   if ( kv.b ~= nil) then
     error = 0;
   end
@@ -306,12 +296,11 @@ function base(param)
 
   --SetAdd and SetDel
   pelagia.SetAdd("t1", "a", "b")
-  local kv= {
+  local pv= {
     "b"
   }
-  kjson = json.encode(kv);
 
-  pelagia.SetDel("t1", "a", kjson);
+  pelagia.SetDel("t1", "a", pv);
   if 1 == pelagia.SetIsKeyExist("t1", "a", "b") then
     print("fail SetAdd and SetaDel!\n")
     return 1;
@@ -321,14 +310,11 @@ function base(param)
   error = 1;
   pelagia.SetAdd("t1", "a", "b")
   pelagia.SetAdd("t1", "c", "d")
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
-
-  kjson = json.encode(kv);
-  rjson = pelagia.SetUion("t1", kjson);
-  kv = json.decode(rjson);
+  kv = pelagia.SetUion("t1", pv);
   if kv.b ~= nil then
       error = 0;
   end
@@ -342,14 +328,12 @@ function base(param)
   error = 1;
   pelagia.SetAdd("t1", "a", "e")
   pelagia.SetAdd("t1", "c", "e")
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
 
-  kjson = json.encode(kv);
-  rjson = pelagia.SetInter("t1", kjson);
-  kv = json.decode(rjson);
+  kv = pelagia.SetInter("t1", pv);
   if kv.e ~= nil then
       error = 0;
   end
@@ -361,14 +345,12 @@ function base(param)
 
   --SetAdd and SetDiff
   error = 1;
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
 
-  kjson = json.encode(kv);
-  rjson = pelagia.SetDiff("t1", kjson);
-  kv = json.decode(rjson);
+  kv = pelagia.SetDiff("t1", pv);
   if kv.d ~= nil then
       error = 0;
   end
@@ -380,13 +362,12 @@ function base(param)
 
   --SetAdd and SetUionStore
   error = 1;
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
 
-  kjson = json.encode(kv);
-  pelagia.SetUionStore("t1", kjson, "u");
+  pelagia.SetUionStore("t1", pv, "u");
   if 1 == pelagia.SetIsKeyExist("t1", "u", "d") then
       error = 0;
   end
@@ -398,13 +379,12 @@ function base(param)
 
   --SetAdd and SetInterStore
   error = 1;
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
 
-  kjson = json.encode(kv);
-  pelagia.SetInterStore("t1", kjson, "i");
+  pelagia.SetInterStore("t1", pv, "i");
   if 1 == pelagia.SetIsKeyExist("t1", "i", "e") then
       error = 0;
   end
@@ -416,14 +396,12 @@ function base(param)
 
   --SetAdd and SetDiffStore
   error = 1;
-  local kv = {
+  local pv = {
     "a",
     "c"
   }
 
-  kjson = json.encode(kv);
-  pelagia.SetDiffStore("t1", kjson, "f");
-  kv = json.decode(rjson);
+  pelagia.SetDiffStore("t1", pv, "f");
   if 1 == pelagia.SetIsKeyExist("t1", "f", "d") then
       error = 0;
   end
@@ -533,8 +511,7 @@ function base(param)
       c6 = "c",
     }
   
-    local kvjson = json.encode(kv);
-    pelagia.MultiSet2("t0", kvjson)
+    pelagia.MultiSet2("t0", kv)
     r = pelagia.Get2("t0", "c")
     if ( r == "b") then
       error = 0;
@@ -547,8 +524,7 @@ function base(param)
   
     --multiset2 and limite2
     error = 1;
-    local rjson = pelagia.Limite2("t0", "c3", 2, 2);
-    kv = json.decode(rjson);
+    kv = pelagia.Limite2("t0", "c3", 2, 2);
     if ( kv.c1 == "c") then
       error = 0;
     end
@@ -560,8 +536,7 @@ function base(param)
   
     --mulitiset2 and order2
     error = 1;
-    rjson = pelagia.Order2("t0", 0, 1);
-    kv = json.decode(rjson);
+    kv = pelagia.Order2("t0", 0, 1);
     if ( kv.a == "b") then
       error = 0;
     end
@@ -572,8 +547,7 @@ function base(param)
     end
   
     error = 1;
-    rjson = pelagia.Order2("t0", 1, 1);
-    kv = json.decode(rjson);
+    kv = pelagia.Order2("t0", 1, 1);
     if ( kv.c6 == "c") then
       error = 0;
     end
@@ -585,8 +559,7 @@ function base(param)
   
     --mulitiset2 and rang2
     error = 1;
-    rjson = pelagia.Rang("t0", "c1", "c1");
-    kv = json.decode(rjson);
+    kv = pelagia.Rang2("t0", "c1", "c1");
     if ( kv.c1 ~= nil) then
       error = 0;
     end
@@ -598,12 +571,10 @@ function base(param)
   
     --mulitiset2 and MultiGet2
     error = 1;
-    local kv = {
+    local qv = {
       "c1"
     }
-    local kjson = json.encode(kv)
-    kvjson = pelagia.MultiGet2("t0", kjson)
-    kv = json.decode(kvjson);
+    kv = pelagia.MultiGet2("t0", qv)
     if( kv.c1 ~= nil) then
       error = 0;
     end
@@ -615,8 +586,7 @@ function base(param)
   
     --mulitiset and Pattern
     error =  1;
-    local kvjson = pelagia.Pattern2("t0", "c1", "c1", "?1")
-    kv = json.decode(kvjson);
+    kv = pelagia.Pattern2("t0", "c1", "c1", "?1")
     if( kv.c1 ~= nil) then
       error = 0;
     end
@@ -645,14 +615,13 @@ function base(param)
   
     --SetAdd and SetRang
     error = 1;
-    rjson = pelagia.SetRang2("t1", "a", "b", "b");
-    kv = json.decode(rjson);
+    kv = pelagia.SetRang2("t1", "a", "b", "b");
     if ( kv.b ~= nil) then
       error = 0;
     end
   
     if error == 1 then
-      print("fail MultiSet2 and rang2!\n")
+      print("fail MultiSet2 and SetRang2!\n")
       return 1;
     end
   
@@ -664,8 +633,7 @@ function base(param)
   
     --SetAdd and SetLimit
     error = 1;
-    rjson = pelagia.SetLimite2("t1", "a", "b", 1, 1);
-    kv = json.decode(rjson);
+    kv = pelagia.SetLimite2("t1", "a", "b", 1, 1);
     if ( kv.b ~= nil) then
       error = 0;
     end
@@ -683,8 +651,7 @@ function base(param)
   
     --SetAdd and SetMembers
     error = 1;
-    rjson = pelagia.SetMembers2("t1", "a");
-    kv = json.decode(rjson);
+    kv = pelagia.SetMembers2("t1", "a");
     if ( kv.b ~= nil) then
       error = 0;
     end
@@ -733,12 +700,10 @@ function base(param)
   
     --SetAdd and SetDel
     pelagia.SetAdd2("t1", "a", "b")
-    local kv= {
+    local qv= {
       "b"
-    }
-    kjson = json.encode(kv);
-  
-    pelagia.SetDel2("t1", "a", kjson);
+    }  
+    pelagia.SetDel2("t1", "a", qv);
     if 1 == pelagia.SetIsKeyExist2("t1", "a", "b") then
       print("fail SetAdd and SetaDel!\n")
       return 1;
@@ -748,14 +713,12 @@ function base(param)
     error = 1;
     pelagia.SetAdd2("t1", "a", "b")
     pelagia.SetAdd2("t1", "c", "d")
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
   
-    kjson = json.encode(kv);
-    rjson = pelagia.SetUion2("t1", kjson);
-    kv = json.decode(rjson);
+    kv = pelagia.SetUion2("t1", qv);
     if kv.b ~= nil then
         error = 0;
     end
@@ -769,14 +732,12 @@ function base(param)
     error = 1;
     pelagia.SetAdd2("t1", "a", "e")
     pelagia.SetAdd2("t1", "c", "e")
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
   
-    kjson = json.encode(kv);
-    rjson = pelagia.SetInter2("t1", kjson);
-    kv = json.decode(rjson);
+    kv = pelagia.SetInter2("t1", qv);
     if kv.e ~= nil then
         error = 0;
     end
@@ -788,14 +749,12 @@ function base(param)
   
     --SetAdd and SetDiff
     error = 1;
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
   
-    kjson = json.encode(kv);
-    rjson = pelagia.SetDiff2("t1", kjson);
-    kv = json.decode(rjson);
+    kv = pelagia.SetDiff2("t1", qv);
     if kv.d ~= nil then
         error = 0;
     end
@@ -807,13 +766,12 @@ function base(param)
   
     --SetAdd and SetUionStore
     error = 1;
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
-  
-    kjson = json.encode(kv);
-    pelagia.SetUionStore2("t1", kjson, "u");
+
+    pelagia.SetUionStore2("t1", qv, "u");
     if 1 == pelagia.SetIsKeyExist2("t1", "u", "d") then
         error = 0;
     end
@@ -825,13 +783,12 @@ function base(param)
   
     --SetAdd and SetInterStore
     error = 1;
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
   
-    kjson = json.encode(kv);
-    pelagia.SetInterStore2("t1", kjson, "i");
+    pelagia.SetInterStore2("t1", qv, "i");
     if 1 == pelagia.SetIsKeyExist2("t1", "i", "e") then
         error = 0;
     end
@@ -843,14 +800,12 @@ function base(param)
   
     --SetAdd and SetDiffStore
     error = 1;
-    local kv = {
+    local qv = {
       "a",
       "c"
     }
   
-    kjson = json.encode(kv);
-    pelagia.SetDiffStore2("t1", kjson, "f");
-    kv = json.decode(rjson);
+    pelagia.SetDiffStore2("t1", qv, "f");
     if 1 == pelagia.SetIsKeyExist2("t1", "f", "d") then
         error = 0;
     end

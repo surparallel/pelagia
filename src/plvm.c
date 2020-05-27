@@ -288,6 +288,18 @@ void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL
 	}
 }
 
+void plg_Lvmcreatetable(void* pvlVMHandle, void *L, int narr, int nrec) {
+	PlVMHandle plVMHandle = pvlVMHandle;
+	FillFun(plVMHandle->hInstance, lua_createtable, NORET);
+	plua_createtable(L, narr, nrec);
+}
+
+int plg_Lvmnext(void* pvlVMHandle, void *L, int idx) {
+	PlVMHandle plVMHandle = pvlVMHandle;
+	FillFun(plVMHandle->hInstance, lua_next, 0);
+	return plua_next(L, idx);
+}
+
 void plg_LvmRequiref(void* pvlVMHandle, const char *modname, lua_CFunction openf, int glb) {
 	PlVMHandle plVMHandle = pvlVMHandle;
 
@@ -446,6 +458,30 @@ void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len, un
 	}
 
 	return 0;
+}
+
+int plg_LvmTableNext(void* plVMHandle, void* L, int i, char **k, char **sv, double *dv) {
+	if (plg_Lvmnext(plVMHandle, L, i) != 0)
+	{
+		size_t len;
+		if (plg_Lvmtype(plVMHandle, L, -2) == LUA_TSTRING) {
+			*k = (char *)plg_Lvmtolstring(plVMHandle, L, -2, &len);
+		} else if (plg_Lvmtype(plVMHandle, L, -2) == LUA_TNUMBER) {
+			long long kd = plg_Lvmtonumber(plVMHandle, L, -2);
+			*k = (void*) kd;
+		}
+		
+		if (plg_Lvmtype(plVMHandle, L, -1) == LUA_TSTRING) {
+			*sv = (char *)plg_Lvmtolstring(plVMHandle, L, -1, &len);
+		} else if (plg_Lvmtype(plVMHandle, L, -1) == LUA_TNUMBER) {
+			*dv = plg_Lvmtonumber(plVMHandle, L, -1);
+		}
+		
+		//clear lua --lua_pop(L,1) lua_settop(L, -(n)-1)
+		plg_Lvmsettop(plVMHandle, L, -2);
+		return 1;
+	} else
+		return 0;
 }
 
 #undef FillFun

@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"34"
+#define VERSION_MINOR	"35"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	34
+#define VERSION_NUMMINOR	35
 
 #include "papidefine.h"
 
@@ -121,6 +121,7 @@ PELAGIA_API void plg_JobPoint(void* table, short tableLen, void* beginKey, short
 PELAGIA_API void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyLen, void* endKey, short endKeyLen, void* pattern, short patternLen, void* pDictExten);
 PELAGIA_API void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pValueDictExten);
 PELAGIA_API void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen);//need free
+PELAGIA_API void plg_JobMembers(void* table, short tableLen, void* pDictExten);
 
 //set db
 PELAGIA_API unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, void* value, short valueLen);
