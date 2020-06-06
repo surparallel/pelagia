@@ -115,7 +115,6 @@ char plg_LocksLeave(void* pvSafeMutex) {
 }
 
 void plg_LocksSetSpecific(void* ptr) {
-	plg_assert(ptr);
 	plg_assert(environmental);
 	pthread_setspecific(environmental, ptr);
 }

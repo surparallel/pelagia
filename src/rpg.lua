@@ -585,8 +585,7 @@ function npc_tick(param)
   for i = 1, 10000, 1 do
     local lv;
     if next ==  "1" then 
-      local rjson = pelagia.Order2("tick", 0, 1);
-      local rd = json.decode(rjson);
+      local rd = pelagia.Order2("tick", 0, 1);
       next = nil;
       for k, v in pairs(rd) do
         next = k;
@@ -594,8 +593,7 @@ function npc_tick(param)
         break;
       end
   else
-    local rjson = pelagia.Point2("tick", next, 1, 1);
-    local rd = json.decode(rjson);
+    local rd = pelagia.Point2("tick", next, 1, 1);
     next = nil;
     for k, v in pairs(rd) do
       next = k;

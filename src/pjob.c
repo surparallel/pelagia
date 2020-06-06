@@ -182,6 +182,9 @@ typedef struct _JobHandle
 
 	unsigned int maxQueue;
 
+	//exit value
+	sds m_value;
+
 } *PJobHandle, JobHandle;
 
 static char* TString[] = {
@@ -365,8 +368,9 @@ void job_Rollback(void* pvJobHandle) {
 
 static int OrderDestroy(char* value, short valueLen) {
 	elog(log_fun, "job.OrderDestroy");
-	plg_JobSendOrder(job_ManageEqueue(), "destroycount", value, valueLen);
-	plg_JobSetExitThread(1);
+	PJobHandle pJobHandle = job_Handle();
+	pJobHandle->m_value = plg_sdsNewLen(value, valueLen);
+	plg_JobSetExitThread(3);
 	return 1;
 }
 
@@ -947,6 +951,9 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 				break; 
 			}
 
+			if (pJobHandle->exitThread != 0) {
+				break;
+			}
 		} while (1);
 
 		timer = plg_JogMinIntervalometer(pJobHandle);
@@ -964,6 +971,12 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 			plg_MngSendExit(pManage);
 			plg_MutexThreadDestroy();
 			return 0;
+		} else if (pJobHandle->exitThread == 3) {
+
+			elog(log_details, "ThreadType:%i.plg_JobThreadRouting.exitThread:%i", pJobHandle->threadType, pJobHandle->exitThread);
+			plg_JobSendOrder(job_ManageEqueue(), "destroycount", pJobHandle->m_value, plg_sdsLen(pJobHandle->m_value));
+			plg_sdsFree(pJobHandle->m_value);
+			break;
 		}
 	} while (1);
 
