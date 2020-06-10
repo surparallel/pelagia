@@ -28,7 +28,7 @@ void* plg_LvmCheckSym(void *lib, const char *sym);
 void* plg_LvmGetInstance(void* plVMHandle);
 void* plg_LvmGetL(void* plVMHandle);
 void plg_LvmSetL(void* pvlVMHandle, void* L);
-void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const void* l);
+void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, void* l);
 short plg_LvmGetV(void* plVMHandle);
 void plg_Lvmcreatetable(void* pvlVMHandle, void *L, int narr, int nrec);
 int plg_Lvmnext(void* pvlVMHandle, void *L, int idx);
