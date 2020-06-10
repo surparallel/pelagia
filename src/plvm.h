@@ -19,10 +19,6 @@
 #ifndef __LVM_H
 #define __LVM_H
 
-typedef struct lua_State lua_State;
-typedef struct luaL_Reg luaL_Reg;
-typedef int(*lua_CFunction) (lua_State *L);
-
 #define FillFun(h, n, r)n p##n = plg_LvmCheckSym(h, #n);if (!p##n) {return r;}
 
 void* plg_LvmLoad(const char *path, short luaHot);
@@ -32,7 +28,7 @@ void* plg_LvmCheckSym(void *lib, const char *sym);
 void* plg_LvmGetInstance(void* plVMHandle);
 void* plg_LvmGetL(void* plVMHandle);
 void plg_LvmSetL(void* pvlVMHandle, void* L);
-void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL_Reg *l);
+void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const void* l);
 short plg_LvmGetV(void* plVMHandle);
 void plg_Lvmcreatetable(void* pvlVMHandle, void *L, int narr, int nrec);
 int plg_Lvmnext(void* pvlVMHandle, void *L, int idx);
@@ -59,6 +55,6 @@ void plg_Lvmpushnumber(void* pvlVMHandle, void* L, double n);
 long long plg_Lvmcheckinteger(void* pvlVMHandle, void* L, int numArg);
 void plg_Lvmpushnil(void* pvlVMHandle, void* L);
 
-void plg_LvmRequiref(void* pvlVMHandle, const char *modname, lua_CFunction openf, int glb);
+void plg_LvmRequiref(void* pvlVMHandle, const char *modname, void* openf, int glb);
 
 #endif

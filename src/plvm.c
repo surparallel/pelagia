@@ -365,18 +365,18 @@ long long plg_Lvmcheckinteger(void* pvlVMHandle, void* L, int numArg) {
 #endif
 }
 
-void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, const luaL_Reg *l) {
+void plg_Lvmregister(void* pvlVMHandle, void* L, const char *libname, void* l) {
 	PlVMHandle plVMHandle = pvlVMHandle;
-
+	luaL_Reg * lr = (luaL_Reg *)l;
 #ifndef STATIC_LUA
 	if (plVMHandle->luaVersion == lua5_1) {
 		FillFun(plVMHandle->hInstance, luaL_register, NORET);
-		pluaL_register(L, libname, l);
+		pluaL_register(L, libname, lr);
 	} else {
 		FillFun(plVMHandle->hInstance, lua_createtable, NORET);
 		plua_createtable(L, 0, -1);
 		FillFun(plVMHandle->hInstance, luaL_setfuncs, NORET);
-		pluaL_setfuncs(L, l, 0);
+		pluaL_setfuncs(L, lr, 0);
 	}
 #else
 #if LUA_VERSION_NUM == 501
@@ -410,13 +410,13 @@ int plg_Lvmnext(void* pvlVMHandle, void *L, int idx) {
 #endif
 }
 
-void plg_LvmRequiref(void* pvlVMHandle, const char *modname, lua_CFunction openf, int glb) {
+void plg_LvmRequiref(void* pvlVMHandle, const char *modname, void* openf, int glb) {
 	PlVMHandle plVMHandle = pvlVMHandle;
-
+	lua_CFunction lcfun = (lua_CFunction)openf;
 #ifndef STATIC_LUA
 	if (plVMHandle->luaVersion == lua5_2 || plVMHandle->luaVersion == lua5_3)  {
 		FillFun(plVMHandle->hInstance, luaL_requiref, NORET);
-		pluaL_requiref(plVMHandle->luaVM, modname, openf, glb);
+		pluaL_requiref(plVMHandle->luaVM, modname, lcfun, glb);
 	}
 #else
 #if LUA_VERSION_NUM != 501
