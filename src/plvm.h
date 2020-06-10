@@ -19,7 +19,9 @@
 #ifndef __LVM_H
 #define __LVM_H
 
-#include "plauxlib.h"
+typedef struct lua_State lua_State;
+typedef struct luaL_Reg luaL_Reg;
+typedef int(*lua_CFunction) (lua_State *L);
 
 #define FillFun(h, n, r)n p##n = plg_LvmCheckSym(h, #n);if (!p##n) {return r;}
 

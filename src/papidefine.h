@@ -26,16 +26,27 @@
 ** the libraries, you may want to use the following definition (define
 ** PELAGIA_BUILD_AS_DLL to get it).
 */
-#if defined(PLG_BUILD_AS_DLL)	/* { */
 
-#if defined(PELAGIA_CORE) || defined(PELAGIA_LIB)	/* { */
+#ifndef __APIDEFINE_H
+#define __APIDEFINE_H
+
+#if defined(PLG_BUILD_AS_DLL)
+
+#if defined(PELAGIA_CORE) || defined(PELAGIA_LIB)
 #define PELAGIA_API __declspec(dllexport)
-#else						/* }{ */
+#else
 #define PELAGIA_API __declspec(dllimport)
-#endif						/* } */
+#endif
 
-#else				/* }{ */
-
+#else
 #define PELAGIA_API		extern
+#endif
 
-#endif				/* } */
+
+#if defined(STATIC_LUA_AS_DLL)
+#define LUA_API __declspec(dllimport)
+#else
+#define LUA_API		extern
+#endif
+
+#endif

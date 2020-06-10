@@ -34,7 +34,11 @@ typedef int (*luaopen_bit)(lua_State *L);
 typedef int (*luaopen_jit)(lua_State *L);
 typedef int (*luaopen_ffi)(lua_State *L);
 
+#ifdef STATIC_LUA
+void luaL_openlibs (lua_State *L);
+#else
 typedef void (*luaL_openlibs)(lua_State *L);
+#endif
 
 #ifndef lua_assert
 #define lua_assert(x)	((void)0)

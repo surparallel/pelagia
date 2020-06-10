@@ -106,7 +106,7 @@ typedef LUA_INTEGER lua_Integer;
 ** state manipulation
 */
 typedef lua_State *(*lua_newstate) (lua_Alloc f, void *ud);
-typedef void       (*lua_close) (lua_State *L);
+
 typedef lua_State *(*lua_newthread) (lua_State *L);
 
 typedef lua_CFunction (*lua_atpanic) (lua_State *L, lua_CFunction panicf);
@@ -116,7 +116,7 @@ typedef lua_CFunction (*lua_atpanic) (lua_State *L, lua_CFunction panicf);
 ** basic stack manipulation
 */
 typedef int   (*lua_gettop) (lua_State *L);
-typedef void  (*lua_settop) (lua_State *L, int idx);
+
 typedef void  (*lua_pushvalue) (lua_State *L, int idx);
 typedef void  (*lua_remove) (lua_State *L, int idx);
 typedef void  (*lua_insert) (lua_State *L, int idx);
@@ -130,25 +130,21 @@ typedef void  (*lua_xmove) (lua_State *from, lua_State *to, int n);
 ** access functions (stack -> C)
 */
 
-typedef int             (*lua_isnumber) (lua_State *L, int idx);
+
 typedef int             (*lua_isstring) (lua_State *L, int idx);
 typedef int             (*lua_iscfunction) (lua_State *L, int idx);
 typedef int             (*lua_isuserdata) (lua_State *L, int idx);
-typedef int             (*lua_type) (lua_State *L, int idx);
+
 typedef const char     *(*lua_typename) (lua_State *L, int tp);
 
 typedef int            (*lua_equal) (lua_State *L, int idx1, int idx2);
 typedef int            (*lua_rawequal) (lua_State *L, int idx1, int idx2);
 typedef int            (*lua_lessthan) (lua_State *L, int idx1, int idx2);
-
-typedef lua_Number      (*lua_tonumber) (lua_State *L, int idx);
-
-//5.2 5.3
-typedef lua_Number		(*lua_tonumberx) (lua_State *L, int idx, int *isnum);
+\
 
 typedef lua_Integer     (*lua_tointeger) (lua_State *L, int idx);
 typedef int             (*lua_toboolean) (lua_State *L, int idx);
-typedef const char     *(*lua_tolstring) (lua_State *L, int idx, size_t *len);
+
 typedef size_t          (*lua_objlen) (lua_State *L, int idx);
 typedef lua_CFunction   (*lua_tocfunction) (lua_State *L, int idx);
 typedef void	       *(*lua_touserdata) (lua_State *L, int idx);
@@ -159,17 +155,17 @@ typedef const void     *(*lua_topointer) (lua_State *L, int idx);
 /*
 ** push functions (C -> stack)
 */
-typedef void  (*lua_pushnil) (lua_State *L);
-typedef void  (*lua_pushnumber) (lua_State *L, lua_Number n);
+
+
 typedef void  (*lua_pushinteger) (lua_State *L, lua_Integer n);
-typedef void  (*lua_pushlstring) (lua_State *L, const char *s, size_t l);
-typedef void  (*lua_pushstring) (lua_State *L, const char *s);
+
+
 typedef const char *(*lua_pushvfstring) (lua_State *L, const char *fmt,
                                                       va_list argp);
 typedef const char *(*lua_pushfstring) (lua_State *L, const char *fmt, ...);
 typedef void  (*lua_pushcclosure) (lua_State *L, lua_CFunction fn, int n);
 typedef void  (*lua_pushboolean) (lua_State *L, int b);
-typedef void  (*lua_pushlightuserdata) (lua_State *L, void *p);
+
 typedef int   (*lua_pushthread) (lua_State *L);
 
 
@@ -177,21 +173,19 @@ typedef int   (*lua_pushthread) (lua_State *L);
 ** get functions (Lua -> stack)
 */
 typedef void  (*lua_gettable) (lua_State *L, int idx);
-typedef void  (*lua_getfield) (lua_State *L, int idx, const char *k);
+
 typedef void  (*lua_rawget) (lua_State *L, int idx);
 typedef void  (*lua_rawgeti) (lua_State *L, int idx, int n);
-typedef void  (*lua_createtable) (lua_State *L, int narr, int nrec);
+
 typedef void *(*lua_newuserdata) (lua_State *L, size_t sz);
 typedef int   (*lua_getmetatable) (lua_State *L, int objindex);
 typedef void  (*lua_getfenv) (lua_State *L, int idx);
 
-//for 5.2 5.3
-typedef void  (*lua_getglobal)(lua_State *L, const char *var);
 
 /*
 ** set functions (stack -> Lua)
 */
-typedef void  (*lua_settable) (lua_State *L, int idx);
+
 typedef void  (*lua_setfield) (lua_State *L, int idx, const char *k);
 typedef void  (*lua_rawset) (lua_State *L, int idx);
 typedef void  (*lua_rawseti) (lua_State *L, int idx, int n);
@@ -203,12 +197,10 @@ typedef int   (*lua_setfenv) (lua_State *L, int idx);
 ** `load' and `call' functions (load and run Lua code)
 */
 typedef void  (*lua_call) (lua_State *L, int nargs, int nresults);
-typedef int   (*lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
+
 typedef int   (*lua_cpcall) (lua_State *L, lua_CFunction func, void *ud);
 typedef int   (*lua_load) (lua_State *L, lua_Reader reader, void *dt,
                                         const char *chunkname);
-//5.2 5.3
-typedef int   (*lua_pcallk)(lua_State *L, int nargs, int nresults, int errfunc, int ctx, lua_CFunction k);
 
 typedef int (*lua_dump) (lua_State *L, lua_Writer writer, void *data);
 
@@ -242,7 +234,7 @@ typedef int (*lua_gc) (lua_State *L, int what, int data);
 
 typedef int   (*lua_error) (lua_State *L);
 
-typedef int   (*lua_next) (lua_State *L, int idx);
+
 
 typedef void  (*lua_concat) (lua_State *L, int n);
 
@@ -395,5 +387,52 @@ struct lua_Debug {
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************/
 
+#ifdef STATIC_LUA
+
+LUA_API void lua_getfield (lua_State *L, int idx, const char *k);
+LUA_API void lua_getglobal(lua_State *L, const char *var);
+LUA_API int  lua_pcall (lua_State *L, int nargs, int nresults, int errfunc);
+LUA_API int lua_pcallk(lua_State *L, int nargs, int nresults, int errfunc, int ctx, lua_CFunction k);
+LUA_API void   lua_pushlstring (lua_State *L, const char *s, size_t l);
+LUA_API int lua_isnumber (lua_State *L, int idx);
+LUA_API lua_Number lua_tonumberx (lua_State *L, int idx, int *isnum);
+LUA_API lua_Number lua_tonumber (lua_State *L, int idx);
+LUA_API void lua_settop (lua_State *L, int idx);
+LUA_API const char * lua_tolstring (lua_State *L, int idx, size_t *len);
+LUA_API int lua_type (lua_State *L, int idx);
+LUA_API void  lua_pushlightuserdata (lua_State *L, void *p);
+LUA_API void  lua_pushstring (lua_State *L, const char *s);
+LUA_API void  lua_pushnil (lua_State *L);
+LUA_API void lua_settable (lua_State *L, int idx);
+LUA_API void  lua_pushnumber (lua_State *L, lua_Number n);
+LUA_API void  lua_createtable (lua_State *L, int narr, int nrec);
+LUA_API int  lua_next (lua_State *L, int idx);
+LUA_API void lua_close (lua_State *L);
+#else
+typedef int(*lua_next) (lua_State *L, int idx);
+typedef void(*lua_createtable) (lua_State *L, int narr, int nrec);
+typedef void(*lua_pushnumber) (lua_State *L, lua_Number n);
+typedef void(*lua_settable) (lua_State *L, int idx);
+typedef void(*lua_pushnil) (lua_State *L);
+typedef void(*lua_pushstring) (lua_State *L, const char *s);
+typedef void(*lua_pushlightuserdata) (lua_State *L, void *p);
+typedef int(*lua_type) (lua_State *L, int idx);
+typedef const char     *(*lua_tolstring) (lua_State *L, int idx, size_t *len);
+typedef void(*lua_settop) (lua_State *L, int idx);
+typedef lua_Number(*lua_tonumber) (lua_State *L, int idx);
+//5.2 5.3
+typedef lua_Number(*lua_tonumberx) (lua_State *L, int idx, int *isnum);
+
+typedef int(*lua_isnumber) (lua_State *L, int idx);
+typedef void(*lua_pushlstring) (lua_State *L, const char *s, size_t l);
+//5.2 5.3
+typedef int(*lua_pcallk)(lua_State *L, int nargs, int nresults, int errfunc, int ctx, lua_CFunction k);
+typedef int(*lua_pcall) (lua_State *L, int nargs, int nresults, int errfunc);
+//for 5.2 5.3
+typedef void(*lua_getglobal)(lua_State *L, const char *var);
+typedef void(*lua_getfield) (lua_State *L, int idx, const char *k);
+typedef void(*lua_close) (lua_State *L);
+
+#endif
 
 #endif

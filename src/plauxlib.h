@@ -28,20 +28,18 @@ typedef struct luaL_Reg {
 
 typedef void (*luaL_openlib) (lua_State *L, const char *libname,
                                 const luaL_Reg *l, int nup);
-typedef void (*luaL_register) (lua_State *L, const char *libname,
-                                const luaL_Reg *l);
+
 typedef int (*luaL_getmetafield) (lua_State *L, int obj, const char *e);
 typedef int (*luaL_callmeta) (lua_State *L, int obj, const char *e);
 typedef int (*luaL_typerror) (lua_State *L, int narg, const char *tname);
 typedef int (*luaL_argerror) (lua_State *L, int numarg, const char *extramsg);
-typedef const char *(*luaL_checklstring) (lua_State *L, int numArg,
-                                                          size_t *l);
+
 typedef const char *(*luaL_optlstring) (lua_State *L, int numArg,
                                           const char *def, size_t *l);
-typedef lua_Number (*luaL_checknumber) (lua_State *L, int numArg);
+
 typedef lua_Number (*luaL_optnumber) (lua_State *L, int nArg, lua_Number def);
 
-typedef lua_Integer (*luaL_checkinteger) (lua_State *L, int numArg);
+
 typedef lua_Integer (*luaL_optinteger) (lua_State *L, int nArg,
                                           lua_Integer def);
 
@@ -61,12 +59,10 @@ typedef int (*luaL_checkoption) (lua_State *L, int narg, const char *def,
 typedef int (*luaL_ref) (lua_State *L, int t);
 typedef void (*luaL_unref) (lua_State *L, int t, int ref);
 
-typedef int (*luaL_loadfile) (lua_State *L, const char *filename);
 typedef int (*luaL_loadbuffer) (lua_State *L, const char *buff, size_t sz,
                                   const char *name);
 typedef int (*luaL_loadstring) (lua_State *L, const char *s);
 
-typedef lua_State *(*luaL_newstate) (void);
 
 typedef const char *(*luaL_gsub) (lua_State *L, const char *s, const char *p,
                                                   const char *r);
@@ -88,8 +84,7 @@ typedef void (luaL_traceback) (lua_State *L, lua_State *L1, const char *msg,
 ** ===============================================================
 */
 
-typedef void(*luaL_setfuncs)(lua_State *L, const luaL_Reg *l, int nup);
-typedef void(*luaL_requiref)(lua_State *L, const char *modname, lua_CFunction openf, int glb);
+
 
 
 /*
@@ -169,5 +164,28 @@ typedef void (*luaL_pushresult) (luaL_Buffer *B);
 
 
 #define luaL_reg	luaL_Reg
+
+#ifdef STATIC_LUA
+
+LUA_API int luaL_loadfile (lua_State *L, const char *filename);
+LUA_API lua_Number luaL_checknumber(lua_State *L, int numArg);
+LUA_API const char * luaL_checklstring (lua_State *L, int numArg, size_t *l);
+LUA_API lua_Integer luaL_checkinteger (lua_State *L, int numArg);
+LUA_API void  luaL_register (lua_State *L, const char *libname, const luaL_Reg *l);
+LUA_API void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup);
+LUA_API void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int glb);
+LUA_API lua_State* luaL_newstate (void);
+#else
+typedef void(*luaL_requiref)(lua_State *L, const char *modname, lua_CFunction openf, int glb);
+typedef void(*luaL_setfuncs)(lua_State *L, const luaL_Reg *l, int nup);
+typedef void(*luaL_register) (lua_State *L, const char *libname,
+	const luaL_Reg *l);
+typedef lua_Integer(*luaL_checkinteger) (lua_State *L, int numArg);
+typedef lua_Number(*luaL_checknumber) (lua_State *L, int numArg);
+typedef int(*luaL_loadfile) (lua_State *L, const char *filename);
+typedef const char *(*luaL_checklstring) (lua_State *L, int numArg,
+	size_t *l);
+typedef lua_State *(*luaL_newstate) (void);
+#endif
 
 #endif
