@@ -919,9 +919,11 @@ static int LSet2(lua_State* L) {
 		elog(log_warn, "LSet2 Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
 	}
 
-	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	if (v) {
+		plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+		free(v);
+	}
 
-	free(v);
 	return 1;
 }
 
@@ -987,7 +989,11 @@ static int LSetIfNoExit2(lua_State* L) {
 		elog(log_warn, "LSetIfNoExit2 Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
 	}
 
-	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+	if (v) {
+		plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
+		free(v);
+	}
+	
 	return 1;
 }
 

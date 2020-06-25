@@ -595,6 +595,9 @@ void* plg_LvmMallocWithType(void* plVMHandle, void* L, int nArg, size_t* len, un
 		*tt = TT_String;
 
 		return p;
+	} else {
+		*len = 0;
+		*tt = TT_Byte;
 	}
 
 	return 0;
