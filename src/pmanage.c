@@ -38,6 +38,7 @@
 #include "pjob.h"
 #include "pbase64.h"
 #include "pstart.h"
+#include "plibsys.h"
 
 #define NORET
 #define CheckUsingThread(r) if (plg_MngCheckUsingThread()) {elog(log_error, "Cannot run management interface in non user environment");return r;}
@@ -97,10 +98,9 @@ typedef struct _Manage
 	unsigned int maxTableWeight;
 
 	//lvm
-	sds luaDllPath;
-	sds luaPath;
-	sds dllPath;
+	sds luaLIBPath;
 	short luaHot;
+	dict* libFun;
 
 	//event for exit;
 	void* pEvent;
@@ -167,6 +167,20 @@ static dictType SdsDictType = {
 	dictTableNameFree
 };
 
+static void dictLibFree(void *privdata, void *val) {
+	NOTUSED(privdata);
+	plg_SysLibUnload(val);
+	free(val);
+}
+
+static dictType LibDictType = {
+	sdsHashCallback,
+	NULL,
+	NULL,
+	sdsCompareCallback,
+	sdsFreeCallback,
+	dictLibFree
+};
 
 typedef struct _ManageDestroy
 {
@@ -446,7 +460,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
-		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaPath, pManage->luaDllPath, pManage->dllPath, pManage->luaHot);
+		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaLIBPath, pManage->luaHot);
 		plg_JobSetStat(pJobHandle, pManage->isOpenStat, pManage->checkTime);
 		plg_JobSetPrivate(pJobHandle, pvManage);
 		plg_JobSetMaxQueue(pJobHandle, pManage->maxQueue);
@@ -1011,9 +1025,8 @@ static void manage_InternalDestoryHandle(void* pvManage) {
 	
 	plg_sdsFree(pManage->dbPath);
 	plg_sdsFree(pManage->objName);
-	plg_sdsFree(pManage->luaDllPath);
-	plg_sdsFree(pManage->luaPath);
-	plg_sdsFree(pManage->dllPath);
+	plg_sdsFree(pManage->luaLIBPath);
+	plg_dictRelease(pManage->libFun);
 	
 	free(pManage);
 }
@@ -1118,7 +1131,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->order_equeue = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pManage->dbPath = plg_sdsNewLen(dbPath, dbPahtLen);
 	pManage->objName = plg_sdsNew("manage");
-	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, 0, 0, 0, 0);
+	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, NULL, 0);
 	plg_JobSetPrivate(pManage->pJobHandle, pManage);
 
 	pManage->fileCount = 0;
@@ -1126,27 +1139,43 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->fileDestroyCount = 0;
 	pManage->runStatus = 0;
 	pManage->maxTableWeight = 1000;
-	pManage->luaDllPath = plg_sdsEmpty();
-	pManage->luaPath = plg_sdsEmpty();
-	pManage->dllPath = plg_sdsEmpty();
+	pManage->luaLIBPath = plg_sdsEmpty();
 	pManage->luaHot = 0;
 	pManage->noSave = 0;
 
+	pManage->libFun = plg_dictCreate(&LibDictType, NULL, DICT_MIDDLE);
+
 	//event process
 	plg_JobAddAdmOrderProcess(pManage->pJobHandle, "destroycount", plg_JobCreateFunPtr(OrderDestroyCount));
+
 	return pManage;
 }
 
-void plg_MngSetDllPath(void* pvManage, char* newDllPath) {
+void plg_MngAddLibFun(void* pvManage, char* libPath, char* fun) {
 	PManage pManage = pvManage;
-	plg_sdsFree(pManage->dllPath);
-	pManage->dllPath = plg_sdsNew(newDllPath);
+	dictEntry * entry = plg_dictFind(pManage->libFun, fun);
+	if (!entry) {
+		void* p = plg_SysLibLoad(libPath, 1);
+		plg_dictAdd(pManage->libFun, plg_sdsNew(fun), p);
+	} else {
+		elog(log_warn, "plg_MngAddLibFun. function %s Repetitive definition at %s.", libPath, fun);
+	}
 }
 
-void plg_MngSetLuaDllPath(void* pvManage, char* newLuaDllPath) {
+void* plg_MngFindLibFun(void* pvManage, char* Fun) {
 	PManage pManage = pvManage;
-	plg_sdsFree(pManage->luaDllPath);
-	pManage->luaDllPath = plg_sdsNew(newLuaDllPath);
+	dictEntry * entry = plg_dictFind(pManage->libFun, Fun);
+	if (entry != 0) {
+		return dictGetVal(entry);
+	} else {
+		return 0;
+	}
+}
+
+void plg_MngSetLuaLibPath(void* pvManage, char* newLuaLibPath) {
+	PManage pManage = pvManage;
+	plg_sdsFree(pManage->luaLIBPath);
+	pManage->luaLIBPath = plg_sdsNew(newLuaLibPath);
 }
 
 void plg_MngSetLuaHot(void* pvManage, short luaHot) {
@@ -1157,12 +1186,6 @@ void plg_MngSetLuaHot(void* pvManage, short luaHot) {
 void plg_MngSetAllNoSave(void* pvManage, short noSave) {
 	PManage pManage = pvManage;
 	pManage->noSave = noSave;
-}
-
-void plg_MngSetLuaPath(void* pvManage, char* newLuaPath) {
-	PManage pManage = pvManage;
-	plg_sdsFree(pManage->luaPath);
-	pManage->luaPath = plg_sdsNew(newLuaPath);
 }
 
 void plg_MngSendExit(void* pvManage){

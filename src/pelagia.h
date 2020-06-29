@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"38"
+#define VERSION_MINOR	"39"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	38
+#define VERSION_NUMMINOR	39
 
 #include "papidefine.h"
 
@@ -40,14 +40,13 @@ PELAGIA_API int plg_MngAddTable(void* pManage, char* nameOrder, short nameOrderL
 PELAGIA_API int plg_MngSetWeight(void* pManage, char* nameTable, short nameTableLen, unsigned int weight);
 PELAGIA_API int plg_MngSetNoShare(void* pManage, char* nameTable, short nameTableLen, unsigned char noShare);
 PELAGIA_API int plg_MngSetNoSave(void* pManage, char* nameTable, short nameTableLen, unsigned char noSave);
-PELAGIA_API void plg_MngSetLuaPath(void* pManage, char* newLuaPath);
-PELAGIA_API void plg_MngSetLuaDllPath(void* pManage, char* newLuaDllPath);
-PELAGIA_API void plg_MngSetDllPath(void* pManage, char* newDllPath);
 PELAGIA_API void plg_MngSetLuaHot(void* pvManage, short luaHot);
+PELAGIA_API void plg_MngSetLuaLibPath(void* pvManage, char* newLuaLibPath);
 PELAGIA_API void plg_MngSetAllNoSave(void* pvManage, short noSave);
 PELAGIA_API void plg_MngSetStat(void* pvManage, short stat);
 PELAGIA_API void plg_MngSetStatCheckTime(void* pvManage, short checkTime);
 PELAGIA_API void plg_MngSetMaxQueue(void* pvManage, unsigned int maxQueue);
+PELAGIA_API void plg_MngAddLibFun(void* pvManage, char* libPath, char* Fun);
 
 PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);
@@ -79,7 +78,7 @@ PELAGIA_API char* plg_MngPrintAllDetailsJson(void* pvManage);
 typedef int(*RoutingFun)(char* value, short valueLen);
 PELAGIA_API void* plg_JobCreateFunPtr(RoutingFun funPtr);
 PELAGIA_API void* plg_JobCreateLua(char* fileClass, short fileClassLen, char* fun, short funLen);
-PELAGIA_API void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fun, short funLen);
+PELAGIA_API void* plg_JobCreateLib(char* fileClass, short fileClassLen, char* fun, short funLen);
 PELAGIA_API void plg_JobSetWeight(void* pEventPorcess, unsigned int weight);
 
 //system

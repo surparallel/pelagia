@@ -19,6 +19,7 @@
 
 #include <pthread.h>
 #include "plateform.h"
+#include "pfilesys.h"
 #include "pelog.h"
 #include "psds.h"
 #include "padlist.h"

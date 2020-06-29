@@ -312,15 +312,28 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 		return 1;
 	}
 	else if (!strcasecmp(command, "base")) {
-		plg_BaseAll();
+		if (_pManage == 0) {
+			plg_BaseAll();
+		} else{
+			printf("Manager has been created. Please close the manager first!\n");
+		}
 		return 1;
 	} 
 	else if (!strcasecmp(command, "simple")) {
-		plg_simple();
+		if (_pManage == 0) {
+			plg_simple();
+		} else{
+			printf("Manager has been created. Please close the manager first!\n");
+		}
+
 		return 1;
 	}
 	else if (!strcasecmp(command, "pfs")) {
-		PRFESA();
+		if (_pManage == 0) {
+			PRFESA();
+		} else{
+			printf("Manager has been created. Please close the manager first!\n");
+		}
 		return 1;
 	}
 	else if (!strcasecmp(command, "logfile")) {

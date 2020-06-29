@@ -29,7 +29,7 @@ enum ThreadType {
 };
 
 void plg_JobProcessDestory(void* pEventPorcess);
-void* plg_JobCreateHandle(void* pManage, enum ThreadType threadType, char* luaPath, char* luaDllPath, char* dllPath, short luaHot);
+void* plg_JobCreateHandle(void* pManage, enum ThreadType threadType, char* luaLIBPath, short luaHot);
 void plg_JobDestoryHandle(void* pJobHandle);
 unsigned char plg_JobFindTableName(void* pJobHandle, char* tableName);
 void plg_JobAddEventEqueue(void* pJobHandle, char* nevent, void* equeue);

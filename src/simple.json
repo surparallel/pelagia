@@ -2,7 +2,7 @@
 "dbPath":"",
 "core":1,
 "maxTableWeight":100,
-"luaDllPath":"./liblua.so",
+"luaLibPath":"./liblua.so",
 "logOutput": "print",
 "logLevel":2,
 

@@ -112,7 +112,9 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #ifdef _WIN32
 #include <fcntl.h>
 #include <sys/timeb.h>
+#include <direct.h>
 #include  <io.h>
+
 #ifndef STDIN_FILENO
 #define STDIN_FILENO (_fileno(stdin))
 #define fileno _fileno
@@ -123,45 +125,12 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #define strncasecmp _strnicmp
 #define strtoull _strtoui64
 #else
+#include <sys/stat.h>
 #include <limits.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <assert.h>
 #endif
-
-#ifdef _WIN32
-#ifdef _WIN64
-#define fopen_t fopen
-#define fseek_t _fseeki64
-#define ftell_t _ftelli64
-#else
-#define fopen_t fopen
-#define fseek_t fseek
-#define ftell_t ftell
-#endif // _WIN64
-#else
-#ifdef __APPLE__
-#ifdef __LP64__
-#define fopen_t fopen
-#define fseek_t fseeko
-#define ftell_t ftello
-#else
-#define fopen_t fopen
-#define fseek_t fseek
-#define ftell_t ftell
-#endif // __LP64__
-#else
-#ifdef __LP64__
-#define fopen_t fopen64
-#define fseek_t fseeko64
-#define ftell_t ftello64
-#else
-#define fopen_t fopen
-#define fseek_t fseek
-#define ftell_t ftell
-#endif // __LP64__
-#endif
-#endif // _WIN32
 
 #ifndef _WIN32
 #include <readline/readline.h>

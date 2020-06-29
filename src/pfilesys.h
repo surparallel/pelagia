@@ -20,9 +20,51 @@
 #define __FILESYS_H
 
 #ifdef _WIN32
+#ifdef _WIN64
+#define fopen_t fopen
+#define fseek_t _fseeki64
+#define ftell_t _ftelli64
+#else
+#define fopen_t fopen
+#define fseek_t fseek
+#define ftell_t ftell
+#endif // _WIN64
+#else
+#ifdef __APPLE__
+#ifdef __LP64__
+#define fopen_t fopen
+#define fseek_t fseeko
+#define ftell_t ftello
+#else
+#define fopen_t fopen
+#define fseek_t fseek
+#define ftell_t ftell
+#endif // __LP64__
+#else
+#ifdef __LP64__
+#define fopen_t fopen64
+#define fseek_t fseeko64
+#define ftell_t ftello64
+#else
+#define fopen_t fopen
+#define fseek_t fseek
+#define ftell_t ftell
+#endif // __LP64__
+#endif
+#endif // _WIN32
+
+#ifdef _WIN32
 #define access_t  _access
+#define getcwd_t _getcwd
+#define chdir_t _chdir
+
+#define PATH_DIV "\\"
 #else
 #define access_t access
+#define getcwd_t getcwd
+#define chdir_t chdir
+
+#define PATH_DIV "/"
 #endif
 
 void plg_MkDirs(char *muldir);

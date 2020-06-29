@@ -36,6 +36,7 @@
 #include "pquicksort.h"
 #include "pelagia.h"
 #include "pjson.h"
+#include "pfilesys.h"
 
 /*
 Thread model can be divided into two ways: asynchronous and synchronous
@@ -51,7 +52,7 @@ File has a separate thread to write to a slow hard disk
 
 enum ScriptType {
 	ST_LUA = 1,
-	ST_DLL = 2,
+	ST_LIB = 2,
 	ST_PTR = 3
 };
 
@@ -160,9 +161,7 @@ typedef struct _JobHandle
 	unsigned int flush_count;
 
 	//vm
-	char* luaPath;
 	void* luaHandle;
-	void* dllHandle;
 
 	//current order name from order_process;
 	char* pOrderName;
@@ -222,10 +221,10 @@ void* plg_JobCreateLua(char* fileClass, short fileClassLen, char* fun, short fun
 	return pEventPorcess;
 }
 
-void* plg_JobCreateDll(char* fileClass, short fileClassLen, char* fun, short funLen) {
+void* plg_JobCreateLib(char* fileClass, short fileClassLen, char* fun, short funLen) {
 
 	PEventPorcess pEventPorcess = malloc(sizeof(EventPorcess));
-	pEventPorcess->scriptType = ST_DLL;
+	pEventPorcess->scriptType = ST_LIB;
 	pEventPorcess->fileClass = plg_sdsNewLen(fileClass, fileClassLen);
 	pEventPorcess->function = plg_sdsNewLen(fun, funLen);
 	pEventPorcess->weight = 1;
@@ -265,7 +264,13 @@ static void listProcessFree(void *ptr) {
 void* job_Handle() {
 
 	CheckUsingThread(0);
-	return plg_LocksGetSpecific();
+	void* p = plg_LocksGetSpecific();
+	if (!p) {
+		plg_assert(0);
+		elog(log_error, "job_Handle ");
+	}
+
+	return p;
 }
 
 unsigned int job_MaxQueue() {
@@ -441,7 +446,7 @@ void* plg_JobGetPrivate() {
 }
 
 SDS_TYPE
-void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaPath, char* luaDllPath, char* dllPath, short luaHot) {
+void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaLIBPath, short luaHot) {
 
 	PJobHandle pJobHandle = malloc(sizeof(JobHandle));
 	pJobHandle->eQueue = plg_eqCreate();
@@ -477,16 +482,8 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->flush_lastCount = 0;
 	pJobHandle->maxQueue = 0;
 
-	pJobHandle->luaPath = luaPath;
-
-	if (dllPath && plg_sdsLen(dllPath)) {
-		pJobHandle->dllHandle = plg_SysLibLoad(dllPath, 1);
-	} else {
-		pJobHandle->dllHandle = 0;
-	}
-
-	if (luaDllPath && plg_sdsLen(luaDllPath)) {
-		pJobHandle->luaHandle = plg_LvmLoad(luaDllPath, luaHot);
+	if (luaLIBPath && plg_sdsLen(luaLIBPath)) {
+		pJobHandle->luaHandle = plg_LvmLoad(luaLIBPath, luaHot);
 	} else {
 		pJobHandle->luaHandle = 0;
 	}
@@ -536,10 +533,7 @@ void plg_JobDestoryHandle(void* pvJobHandle) {
 	if (pJobHandle->luaHandle) {
 		plg_LvmDestory(pJobHandle->luaHandle);
 	}
-	
-	if (pJobHandle->dllHandle) {
-		plg_SysLibUnload(pJobHandle->dllHandle);
-	}
+
 	free(pJobHandle);
 }
 
@@ -891,34 +885,34 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 
 				if (pEventPorcess) {
 					if (pEventPorcess->scriptType == ST_PTR) {
+
 						if (0 == pEventPorcess->functionPoint(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 							job_Rollback(pJobHandle);
 						}
-					} else if (pEventPorcess->scriptType == ST_DLL) {
+					} else if (pEventPorcess->scriptType == ST_LIB) {
 
-						if (pJobHandle->luaHandle)  {
-							RoutingFun fun = plg_SysLibSym(pJobHandle->dllHandle, pEventPorcess->function);
+						void* pManage = pJobHandle->privateData;
+						void* libHandle = plg_MngFindLibFun(pManage, pEventPorcess->function);
+						if (libHandle) {
+							RoutingFun fun = plg_SysLibSym(libHandle, pEventPorcess->function);
 							if (fun) {
 								if (0 == fun(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 									job_Rollback(pJobHandle);
 								}
+							} else {
+								elog(log_error, "Lib instruction %s received, but no Lib function found for %s!", (char*)pOrderPacket->order, pEventPorcess->function);
 							}
 						} else {
-							elog(log_error, "DLL instruction %s received, but no DLL extern found!", (char*)pOrderPacket->order);
+							elog(log_error, "Lib instruction %s received, but no Lib extern found for %s!", (char*)pOrderPacket->order, pEventPorcess->function);
 						}
+
 					} else if (pEventPorcess->scriptType == ST_LUA){
 						if (pJobHandle->luaHandle)  {
-							sds file;
-							if (strlen(pJobHandle->luaPath)) {
-								file = plg_sdsCatFmt(plg_sdsEmpty(), "%s/%s", pJobHandle->luaPath, pEventPorcess->fileClass);
-							} else {
-								file = plg_sdsCatFmt(plg_sdsEmpty(), "./%s", pEventPorcess->fileClass);
-							}
 
-							if (0 == plg_LvmCallFile(pJobHandle->luaHandle, file, pEventPorcess->function, pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
+							if (0 == plg_LvmCallFile(pJobHandle->luaHandle, pEventPorcess->fileClass, pEventPorcess->function, pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
 								job_Rollback(pJobHandle);
 							}
-							plg_sdsFree(file);
+
 						} else {
 							elog(log_error, "Lua instruction %s received, but no Lua virtual machine found!", (char*)pOrderPacket->order);
 						}

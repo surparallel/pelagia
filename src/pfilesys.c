@@ -21,14 +21,6 @@
 #include "pfilesys.h"
 #include "pelog.h"
 
-#ifdef _WIN32
-#include <direct.h>
-#include <io.h>
-#else
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 static void mkdir_t(const char *_Path) {
 
 #ifdef _WIN32
