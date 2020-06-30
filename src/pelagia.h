@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"39"
+#define VERSION_MINOR	"41"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	39
+#define VERSION_NUMMINOR	41
 
 #include "papidefine.h"
 

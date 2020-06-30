@@ -1155,7 +1155,19 @@ void plg_MngAddLibFun(void* pvManage, char* libPath, char* fun) {
 	PManage pManage = pvManage;
 	dictEntry * entry = plg_dictFind(pManage->libFun, fun);
 	if (!entry) {
-		void* p = plg_SysLibLoad(libPath, 1);
+
+		sds sdsPath = plg_sdsNew(libPath);
+		if (0 == access_t(sdsPath, 0)) {
+			plg_sdsCat(sdsPath, LIB_EXT);
+		}
+
+		void* p = plg_SysLibLoad(sdsPath, 1);
+		plg_sdsFree(sdsPath);
+		if (p == NULL) {
+			elog(log_error, "plg_MngAddLibFun.plg_SysLibLoad:%s", sdsPath);
+			return;
+		}
+
 		plg_dictAdd(pManage->libFun, plg_sdsNew(fun), p);
 	} else {
 		elog(log_warn, "plg_MngAddLibFun. function %s Repetitive definition at %s.", libPath, fun);

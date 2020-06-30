@@ -2,7 +2,7 @@
 "dbPath":"",
 "core":1,
 "maxTableWeight":100,
-"luaLibPath":"./liblua.so",
+"luaLibPath":"./liblua",
 "include":[
     {
         "dir":"./test",

@@ -25,6 +25,7 @@
 #include "pelagia.h"
 #include "pdict.h"
 #include "psds.h"
+#include "pfilesys.h"
 
 /*
 #define LUA_VERSION_NUM 501
@@ -464,12 +465,17 @@ void* plg_LvmLoad(const char *path, short luaHot) {
 
 	void* hInstance = 0;
 	short version = 0;
-#ifndef STATIC_LUA
-	hInstance = plg_SysLibLoad(path, 1);
 
+#ifndef STATIC_LUA
+	sds sdsPath = plg_sdsNew(path);
+	if (0 == access_t(sdsPath, 0)) {
+		plg_sdsCat(sdsPath, LIB_EXT);
+	}
+
+	hInstance = plg_SysLibLoad(sdsPath, 1);
+	plg_sdsFree(sdsPath);
 	if (hInstance == NULL) {
 		elog(log_error, "plg_LvmLoad.plg_SysLibLoad:%s", path);
-		plg_SysLibUnload(hInstance);
 		return 0;
 	}
 

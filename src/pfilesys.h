@@ -59,12 +59,14 @@
 #define chdir_t _chdir
 
 #define PATH_DIV "\\"
+#define LIB_EXT ".dll"
 #else
 #define access_t access
 #define getcwd_t getcwd
 #define chdir_t chdir
 
 #define PATH_DIV "/"
+#define LIB_EXT ".so"
 #endif
 
 void plg_MkDirs(char *muldir);
