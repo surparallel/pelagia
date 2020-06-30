@@ -3,7 +3,12 @@
 "core":1,
 "maxTableWeight":100,
 "luaLibPath":"./liblua.so",
-
+"include":[
+    {
+        "dir":"./test",
+        "file":"config.json"
+    }
+],
 "o1":{
     "orderType":"lua",
     "file":"hello2.lua",

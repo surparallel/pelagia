@@ -68,6 +68,8 @@ static void EnumOrderJson(pJSON * root, void* pManage, char* pLuaPath, char* pLi
 				weight = item->valueint;
 			} else if (strcmp(item->string, "luaPath") == 0) {
 				pLuaPath = item->valuestring;
+			} else if (strcmp(item->string, "libPath") == 0) {
+				pLibPath = item->valuestring;
 			} else {
 				elog(log_error, "Unable to process Tags %s.", item->string);
 			}
@@ -77,8 +79,11 @@ static void EnumOrderJson(pJSON * root, void* pManage, char* pLuaPath, char* pLi
 	char path[512] = { 0 };
 	void* process = 0;
 	if (strcmp(orderType, "lua") == 0) {
-
-		if (pLuaPath == 0 || (pLuaPath != 0 && strlen(pLuaPath) >= 512)) {
+		int lLuaPath = strlen(pLuaPath);
+		if (pLuaPath == 0 || (pLuaPath != 0 && lLuaPath >= 512)) {
+			if (pLuaPath != 0 && lLuaPath >= 512) {
+				elog(log_error, "luaPath Is greater than the string length limit of 512.");
+			}
 			if (0 == getcwd_t(path, 512))
 				return;
 		} else {
@@ -102,7 +107,11 @@ static void EnumOrderJson(pJSON * root, void* pManage, char* pLuaPath, char* pLi
 			return;
 	} else if (strcmp(orderType, "lib") == 0) {
 
-		if (pLibPath == 0 || (pLibPath != 0 && strlen(pLibPath) >= 512)) {
+		int lLibPath = strlen(pLibPath);
+		if (pLibPath == 0 || (pLibPath != 0 && lLibPath >= 512)) {
+			if (pLibPath != 0 && lLibPath >= 512) {
+				elog(log_error, "libPath Is greater than the string length limit of 512.");
+			}
 			if (0 == getcwd_t(path, 512))
 				return;
 		} else {
