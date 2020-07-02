@@ -1157,8 +1157,8 @@ void plg_MngAddLibFun(void* pvManage, char* libPath, char* fun) {
 	if (!entry) {
 
 		sds sdsPath = plg_sdsNew(libPath);
-		if (0 == access_t(sdsPath, 0)) {
-			plg_sdsCat(sdsPath, LIB_EXT);
+		if (0 != access_t(sdsPath, 0)) {
+			sdsPath = plg_sdsCat(sdsPath, LIB_EXT);
 		}
 
 		void* p = plg_SysLibLoad(sdsPath, 1);

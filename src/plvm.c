@@ -468,8 +468,8 @@ void* plg_LvmLoad(const char *path, short luaHot) {
 
 #ifndef STATIC_LUA
 	sds sdsPath = plg_sdsNew(path);
-	if (0 == access_t(sdsPath, 0)) {
-		plg_sdsCat(sdsPath, LIB_EXT);
+	if (0 != access_t(sdsPath, 0)) {
+		sdsPath = plg_sdsCat(sdsPath, LIB_EXT);
 	}
 
 	hInstance = plg_SysLibLoad(sdsPath, 1);
