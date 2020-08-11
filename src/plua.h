@@ -156,10 +156,6 @@ typedef const void     *(*lua_topointer) (lua_State *L, int idx);
 ** push functions (C -> stack)
 */
 
-
-typedef void  (*lua_pushinteger) (lua_State *L, lua_Integer n);
-
-
 typedef const char *(*lua_pushvfstring) (lua_State *L, const char *fmt,
                                                       va_list argp);
 typedef const char *(*lua_pushfstring) (lua_State *L, const char *fmt, ...);
@@ -408,6 +404,7 @@ LUA_API void  lua_pushnumber (lua_State *L, lua_Number n);
 LUA_API void  lua_createtable (lua_State *L, int narr, int nrec);
 LUA_API int  lua_next (lua_State *L, int idx);
 LUA_API void lua_close (lua_State *L);
+LUA_API void lua_pushinteger (lua_State *L, lua_Integer n);
 #else
 typedef int(*lua_next) (lua_State *L, int idx);
 typedef void(*lua_createtable) (lua_State *L, int narr, int nrec);
@@ -420,6 +417,8 @@ typedef int(*lua_type) (lua_State *L, int idx);
 typedef const char     *(*lua_tolstring) (lua_State *L, int idx, size_t *len);
 typedef void(*lua_settop) (lua_State *L, int idx);
 typedef lua_Number(*lua_tonumber) (lua_State *L, int idx);
+typedef void(*lua_pushinteger) (lua_State *L, lua_Integer n);
+
 //5.2 5.3
 typedef lua_Number(*lua_tonumberx) (lua_State *L, int idx, int *isnum);
 

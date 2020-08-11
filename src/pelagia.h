@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"41"
+#define VERSION_MINOR	"42"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	41
+#define VERSION_NUMMINOR	42
 
 #include "papidefine.h"
 
@@ -52,7 +52,10 @@ PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);
 PELAGIA_API int plg_MngRemoteCall(void* pManage, char* order, short orderLen, char* value, short valueLen);
 PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv);
+PELAGIA_API int plg_MngRemoteCallWithArg2(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv, unsigned int orderID);
 PELAGIA_API int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen);
+PELAGIA_API int plg_MngRemoteCallWithJson2(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen, unsigned int orderID);
+PELAGIA_API int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID);
 
 //manage check API
 PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
@@ -86,9 +89,14 @@ PELAGIA_API void plg_JobSetDonotFlush();
 PELAGIA_API void plg_JobSetDonotCommit();
 PELAGIA_API void plg_JobForceCommit();
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);
+PELAGIA_API int plg_JobRemoteCallWithOrderID(void* order, short orderLen, void* value, short valueLen, unsigned int orderID);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
 PELAGIA_API void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen);
+PELAGIA_API void plg_JobAddTimerWithOrderID(double timer, void* order, short orderLen, void* value, short valueLen, unsigned int orderID);
 PELAGIA_API char** plg_JobTableName(short* tableLen);//need free
+PELAGIA_API unsigned int plg_JobCreateOrderID(void* ptr);
+PELAGIA_API void plg_jobRemoveOrderID();
+PELAGIA_API unsigned int plg_JobGetOrderID();
 
 //for script and json output format and input check
 enum TableType {
@@ -97,6 +105,10 @@ enum TableType {
 	TT_String,
 	TT_Set
 };
+
+//order id
+PELAGIA_API void* plg_JobGetOrderIDPtr();
+PELAGIA_API void plg_JobSetOrderIDPtr(void* ptr);
 
 PELAGIA_API unsigned short plg_JobGetTableType(void* table, short tableLen);
 PELAGIA_API unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short tableType);

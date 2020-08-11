@@ -35,7 +35,7 @@ void plg_MngSendExit(void* pvManage);
 int plg_MngTableIsInOrder(void* pvManage, void* order, short orderLen, void* table, short tableLen);
 char** plg_MngOrderAllTable(void* pvManage, void* order, short orderLen, short* tableLen);
 char* plg_MngOrderAllTableWithJson(void* pvManage, void* order, short orderLen);
-int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order);
+int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order, unsigned int orderID);
 void* plg_MngGetProcess(void* pvManage, char* sdsOrder, char** retSdsOrder);
 void* plg_MngFindLibFun(void* pvManage, char* Fun);
 #endif

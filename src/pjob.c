@@ -49,6 +49,8 @@ File has a separate thread to write to a slow hard disk
 */
 #define NORET
 #define CheckUsingThread(r) if (plg_JobCheckUsingThread()) {elog(log_error, "Cannot run job interface in non job environment"); return r;}
+#define MAXJOBID 1024
+#define MAXORDERID 4194304
 
 enum ScriptType {
 	ST_LUA = 1,
@@ -107,10 +109,38 @@ static dictType SdsDictType = {
 	FreeCallback
 };
 
+static void uintFreeCallback(void *privdata, void *val) {
+	NOTUSED(privdata);
+	unsigned int* ptr = (unsigned int*)val;
+	free(ptr);
+}
+
+static unsigned long long hashCallback(const void *key) {
+	return plg_dictGenHashFunction((unsigned char*)key, sizeof(unsigned int));
+}
+
+static int uintCompareCallback(void *privdata, const void *key1, const void *key2) {
+	NOTUSED(privdata);
+	if (*(unsigned int*)key1 != *(unsigned int*)key2)
+		return 0;
+	else
+		return 1;
+}
+
+static dictType uintDictType = {
+	hashCallback,
+	NULL,
+	NULL,
+	uintCompareCallback,
+	uintFreeCallback,
+	NULL
+};
+
 typedef struct __Intervalometer {
 	unsigned long long tim;
 	sds Order;
 	sds Value;
+	unsigned int orderID;
 }*PIntervalometer, Intervalometer;
 
 /*
@@ -172,6 +202,7 @@ typedef struct _JobHandle
 
 	//Statistics
 	short isOpenStat;
+
 	//order run time
 	dict* order_runCount;
 	unsigned long long statistics_frequency;
@@ -183,6 +214,12 @@ typedef struct _JobHandle
 
 	//exit value
 	sds m_value;
+
+	//service id
+	unsigned int jobID;
+	unsigned int curretnOrderID;
+	unsigned int orderID;
+	dict* orderID_ptr;
 
 } *PJobHandle, JobHandle;
 
@@ -446,7 +483,7 @@ void* plg_JobGetPrivate() {
 }
 
 SDS_TYPE
-void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaLIBPath, short luaHot) {
+void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char* luaLIBPath, short luaHot, unsigned int jobID) {
 
 	PJobHandle pJobHandle = malloc(sizeof(JobHandle));
 	pJobHandle->eQueue = plg_eqCreate();
@@ -500,6 +537,10 @@ void* plg_JobCreateHandle(void* pManageEqueue, enum ThreadType threadType, char*
 	pJobHandle->statistics_frequency = 5000;
 	pJobHandle->statistics_eventQueueLength = 0;
 
+	pJobHandle->jobID = jobID;
+	pJobHandle->orderID = 0;
+	pJobHandle->orderID_ptr = plg_dictCreate(&uintDictType, NULL, DICT_MIDDLE);
+
 	elog(log_fun, "plg_JobCreateHandle:%U", pJobHandle);
 	return pJobHandle;
 }
@@ -529,6 +570,7 @@ void plg_JobDestoryHandle(void* pvJobHandle) {
 	plg_dictRelease(pJobHandle->order_runCount);
 	plg_dictRelease(pJobHandle->order_msg);
 	plg_dictRelease(pJobHandle->order_byte);
+	plg_dictRelease(pJobHandle->orderID_ptr);
 
 	if (pJobHandle->luaHandle) {
 		plg_LvmDestory(pJobHandle->luaHandle);
@@ -605,7 +647,7 @@ unsigned int  plg_JobIsEmpty(void* pvJobHandle) {
 /*
 User VM use
 */
-int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) {
+int plg_JobRemoteCallWithOrderID(void* order, short orderLen, void* value, short valueLen, unsigned int orderID) {
 
 	CheckUsingThread(0);
 
@@ -619,9 +661,14 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 	POrderPacket pOrderPacket = malloc(sizeof(OrderPacket));
 	pOrderPacket->order = plg_sdsNewLen(order, orderLen);
 	pOrderPacket->value = plg_sdsNewLen(value, valueLen);
+	pOrderPacket->orderID = 0;
 	
 	dictEntry* entryOrder = plg_dictFind(pJobHandle->order_equeue, pOrderPacket->order);
 	if (entryOrder) {
+
+		if (orderID != 0) {
+			elog(log_error, "plg_JobRemoteCallWithOrderID::Use OrderID %i to call an order with shared data", orderID);
+		}
 		if (0 == plg_eqIfNoPush(dictGetVal(entryOrder), pOrderPacket, pJobHandle->maxQueue)) {
 			plg_sdsFree(pOrderPacket->order);
 			plg_sdsFree(pOrderPacket->value);
@@ -637,7 +684,8 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 	} else {
 		void* pManage = pJobHandle->privateData;
 		char* order;
-		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &order);
+		pOrderPacket->orderID = orderID;
+		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &order, orderID);
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
 			dictAddValueWithUint(pJobHandle->order_byte, dictGetKey(entryOrder), valueLen);
@@ -645,6 +693,11 @@ int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) 
 		return r;
 	}
 }
+
+int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) {
+	return plg_JobRemoteCallWithOrderID(order, orderLen, value, valueLen, 0);
+}
+
 
 static char job_IsCacheAllowWrite(void* pvJobHandle, char* PtrCache) {
 
@@ -676,7 +729,7 @@ static unsigned long long plg_JogActIntervalometer(void* pvJobHandle) {
 
 		PIntervalometer pPIntervalometer = (PIntervalometer)node->value;
 		if (pPIntervalometer->tim <= milli) {
-			plg_JobRemoteCall(pPIntervalometer->Order, plg_sdsLen(pPIntervalometer->Order), pPIntervalometer->Value, plg_sdsLen(pPIntervalometer->Value));
+			plg_JobRemoteCallWithOrderID(pPIntervalometer->Order, plg_sdsLen(pPIntervalometer->Order), pPIntervalometer->Value, plg_sdsLen(pPIntervalometer->Value), pPIntervalometer->orderID);
 			plg_listDelNode(pJobHandle->pListIntervalometer, node);
 		} else if (!pJobHandle->pMinPIntervalometer) {
 			pJobHandle->pMinPIntervalometer = pPIntervalometer;
@@ -884,6 +937,13 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 				}
 
 				if (pEventPorcess) {
+
+					if (pOrderPacket->orderID) {
+						pJobHandle->curretnOrderID = JobJobOrderID(pOrderPacket->orderID);
+					} else {
+						pJobHandle->curretnOrderID = 0;
+					}
+
 					if (pEventPorcess->scriptType == ST_PTR) {
 
 						if (0 == pEventPorcess->functionPoint(pOrderPacket->value, plg_sdsLen(pOrderPacket->value))) {
@@ -2213,7 +2273,7 @@ char* plg_JobCurrentOrder(short* orderLen) {
 	return pJobHandle->pOrderName;
 }
 
-void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen) {
+void plg_JobAddTimerWithOrderID(double timer, void* order, short orderLen, void* value, short valueLen, unsigned int orderID) {
 	CheckUsingThread(NORET);
 
 	unsigned long long milli = plg_GetCurrentMilli();
@@ -2227,6 +2287,7 @@ void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, sho
 	PIntervalometer pPIntervalometer = malloc(sizeof(Intervalometer));
 	pPIntervalometer->Order = plg_sdsNewLen(order, orderLen);
 	pPIntervalometer->Value = plg_sdsNewLen(value, valueLen);
+	pPIntervalometer->orderID = orderID;
 	pPIntervalometer->tim = milli + timer * 1000;
 	plg_listAddNodeHead(pJobHandle->pListIntervalometer, pPIntervalometer);
 	
@@ -2237,6 +2298,9 @@ void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, sho
 	}
 }
 
+void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen) {
+	plg_JobAddTimerWithOrderID(timer, order, orderLen, value, valueLen, 0);
+}
 char* plg_JobTableNameWithJson() {
 	CheckUsingThread(0);
 
@@ -2275,6 +2339,138 @@ void plg_MemoryFree(void* ptr) {
 	free(ptr);
 }
 
+unsigned int plg_JobCreateOrderID(void* ptr) {
+
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	if (pJobHandle->jobID > MAXJOBID) {
+		elog(log_error, "jobid exceeds the limit of MAXJOBID");
+	}
+
+	if (pJobHandle->orderID > MAXORDERID) {
+		elog(log_error, "orderID exceeds the limit of MAXORDERID");
+	}
+
+	if (pJobHandle->orderID + 1 > MAXORDERID) {
+
+		if (dictSize(pJobHandle->orderID_ptr) != 0) {
+			elog(log_error, "The reset of OrderID may cause the existing service data to be overwritten, The number of existing services is %i", dictSize(pJobHandle->orderID_ptr));
+		}
+		pJobHandle->orderID = 0;
+	}
+
+	unsigned int orderID = pJobHandle->jobID;
+	orderID = orderID << 22;
+	orderID = orderID | ++pJobHandle->orderID;
+
+	pJobHandle->curretnOrderID = orderID;
+
+	unsigned int * key = malloc(sizeof(unsigned int));
+	*key = orderID;
+	plg_dictAdd(pJobHandle->orderID_ptr, key, ptr);
+
+	return orderID;
+}
+
+void plg_jobRemoveOrderID() {
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+
+	unsigned int orderID = plg_JobGetOrderID();
+	if (orderID == 0) {
+		elog(log_error, "current order id is empty");
+		return;
+	}
+	dictEntry* entry = plg_dictFind(pJobHandle->orderID_ptr, &orderID);
+	if (entry) {
+		plg_dictDelete(pJobHandle->orderID_ptr, &orderID);
+	} else {
+		elog(log_error, "OrderID that doesn't exist in plg_jobRemoveOrderID");
+	}
+}
+
+void* plg_JobGetOrderIDPtr() {
+
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+
+	unsigned int orderID = plg_JobGetOrderID();
+	if (orderID == 0) {
+		elog(log_error, "current order id is empty");
+		return 0;
+	}
+	dictEntry* entry = plg_dictFind(pJobHandle->orderID_ptr, &orderID);
+	if (entry) {
+		return dictGetVal(entry);
+	} else {
+		elog(log_error, "OrderID that doesn't exist in plg_JobGetOrderIDPtr");
+		return 0;
+	}
+}
+
+void plg_JobSetOrderIDPtr(void* ptr) {
+
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+
+	unsigned int orderID = plg_JobGetOrderID();
+	if (orderID == 0) {
+		elog(log_error, "current order id is empty");
+		return;
+	}
+	dictEntry* entry = plg_dictFind(pJobHandle->orderID_ptr, &orderID);
+	if (entry) {
+		dictSetVal(pJobHandle->orderID_ptr, entry, ptr);
+	} else {
+		elog(log_error, "OrderID that doesn't exist in plg_JobSetOrderIDPtr");
+	}
+}
+
+unsigned int plg_JobGetOrderID() {
+
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	if (pJobHandle->jobID > MAXJOBID) {
+		elog(log_error, "jobid exceeds the limit of MAXJOBID");
+	}
+
+	if (pJobHandle->orderID > MAXORDERID) {
+		elog(log_error, "orderID exceeds the limit of MAXORDERID");
+	}
+
+	unsigned int orderID = pJobHandle->jobID;
+	orderID = orderID << 22;
+	orderID = orderID | pJobHandle->curretnOrderID;
+
+	return orderID;
+}
+
+unsigned int JobJobID(unsigned int orderID) {
+
+	unsigned int jobID = orderID >> 22;
+	unsigned int jobOrderID = orderID << 10;
+	jobOrderID = jobOrderID >> 10;
+	if (jobID > MAXJOBID) {
+		elog(log_error, "jobid exceeds the limit of MAXJOBID");
+	}
+
+	if (jobOrderID > MAXORDERID) {
+		elog(log_error, "orderID exceeds the limit of MAXORDERID");
+	}
+
+	return jobID;
+}
+
+unsigned int JobJobOrderID(unsigned int orderID) {
+
+	unsigned int jobID = orderID >> 22;
+	unsigned int jobOrderID = orderID << 10;
+	jobOrderID = jobOrderID >> 10;
+	if (jobID > MAXJOBID) {
+		elog(log_error, "jobid exceeds the limit of MAXJOBID");
+	}
+
+	if (jobOrderID > MAXORDERID) {
+		elog(log_error, "serivceID exceeds the limit of MAXORDERID");
+	}
+
+	return jobOrderID;
+}
 
 #undef NORET
 #undef CheckUsingThread

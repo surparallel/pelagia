@@ -303,6 +303,7 @@ static void manage_AddTableToDisk(void* pvManage, PTableName pTableName, sds tab
 
 }
 
+//Set the table in the file to usable state
 static void pFillTableNameCB(void* pDiskHandle, void* ptr, char* tableName) {
 
 	PManage pManage = (PManage)ptr;
@@ -314,16 +315,9 @@ static void pFillTableNameCB(void* pDiskHandle, void* ptr, char* tableName) {
 	pTableName->noSave = pManage->noSave;
 	plg_dictAdd(pManage->dictTableName, tableName, pTableName);
 	plg_dictAdd(pManage->tableName_diskHandle, tableName, pDiskHandle);
-
-	plg_MngAddTable(pManage, "o1", 2, tableName, plg_sdsLen(tableName));
 }
 
-static int NullRouting(char* value, short valueLen) {
-	NOTUSED(value);
-	NOTUSED(valueLen);
-	return 1;
-}
-
+//Used to output the specified data file to JSON
 static void manage_CreateDiskWithFileName(void* pvManage,char* FileName) {
 
 	PManage pManage = pvManage;
@@ -346,7 +340,6 @@ static void manage_CreateDiskWithFileName(void* pvManage,char* FileName) {
 		return;
 	}
 
-	plg_MngAddOrder(pManage, "o1", 2, plg_JobCreateFunPtr(NullRouting));
 	plg_DiskFillTableName(pDiskHandle, pManage, pFillTableNameCB);
 }
 
@@ -460,7 +453,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
-		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaLIBPath, pManage->luaHot);
+		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaLIBPath, pManage->luaHot, l);
 		plg_JobSetStat(pJobHandle, pManage->isOpenStat, pManage->checkTime);
 		plg_JobSetPrivate(pJobHandle, pvManage);
 		plg_JobSetMaxQueue(pJobHandle, pManage->maxQueue);
@@ -590,6 +583,27 @@ void* plg_MngRandJobEqueue(void* pvManage) {
 
 	return jobEqueue;
 }
+
+void* plg_MngJobEqueueWithCore(void* pvManage, unsigned int Core) {
+	PManage pManage = pvManage;
+
+	void* jobEqueue = 0;
+	if (listLength(pManage->listJob)) {
+		int r = Core % listLength(pManage->listJob);
+		listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
+		listNode* jobNode;
+		while ((jobNode = plg_listNext(jobIter)) != NULL) {
+
+			jobEqueue = plg_JobEqueueHandle(listNodeValue(jobNode));
+			if (--r < 0) {
+				break;
+			}
+		}
+		plg_listReleaseIterator(jobIter);
+	}
+
+	return jobEqueue;
+}
  
 void* plg_MngGetProcess(void* pvManage, char* sdsOrder, char** retSdsOrder) {
 	PManage pManage = pvManage;
@@ -617,7 +631,7 @@ int plg_MngAddOrder(void* pvManage, char* nameOrder, short nameOrderLen, void* p
 	CheckUsingThread(0);
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -645,7 +659,7 @@ int plg_MngAddTable(void* pvManage, char* nameOrder, short nameOrderLen, char* n
 	CheckUsingThread(0);
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -688,7 +702,7 @@ int plg_MngSetTableParent(void* pvManage, char* nameTable, short nameTableLen, c
 
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -711,7 +725,7 @@ int plg_MngSetWeight(void* pvManage, char* nameTable, short nameTableLen, unsign
 
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -731,7 +745,7 @@ int plg_MngSetNoSave(void* pvManage, char* nameTable, short nameTableLen, unsign
 
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -751,7 +765,7 @@ int plg_MngSetNoShare(void* pvManage, char* nameTable, short nameTableLen, unsig
 
 	PManage pManage = pvManage;
 	if (pManage->runStatus) {
-		elog(log_error, "Changes are not allowed during system operation!");
+		elog(log_error, "Changes are not allowed during system runing!");
 		return 0;
 	}
 
@@ -859,7 +873,7 @@ Unequal communication means that users send and receive data in different ways
 Do not use send data to wait for communication users,
 User receives data using event
 */
-int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, short valueLen) {
+int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID) {
 
 	int r = 0;
 	CheckUsingThread(0);
@@ -868,9 +882,14 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 	POrderPacket pOrderPacket = malloc(sizeof(OrderPacket));
 	pOrderPacket->order = plg_sdsNewLen(order, orderLen);
 	pOrderPacket->value = plg_sdsNewLen(value, valueLen);
+	pOrderPacket->orderID = 0;
 
 	dictEntry* entry = plg_dictFind(pManage->order_equeue, pOrderPacket->order);
 	if (entry) {
+
+		if (orderID != 0) {
+			elog(log_error, "plg_MngRemoteCallWithorderID::Use OrderID %i to call an order with shared data", orderID);
+		}
 		r = plg_eqIfNoPush(dictGetVal(entry), pOrderPacket, pManage->maxQueue);
 		if (r == 0) {
 			plg_sdsFree(pOrderPacket->order);
@@ -883,7 +902,15 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 
 		dictEntry* entryPrcess = plg_dictFind(pManage->order_process, pOrderPacket->order);
 		if (entryPrcess) {
-			void* equeue = plg_MngRandJobEqueue(pvManage);
+
+			void* equeue = 0;
+			if (orderID) {
+				equeue = plg_MngJobEqueueWithCore(pvManage, JobJobID(orderID));
+			} else {
+				equeue = plg_MngRandJobEqueue(pvManage);
+			}
+			
+			pOrderPacket->orderID = orderID;
 			r = plg_eqIfNoPush(equeue, pOrderPacket, pManage->maxQueue);
 			if (r == 0) {
 				plg_sdsFree(pOrderPacket->order);
@@ -904,14 +931,24 @@ int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, 
 	return r;
 }
 
-int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order) {
+int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, short valueLen) {
+	return plg_MngRemoteCallWithorderID(pvManage, order, orderLen, value, valueLen, 0);
+}
+
+int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order, unsigned int orderID) {
 
 	int r = 0;
 	PManage pManage = pvManage;
 	POrderPacket pOrderPacket = pvOrderPacket;
 	dictEntry* entryPrcess = plg_dictFind(pManage->order_process, pOrderPacket->order);
 	if (entryPrcess) {
-		void* equeue = plg_MngRandJobEqueue(pvManage);
+		void* equeue = 0;
+		if (orderID) {
+			equeue = plg_MngJobEqueueWithCore(pvManage, JobJobID(orderID));
+		} else {
+			equeue = plg_MngRandJobEqueue(pvManage);
+		}
+		
 		*order = dictGetKey(entryPrcess);
 		plg_eqPush(equeue, pOrderPacket);
 		r = 1;
@@ -926,11 +963,11 @@ int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order) {
 	return r;
 }
 
-int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv) {
+int plg_MngRemoteCallWithArg2(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv, unsigned int orderID) {
 
 	int ret = 0;
 	pJSON* root = pJson_CreateObject();
-	
+
 	pJson_AddNumberToObject(root, "argc", argc);
 	char* bEventHandle = plg_B64Encode((unsigned char*)&eventHandle, sizeof(void*));
 	pJson_AddStringToObject(root, "event", bEventHandle);
@@ -941,7 +978,7 @@ int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* 
 	}
 
 	char* cValue = pJson_Print(root);
-	ret = plg_MngRemoteCall(pvManage, order, orderLen, cValue, strlen(cValue));
+	ret = plg_MngRemoteCallWithorderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
 
 	free(bEventHandle);
 	pJson_Delete(root);
@@ -949,7 +986,12 @@ int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* 
 	return ret;
 }
 
-int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen) {
+int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv) {
+
+	return plg_MngRemoteCallWithArg2(pvManage, order, orderLen, eventHandle, argc, argv, 0);
+}
+
+int plg_MngRemoteCallWithJson2(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen, unsigned int orderID) {
 
 	NOTUSED(jsonLen);
 	int ret = 0;
@@ -963,11 +1005,16 @@ int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void*
 	pJson_AddStringToObject(root, "event", bEventHandle);
 
 	char* cValue = pJson_Print(root);
-	ret = plg_MngRemoteCall(pvManage, order, orderLen, cValue, strlen(cValue));
+	ret = plg_MngRemoteCallWithorderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
 
 	free(bEventHandle);
 	pJson_Delete(root);
 	return ret;
+}
+
+int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen) {
+
+	return plg_MngRemoteCallWithJson2(pvManage, order, orderLen, eventHandle, json, jsonLen, 0);
 }
 
 void* plg_MngJobHandle(void* pvManage) {
@@ -1131,7 +1178,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->order_equeue = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pManage->dbPath = plg_sdsNewLen(dbPath, dbPahtLen);
 	pManage->objName = plg_sdsNew("manage");
-	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, NULL, 0);
+	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, NULL, 0, 0);
 	plg_JobSetPrivate(pManage->pJobHandle, pManage);
 
 	pManage->fileCount = 0;
@@ -1226,6 +1273,7 @@ void plg_MngDestoryHandle(void* pvManage) {
 
 		plg_EventWait(pEvent);
 		plg_EventDestroyHandle(pEvent);
+		plg_JobDestoryHandle(pManage->pJobHandle);
 	}
 	manage_InternalDestoryHandle(pManage);
 	plg_LogDestroy();

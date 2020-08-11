@@ -33,6 +33,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "plateform.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -41,7 +43,6 @@
 #include <limits.h>
 
 #include "pdict.h"
-#include "plateform.h"
 #include "psds.h"
 #include "pmemorypool.h"
 

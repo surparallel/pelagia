@@ -94,6 +94,14 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #endif
 #endif
 
+#ifdef _WIN32
+#ifdef _DEBUG
+#ifdef _TEST_
+#define  _CRTDBG_MAP_ALLOC
+#endif
+#endif
+#endif
+
 #include <assert.h> 
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,7 +111,6 @@ http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_
 #ifdef _WIN32
 #ifdef _DEBUG
 #ifdef _TEST_
-#define  _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
 #endif
 #endif

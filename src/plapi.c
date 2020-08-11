@@ -54,6 +54,36 @@ static int LRemoteCall(lua_State* L) {
 	return 1;
 }
 
+static int LRemoteCallWithorderID(lua_State* L) {
+
+	size_t oLen, vLen;
+	unsigned int orderID = plg_Lvmcheckinteger(_plVMHandle, L, 1);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, L, 2, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobRemoteCallWithOrderID((void*)o, oLen, (void*)v, vLen, orderID));
+	return 1;
+}
+
+static int LorderID(lua_State* L) {
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobGetOrderID());
+	return 1;
+}
+
+static int LCreateOrderID(lua_State* L) {
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobCreateOrderID(0));
+	return 1;
+}
+
+static int LRemoveOrderID(lua_State* L) {
+
+	unsigned int orderID = plg_Lvmcheckinteger(_plVMHandle, L, 1);
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)orderID);
+	return 1;
+}
+
 static int LMS(lua_State* L) {
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_GetCurrentMilli());
@@ -85,6 +115,18 @@ static int LTimer(lua_State* L) {
 	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 3, &vLen);
 
 	plg_JobAddTimer(timer, (void*)o, oLen, (void*)v, vLen);
+	return 0;
+}
+
+static int LTimerWithOrderID(lua_State* L) {
+
+	size_t oLen, vLen;
+	double orderid = plg_Lvmchecknumber(_plVMHandle, L, 1);
+	double timer = plg_Lvmchecknumber(_plVMHandle, L, 2);
+	const char* o = plg_Lvmchecklstring(_plVMHandle, L, 3, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 4, &vLen);
+
+	plg_JobAddTimerWithOrderID(timer, (void*)o, oLen, (void*)v, vLen, orderid);
 	return 0;
 }
 
@@ -1825,11 +1867,16 @@ static luaL_Reg mylibs[] = {
 	{ "MVersion", L_MVersion },
 
 	{ "RemoteCall", LRemoteCall },
+	{ "RemoteCallWithorderID", LRemoteCallWithorderID },
+	{ "orderID", LorderID },
 	{ "MS", LMS },
 	{ "TableName", LTableName },
 	{ "OrderName", LOrderName },
 	{ "Timer", LTimer },
+	{ "TimerWithOrderID", LTimerWithOrderID },
 	{ "Commit", LCommit },
+	{ "CreateOrderID", LCreateOrderID },
+	{ "RemoveOrderID ", LRemoveOrderID },
 
 	{ "Set", LSet },
 	{ "MultiSet", LMultiSet },

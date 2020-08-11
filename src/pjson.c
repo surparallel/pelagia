@@ -23,6 +23,7 @@
 /* pJSON */
 /* JSON parser in C. */
 
+#include "plateform.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -30,7 +31,6 @@
 #include <float.h>
 #include <limits.h>
 #include <ctype.h>
-#include "plateform.h"
 #include "pjson.h"
 
 static const char *ep;

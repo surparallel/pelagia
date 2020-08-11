@@ -22,8 +22,7 @@
 *
 * 因为类型的不统一,C语言需要一个可以覆盖输入和输出的dict类型来与数据进行数据交换.
 */
-#include <stdlib.h>
-#include <string.h>
+
 #include "plateform.h"
 #include "padlist.h"
 #include "pdict.h"

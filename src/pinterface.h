@@ -197,6 +197,7 @@ typedef struct _DiskTableUsingPage
 typedef struct _OrderPacket {
 	void* order;
 	void* value;
+	unsigned int orderID;
 } *POrderPacket, OrderPacket;
 
 typedef struct _DiskBigValue

@@ -28,11 +28,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#include <stdlib.h>
+#include "plateform.h"
 #include "padlist.h"
 #include "pmemorypool.h"
-#include "plateform.h"
 
 /* Create a new list. The created list can be freed with
  * AlFreeList(), but private value of every node need to be freed

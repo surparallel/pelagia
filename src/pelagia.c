@@ -263,6 +263,19 @@ int plg_IssueCommand(int argc, char **argv, int noFind) {
 		}
 		return 1;
 	}
+	else if (!strcasecmp(command, "rcj2")) {
+		if (_pManage != 0) {
+			if (argc >= 2) {
+				unsigned long long p = 101021;
+				plg_MngRemoteCallWithArg2(_pManage, argv[1], strlen(argv[1]), (void*)p, argc - 3, (const char**)&argv[3], atoi(argv[2]));
+			} else {
+				printf("Parameter does not meet the requirement\n");
+			}
+		} else{
+			printf("Manage is not initialized. Please call iwj for initialization\n");
+		}
+		return 1;
+	}
 	else if (!strcasecmp(command, "pas")) {
 		if (_pManage != 0) {
 			plg_MngPrintAllStatus(_pManage);
