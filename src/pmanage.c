@@ -453,7 +453,7 @@ int plg_MngInterAllocJob(void* pvManage, unsigned int core, char* fileName) {
 	CheckUsingThread(0);
 	//Create n jobs
 	for (unsigned int l = 0; l < core; l++) {
-		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaLIBPath, pManage->luaHot, l);
+		void* pJobHandle = plg_JobCreateHandle(plg_JobEqueueHandle(pManage->pJobHandle), TT_PROCESS, pManage->luaLIBPath, pManage->luaHot, l + 1);
 		plg_JobSetStat(pJobHandle, pManage->isOpenStat, pManage->checkTime);
 		plg_JobSetPrivate(pJobHandle, pvManage);
 		plg_JobSetMaxQueue(pJobHandle, pManage->maxQueue);
@@ -584,18 +584,18 @@ void* plg_MngRandJobEqueue(void* pvManage) {
 	return jobEqueue;
 }
 
-void* plg_MngJobEqueueWithCore(void* pvManage, unsigned int Core) {
+void* plg_MngJobEqueueWithCore(void* pvManage, unsigned int core) {
 	PManage pManage = pvManage;
 
 	void* jobEqueue = 0;
 	if (listLength(pManage->listJob)) {
-		int r = Core % listLength(pManage->listJob);
+
 		listIter* jobIter = plg_listGetIterator(pManage->listJob, AL_START_HEAD);
 		listNode* jobNode;
 		while ((jobNode = plg_listNext(jobIter)) != NULL) {
 
-			jobEqueue = plg_JobEqueueHandle(listNodeValue(jobNode));
-			if (--r < 0) {
+			jobEqueue = plg_JobEqueueHandleIsCore(listNodeValue(jobNode), core);
+			if (jobEqueue != 0) {
 				break;
 			}
 		}
@@ -873,7 +873,7 @@ Unequal communication means that users send and receive data in different ways
 Do not use send data to wait for communication users,
 User receives data using event
 */
-int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID) {
+int plg_MngRemoteCallWithOrderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID) {
 
 	int r = 0;
 	CheckUsingThread(0);
@@ -888,7 +888,7 @@ int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, ch
 	if (entry) {
 
 		if (orderID != 0) {
-			elog(log_error, "plg_MngRemoteCallWithorderID::Use OrderID %i to call an order with shared data", orderID);
+			elog(log_error, "plg_MngRemoteCallWithOrderID::Use OrderID %i to call an order with shared data", orderID);
 		}
 		r = plg_eqIfNoPush(dictGetVal(entry), pOrderPacket, pManage->maxQueue);
 		if (r == 0) {
@@ -910,7 +910,12 @@ int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, ch
 				equeue = plg_MngRandJobEqueue(pvManage);
 			}
 			
-			pOrderPacket->orderID = orderID;
+			if (JobJobOrderID(orderID) == 0) {
+				pOrderPacket->orderID = 0;
+			} else {
+				pOrderPacket->orderID = orderID;
+			}
+			
 			r = plg_eqIfNoPush(equeue, pOrderPacket, pManage->maxQueue);
 			if (r == 0) {
 				plg_sdsFree(pOrderPacket->order);
@@ -932,7 +937,7 @@ int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, ch
 }
 
 int plg_MngRemoteCall(void* pvManage, char* order, short orderLen, char* value, short valueLen) {
-	return plg_MngRemoteCallWithorderID(pvManage, order, orderLen, value, valueLen, 0);
+	return plg_MngRemoteCallWithOrderID(pvManage, order, orderLen, value, valueLen, 0);
 }
 
 int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order, unsigned int orderID) {
@@ -963,6 +968,16 @@ int plg_MngRemoteCallPacket(void* pvManage, void* pvOrderPacket, char** order, u
 	return r;
 }
 
+int plg_MngRemoteCallWithMaxCore(void* pvManage, char* order, short orderLen, char* value, short valueLen) {
+
+	PManage pManage = pvManage;
+	int limite = listLength(pManage->listJob);
+	for (int c = 1; c <= limite; c++) {	
+		plg_MngRemoteCallWithOrderID(pvManage, order, orderLen, value, valueLen, JobGetOrderIDFromJobID(c));
+	}
+	return limite;
+}
+
 int plg_MngRemoteCallWithArg2(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv, unsigned int orderID) {
 
 	int ret = 0;
@@ -978,7 +993,7 @@ int plg_MngRemoteCallWithArg2(void* pvManage, char* order, short orderLen, void*
 	}
 
 	char* cValue = pJson_Print(root);
-	ret = plg_MngRemoteCallWithorderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
+	ret = plg_MngRemoteCallWithOrderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
 
 	free(bEventHandle);
 	pJson_Delete(root);
@@ -1005,7 +1020,7 @@ int plg_MngRemoteCallWithJson2(void* pvManage, char* order, short orderLen, void
 	pJson_AddStringToObject(root, "event", bEventHandle);
 
 	char* cValue = pJson_Print(root);
-	ret = plg_MngRemoteCallWithorderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
+	ret = plg_MngRemoteCallWithOrderID(pvManage, order, orderLen, cValue, strlen(cValue), orderID);
 
 	free(bEventHandle);
 	pJson_Delete(root);
@@ -1178,7 +1193,7 @@ void* plg_MngCreateHandle(char* dbPath, short dbPahtLen) {
 	pManage->order_equeue = plg_dictCreate(plg_DefaultSdsDictPtr(), NULL, DICT_MIDDLE);
 	pManage->dbPath = plg_sdsNewLen(dbPath, dbPahtLen);
 	pManage->objName = plg_sdsNew("manage");
-	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, NULL, 0, 0);
+	pManage->pJobHandle = plg_JobCreateHandle(0, TT_MANAGE, NULL, 0, 1);
 	plg_JobSetPrivate(pManage->pJobHandle, pManage);
 
 	pManage->fileCount = 0;

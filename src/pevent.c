@@ -64,6 +64,17 @@ void* plg_EventRecvAlloc(void* pEventHandle, unsigned int* valueLen) {
 	return sdsvalue;
 }
 
+void* plg_EventRecvAllocWithSize(void* pEventHandle, unsigned int* valueLen, unsigned int* queueSize) {
+	sds sdsvalue = plg_eqPopWithLen(pEventHandle, queueSize);
+	if (sdsvalue) {
+		*valueLen = plg_sdsLen(sdsvalue);
+		return sdsvalue;
+	} else {
+		*valueLen = 0;
+	}
+	return sdsvalue;
+}
+
 void plg_EventFreePtr(void* ptr) {
 	plg_sdsFree(ptr);
 }

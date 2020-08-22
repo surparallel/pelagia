@@ -37,6 +37,7 @@ void plg_JobAddEventProcess(void* pJobHandle, char* nevent, void* process);
 void* plg_JobNewTableCache(void* pJobHandle, char* table, void* pDiskHandle);
 void plg_JobAddTableCache(void* pJobHandle, char* table, void* pCacheHandle);
 void* plg_JobEqueueHandle(void* pJobHandle);
+void* plg_JobEqueueHandleIsCore(void* pvJobHandle, unsigned int core);
 unsigned int plg_JobAllWeight(void* pJobHandle);
 unsigned int  plg_JobIsEmpty(void* pJobHandle);
 void plg_JobSendOrder(void* eQueue, char* order, char* value, short valueLen);
@@ -51,6 +52,7 @@ void plg_JobPrintOrder(void* pvJobHandle, void* vJson);
 
 unsigned int JobJobID(unsigned int orderID);
 unsigned int JobJobOrderID(unsigned int orderID);
+unsigned int JobGetOrderIDFromJobID(unsigned int jobID);
 
 //Operating system interface
 void* job_Handle();

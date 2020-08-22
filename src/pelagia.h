@@ -20,10 +20,10 @@
 #define __PELAGIA_H
 
 #define VERSION_MAJOR	"0"
-#define VERSION_MINOR	"42"
+#define VERSION_MINOR	"43"
 
 #define VERSION_NUMMAJOR	0
-#define VERSION_NUMMINOR	42
+#define VERSION_NUMMINOR	43
 
 #include "papidefine.h"
 
@@ -51,11 +51,12 @@ PELAGIA_API void plg_MngAddLibFun(void* pvManage, char* libPath, char* Fun);
 PELAGIA_API int plg_MngAllocJob(void* pManage, unsigned int core);
 PELAGIA_API int plg_MngFreeJob(void* pManage);
 PELAGIA_API int plg_MngRemoteCall(void* pManage, char* order, short orderLen, char* value, short valueLen);
+PELAGIA_API int plg_MngRemoteCallWithMaxCore(void* pvManage, char* order, short orderLen, char* value, short valueLen);
 PELAGIA_API int plg_MngRemoteCallWithArg(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv);
 PELAGIA_API int plg_MngRemoteCallWithArg2(void* pvManage, char* order, short orderLen, void* eventHandle, int argc, const char** argv, unsigned int orderID);
 PELAGIA_API int plg_MngRemoteCallWithJson(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen);
 PELAGIA_API int plg_MngRemoteCallWithJson2(void* pvManage, char* order, short orderLen, void* eventHandle, char* json, short jsonLen, unsigned int orderID);
-PELAGIA_API int plg_MngRemoteCallWithorderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID);
+PELAGIA_API int plg_MngRemoteCallWithOrderID(void* pvManage, char* order, short orderLen, char* value, short valueLen, unsigned int orderID);
 
 //manage check API
 PELAGIA_API void plg_MngPrintAllStatus(void* pManage);
@@ -90,6 +91,7 @@ PELAGIA_API void plg_JobSetDonotCommit();
 PELAGIA_API void plg_JobForceCommit();
 PELAGIA_API int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API int plg_JobRemoteCallWithOrderID(void* order, short orderLen, void* value, short valueLen, unsigned int orderID);
+PELAGIA_API int plg_JobRemoteCallWithMaxCore(void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API char* plg_JobCurrentOrder(short* orderLen);//dont free
 PELAGIA_API void plg_JobAddTimer(double timer, void* order, short orderLen, void* value, short valueLen);
 PELAGIA_API void plg_JobAddTimerWithOrderID(double timer, void* order, short orderLen, void* value, short valueLen, unsigned int orderID);
@@ -162,6 +164,7 @@ PELAGIA_API int plg_EventTimeWait(void* pEventHandle, long long sec, int nsec);
 PELAGIA_API int plg_EventWait(void* pEventHandle);
 PELAGIA_API void plg_EventSend(void* pEventHandle, const char* value, unsigned int valueLen);
 PELAGIA_API void* plg_EventRecvAlloc(void* pEventHandle, unsigned int* valueLen);
+PELAGIA_API void* plg_EventRecvAllocWithSize(void* pEventHandle, unsigned int* valueLen, unsigned int* queueSize);
 PELAGIA_API void plg_EventFreePtr(void* ptr);
 PELAGIA_API void plg_EventSendWithMax(void* pEventHandle, const char* value, unsigned int valueLen, unsigned int maxQueue);
 

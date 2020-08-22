@@ -54,7 +54,27 @@ static int LRemoteCall(lua_State* L) {
 	return 1;
 }
 
-static int LRemoteCallWithorderID(lua_State* L) {
+static int LElog(lua_State* L) {
+
+	size_t LogLen;
+	int level = plg_Lvmcheckinteger(_plVMHandle, L, 1);
+	const char* log = plg_Lvmchecklstring(_plVMHandle, L, 2, &LogLen);
+
+	elog(level, log);
+	return 0;
+}
+
+static int LRemoteCallWithMaxCore(lua_State* L) {
+
+	size_t oLen, vLen;
+	const char* o = plg_Lvmchecklstring(_plVMHandle, L, 1, &oLen);
+	const char* v = plg_Lvmchecklstring(_plVMHandle, L, 2, &vLen);
+
+	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobRemoteCallWithMaxCore((void*)o, oLen, (void*)v, vLen));
+	return 1;
+}
+
+static int LRemoteCallWithOrderID(lua_State* L) {
 
 	size_t oLen, vLen;
 	unsigned int orderID = plg_Lvmcheckinteger(_plVMHandle, L, 1);
@@ -65,7 +85,7 @@ static int LRemoteCallWithorderID(lua_State* L) {
 	return 1;
 }
 
-static int LorderID(lua_State* L) {
+static int LOrderID(lua_State* L) {
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobGetOrderID());
 	return 1;
@@ -147,7 +167,7 @@ static int LSet(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
 	if (rtype != TT_String) {
-		elog(log_warn, "LSet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LSet Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSet((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
@@ -162,7 +182,7 @@ static int LMultiSet(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
 	if (rtype != TT_String) {
-		elog(log_warn, "LMultiSet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LMultiSet Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -202,7 +222,7 @@ static int LSetIfNoExit(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
 	if (rtype != TT_String) {
-		elog(log_warn, "LSetIfNoExit Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetIfNoExit Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSetIfNoExit((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
@@ -239,7 +259,7 @@ static int LGet(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LGet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LGet Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	char* p = plg_JobGet((void*)t, tLen, (void*)k, kLen, &pLen);
@@ -282,7 +302,7 @@ static int LLimite(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LLimite Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LLimite Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -316,7 +336,7 @@ static int LOrder(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LOrder Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LOrder Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -350,7 +370,7 @@ static int LRang(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LRang Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LRang Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -385,7 +405,7 @@ static int LPoint(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LRang Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LRang Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -419,7 +439,7 @@ static int LPattern(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LPattern Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LPattern Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -450,7 +470,7 @@ static int LMembers(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LPattern Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LPattern Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -481,7 +501,7 @@ static int LMultiGet(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LMultiGet Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LMultiGet Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -525,7 +545,7 @@ static int LRand(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_String) {
-		elog(log_warn, "LRand Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LRand Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	const char* p = plg_JobRand((void*)t, tLen, &pLen);
@@ -547,7 +567,7 @@ static int LSetAdd(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetAdd Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetAdd Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
@@ -958,7 +978,9 @@ static int LSet2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, tt);
 	if (rtype != tt) {
-		elog(log_warn, "LSet2 Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
+		elog(log_error, "LSet2 Current table '%s' type is '%s' to <%s>", t, plg_TT2String(rtype), plg_TT2String(tt));
+		free(v);
+		return 1;
 	}
 
 	if (v) {
@@ -985,7 +1007,7 @@ static int LMultiSet2(lua_State* L) {
 			unsigned rtype = 0;
 			rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_String);
 			if (rtype != TT_String) {
-				elog(log_warn, "LMultiSet2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+				elog(log_warn, "LMultiSet2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 			}
 
 			plg_DictExtenAdd(pDictExten, k, strlen(k), v, strlen(v));
@@ -994,7 +1016,7 @@ static int LMultiSet2(lua_State* L) {
 			unsigned rtype = 0;
 			rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, TT_Double);
 			if (rtype != TT_Double) {
-				elog(log_warn, "LMultiSet2 Current table %s type is %s to TT_Double", t, plg_TT2String(rtype));
+				elog(log_warn, "LMultiSet2 Current table '%s' type is '%s' to TT_Double", t, plg_TT2String(rtype));
 			}
 
 			plg_DictExtenAdd(pDictExten, k, strlen(k), &dv, sizeof(dv));
@@ -1028,7 +1050,9 @@ static int LSetIfNoExit2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobSetTableTypeIfByte((void*)t, tLen, tt);
 	if (rtype != tt) {
-		elog(log_warn, "LSetIfNoExit2 Current table %s type is %s to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
+		elog(log_error, "LSetIfNoExit2 Current table '%s' type is '%s' to %s", t, plg_TT2String(rtype), plg_TT2String(tt));
+		free(v);
+		return 1;
 	}
 
 	if (v) {
@@ -1069,7 +1093,7 @@ static int LGet2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LGet2 Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+		elog(log_warn, "LGet2 Current table '%s' type is '%s' to TT_String or TT_Double", t, plg_TT2String(rtype));
 	}
 
 	char* pValue = plg_JobGet((void*)t, tLen, (void*)k, kLen, &valueLen);
@@ -1118,7 +1142,7 @@ static int LLimite2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LLimite2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LLimite2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1158,7 +1182,7 @@ static int LOrder2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LOrder2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LOrder2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1198,7 +1222,7 @@ static int LRang2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LRang2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LRang2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1239,7 +1263,7 @@ static int LPoint2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LPoint2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LPoint2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1280,7 +1304,7 @@ static int LPattern2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LPattern2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LPattern2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1318,7 +1342,7 @@ static int LMultiGet2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LPattern2 Current table %s type is %s to TT_String", t, plg_TT2String(rtype));
+		elog(log_warn, "LPattern2 Current table '%s' type is '%s' to TT_String", t, plg_TT2String(rtype));
 	}
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1369,7 +1393,7 @@ static int LRand2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Double && rtype != TT_String) {
-		elog(log_warn, "LRand2 Current table %s type is %s to TT_String or TT_Double", t, plg_TT2String(rtype));
+		elog(log_warn, "LRand2 Current table '%s' type is '%s' to TT_String or TT_Double", t, plg_TT2String(rtype));
 	}
 
 	const char* pValue = plg_JobRand((void*)t, tLen, &pLen);
@@ -1394,7 +1418,7 @@ static int LSetAdd2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetAdd Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetAdd Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	plg_Lvmpushnumber(_plVMHandle, L, (lua_Number)plg_JobSAdd((void*)t, tLen, (void*)k, kLen, (void*)v, vLen));
@@ -1422,7 +1446,7 @@ static int LSetPop2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetPop2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetPop2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	const char* pValue = plg_JobSPop((void*)t, tLen, (void*)k, kLen, &pLen);
@@ -1534,7 +1558,7 @@ static int LSetRang2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetRang2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetRang2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1569,7 +1593,7 @@ static int LSetPoint2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetPoint2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetPoint2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1603,7 +1627,7 @@ static int LSetLimite2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetLimite2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetLimite2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1655,7 +1679,7 @@ static int LSetMembers2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetMembers2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetMembers2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictExten = plg_DictExtenCreate();
@@ -1687,7 +1711,7 @@ static int LSetRand2(lua_State* L) {
 
 	unsigned rtype = 0;
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetRand2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetRand2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	char* pValue = plg_JobSRand((void*)t, tLen, (void*)k, kLen, &pLen);
@@ -1718,7 +1742,7 @@ static int LSetUion2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetUion2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetUion2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1762,7 +1786,7 @@ static int LSetInter2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetInter2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetInter2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1805,7 +1829,7 @@ static int LSetDiff2(lua_State* L) {
 	unsigned rtype = 0;
 	rtype = plg_JobGetTableType((void*)t, tLen);
 	if (rtype != TT_Byte) {
-		elog(log_warn, "LSetDiff2 Current table %s type is %s to TT_Byte", t, plg_TT2String(rtype));
+		elog(log_warn, "LSetDiff2 Current table '%s' type is '%s' to TT_Byte", t, plg_TT2String(rtype));
 	}
 
 	void* pDictKeyExten = plg_DictExtenCreate();
@@ -1867,8 +1891,11 @@ static luaL_Reg mylibs[] = {
 	{ "MVersion", L_MVersion },
 
 	{ "RemoteCall", LRemoteCall },
-	{ "RemoteCallWithorderID", LRemoteCallWithorderID },
-	{ "orderID", LorderID },
+	{ "RemoteCallWithOrderID", LRemoteCallWithOrderID },
+	{ "RemoteCallWithMaxCore", LRemoteCallWithMaxCore },
+	{ "Elog", LElog },
+
+	{ "OrderID", LOrderID },
 	{ "MS", LMS },
 	{ "TableName", LTableName },
 	{ "OrderName", LOrderName },

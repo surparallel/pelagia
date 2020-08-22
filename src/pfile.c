@@ -147,7 +147,7 @@ void* plg_FileCreateHandle(char* fullPath, void* pManageEqueue, unsigned int ful
 
 	pFileHandle->fileName = plg_sdsNew(FileName(fullPath));
 	pFileHandle->mutexHandle = plg_MutexCreateHandle(LockLevel_3);
-	pFileHandle->pJobHandle = plg_JobCreateHandle(pManageEqueue, TT_FILE, NULL, 0, 0);
+	pFileHandle->pJobHandle = plg_JobCreateHandle(pManageEqueue, TT_FILE, NULL, 0, 1);
 	pFileHandle->objName = plg_sdsNew("file");
 	pFileHandle->fullPageSize = fullPageSize;
 	pFileHandle->memoryList = plg_MemListCreate(60, fullPageSize, 1);
@@ -238,6 +238,7 @@ unsigned int plg_FileFlushPage(void* pvFileHandle, void* pPFileParamPageInfo, vo
 	return 1;
 }
 
+//In order to compress the partition check of IO traffic, the same data in the old and new pages can not be used in the hard disk
 void* plg_MaskMalloc(unsigned int pageId, char* src, char* des, int len) {
 
 	if (len % _MASKCOMPRESS_ != 0) {

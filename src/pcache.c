@@ -220,7 +220,7 @@ unsigned int cache_LoadPageFromFile(void* pvCacheHandle, unsigned int pageAddr, 
 	char* pdiskBitPage = (char*)page + sizeof(DiskPageHead);
 	unsigned short crc = plg_crc16(pdiskBitPage, FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead));
 	if (pdiskPageHead->crc == 0 || pdiskPageHead->crc != crc) {
-		elog(log_error, "page crc error!");
+		elog(log_error, "cache_LoadPageFromFile.page crc error! pageAddr:%i crc:%i check_crc:%i", pageAddr, pdiskPageHead->crc, pdiskPageHead->crc);
 		return 0;
 	}
 	return 1;
@@ -1234,7 +1234,8 @@ unsigned int cacheFlushDirtyToFile(void* pvCacheHandle) {
 		dictEntry* maskNode = plg_dictFind(pCacheHandle->pageMask, &pPFileParamPageInfo[count].pageId);
 		if (maskNode) {
 			pPFileParamPageInfo[count].pPMaskPage = dictGetVal(maskNode);
-			plg_MaskBit(pPFileParamPageInfo[count].pPMaskPage, 1);
+			//Bit 0 must be updated because CRC is written
+			plg_MaskBit(pPFileParamPageInfo[count].pPMaskPage, 0);
 		} else {
 			pPFileParamPageInfo[count].pPMaskPage = 0;
 		}
@@ -1255,6 +1256,7 @@ unsigned int cacheFlushDirtyToFile(void* pvCacheHandle) {
 
 				//Calculate CRC
 				pDiskPageHead->crc = plg_crc16((char*)pDiskPage, FULLSIZE(pCacheHandle->pageSize) - sizeof(DiskPageHead));
+				elog(log_details, "cacheFlushDirtyToFile.page.crc pageAddr:%i crc:%i", pDiskPageHead->addr, pDiskPageHead->crc);
 			}
 			memcpy(memArrary[l], page, FULLSIZE(pCacheHandle->pageSize));
 		}

@@ -629,6 +629,15 @@ void plg_JobAddTableCache(void* pvJobHandle, char* table, void* pCacheHandle) {
 	}
 }
 
+void* plg_JobEqueueHandleIsCore(void* pvJobHandle, unsigned int core) {
+	PJobHandle pJobHandle = pvJobHandle;
+	if (pJobHandle->jobID == core) {
+		return pJobHandle->eQueue;
+	} else {
+		return 0;
+	}
+}
+
 void* plg_JobEqueueHandle(void* pvJobHandle) {
 	PJobHandle pJobHandle = pvJobHandle;
 	return pJobHandle->eQueue;
@@ -683,9 +692,9 @@ int plg_JobRemoteCallWithOrderID(void* order, short orderLen, void* value, short
 		return 1;
 	} else {
 		void* pManage = pJobHandle->privateData;
-		char* order;
+		char* retOrder;
 		pOrderPacket->orderID = orderID;
-		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &order, orderID);
+		int r = plg_MngRemoteCallPacket(pManage, pOrderPacket, &retOrder, orderID);
 		if (pJobHandle->isOpenStat) {
 			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), 1);
 			dictAddValueWithUint(pJobHandle->order_byte, dictGetKey(entryOrder), valueLen);
@@ -696,6 +705,34 @@ int plg_JobRemoteCallWithOrderID(void* order, short orderLen, void* value, short
 
 int plg_JobRemoteCall(void* order, short orderLen, void* value, short valueLen) {
 	return plg_JobRemoteCallWithOrderID(order, orderLen, value, valueLen, 0);
+}
+
+int plg_JobRemoteCallWithMaxCore(void* order, short orderLen, void* value, short valueLen) {
+	CheckUsingThread(0);
+
+	PJobHandle pJobHandle = plg_LocksGetSpecific();
+	if (!pJobHandle) {
+		elog(log_error, "plg_LocksGetSpecific:pJobHandle ");
+		return 0;
+	}
+
+	sds sdsOrder = plg_sdsNewLen(order, orderLen);
+
+	dictEntry* entryOrder = plg_dictFind(pJobHandle->order_equeue, sdsOrder);
+	plg_sdsFree(sdsOrder);
+	if (entryOrder) {
+		elog(log_error, "plg_JobRemoteCallWithMaxCore::to call an order with shared data");
+		return 0;
+	} else {
+		void* pManage = pJobHandle->privateData;
+		int r = plg_MngRemoteCallWithMaxCore(pManage, order, orderLen, value, valueLen);
+
+		if (pJobHandle->isOpenStat) {
+			dictAddValueWithUint(pJobHandle->order_msg, dictGetKey(entryOrder), r);
+			dictAddValueWithUint(pJobHandle->order_byte, dictGetKey(entryOrder), valueLen * r);
+		}
+		return r;
+	}
 }
 
 
@@ -913,7 +950,7 @@ static void* plg_JobThreadRouting(void* pvJobHandle) {
 					pJobHandle->statistics_eventQueueLength = nowEventQueueLength;
 				}
 
-				elog(log_details, "ThreadType:%i.plg_JobThreadRouting.order:%s", pJobHandle->threadType, (char*)pOrderPacket->order);
+				elog(log_details, "ThreadType:%i.plg_JobThreadRouting.order:%s jobid:%i", pJobHandle->threadType, pJobHandle->jobID, (char*)pOrderPacket->order);
 				pJobHandle->pOrderName = pOrderPacket->order;
 
 				//start
@@ -1192,7 +1229,9 @@ unsigned short plg_JobGetTableType(void* table, short tableLen) {
 	if (valueEntry != 0) {
 		r = plg_CacheGetTableType(dictGetVal(valueEntry), sdsTable, job_IsTableAllowWrite(pJobHandle, sdsTable));
 	} else {
-		elog(log_error, "plg_JobGetTableType.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobGetTableType. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1226,7 +1265,9 @@ unsigned short plg_JobSetTableType(void* table, short tableLen, unsigned short t
 		}
 
 	} else {
-		elog(log_error, "plg_JobSetTableType.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSetTableType. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1259,7 +1300,9 @@ unsigned short plg_JobSetTableTypeIfByte(void* table, short tableLen, unsigned s
 		}
 
 	} else {
-		elog(log_error, "plg_JobSetTableType.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSetTableTypeIfByte. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1296,7 +1339,9 @@ unsigned int plg_JobSet(void* table, short tableLen, void* key, short keyLen, vo
 		}
 
 	} else {
-		elog(log_error, "plg_JobSet.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSet. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1338,7 +1383,9 @@ void* plg_JobGet(void* table, short tableLen, void* key, short keyLen, unsigned 
 		}
 		plg_DictExtenDestroy(pDictExten);
 	} else {
-		elog(log_error, "plg_JobGet.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobGet. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1371,7 +1418,9 @@ unsigned int plg_JobDel(void* table, short tableLen, void* key, short keyLen) {
 			elog(log_error, "plg_JobDel.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobDel.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobDel. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1395,7 +1444,9 @@ unsigned int plg_JobLength(void* table, short tableLen) {
 	if (valueEntry != 0) {
 		len = plg_CacheTableLength(dictGetVal(valueEntry), sdsTable, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobLength.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobLength. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1429,7 +1480,9 @@ unsigned int plg_JobSetIfNoExit(void* table, short tableLen, void* key, short ke
 			elog(log_error, "plg_JobSetIfNoExit.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSetIfNoExit.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSetIfNoExit. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1454,7 +1507,9 @@ unsigned int plg_JobIsKeyExist(void* table, short tableLen, void* key, short key
 	if (valueEntry != 0) {
 		r = plg_CacheTableIsKeyExist(dictGetVal(valueEntry), sdsTable, key, keyLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobIsKeyExist.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobIsKeyExist. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1487,7 +1542,9 @@ unsigned int plg_JobRename(void* table, short tableLen, void* key, short keyLen,
 			elog(log_error, "plg_JobRename.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobRename.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobRename. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 	return r;
@@ -1510,7 +1567,9 @@ void plg_JobLimite(void* table, short tableLen, void* key, short keyLen, unsigne
 	if (valueEntry != 0) {
 		plg_CacheTableLimite(dictGetVal(valueEntry), sdsTable, key, keyLen, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobLimite.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobLimite. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1532,7 +1591,9 @@ void plg_JobOrder(void* table, short tableLen, short order, unsigned int limite,
 	if (valueEntry != 0) {
 		plg_CacheTableOrder(dictGetVal(valueEntry), sdsTable, order, limite, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobOrder.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobOrder. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1553,7 +1614,9 @@ void plg_JobRang(void* table, short tableLen, void* beginKey, short beginKeyLen,
 	if (valueEntry != 0) {
 		plg_CacheTableRang(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, endKey, endKeyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobRang.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobRang. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1575,7 +1638,9 @@ void plg_JobPoint(void* table, short tableLen, void* beginKey, short beginKeyLen
 	if (valueEntry != 0) {
 		plg_CacheTablePoint(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, direction, offset, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobRang.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobPoint. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1597,7 +1662,9 @@ void plg_JobPattern(void* table, short tableLen, void* beginKey, short beginKeyL
 	if (valueEntry != 0) {
 		plg_CacheTablePattern(dictGetVal(valueEntry), sdsTable, beginKey, beginKeyLen, endKey, endKeyLen, pattern, patternLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobPattern.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobPattern. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1618,7 +1685,9 @@ void plg_JobMembers(void* table, short tableLen, void* pDictExten) {
 	if (valueEntry != 0) {
 		plg_CacheTableMembers(dictGetVal(valueEntry), sdsTable, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobMembers.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobMembers. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1652,7 +1721,9 @@ unsigned int plg_JobMultiSet(void* table, short tableLen, void* pDictExten) {
 			elog(log_error, "plg_JobMultiSet.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobMultiSet.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobMultiSet. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 	return r;
@@ -1676,7 +1747,9 @@ void plg_JobMultiGet(void* table, short tableLen, void* pKeyDictExten, void* pVa
 	if (valueEntry != 0) {
 		plg_CacheTableMultiFind(dictGetVal(valueEntry), sdsTable, pKeyDictExten, pValueDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobMultiGet.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobMultiGet. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1715,7 +1788,9 @@ void* plg_JobRand(void* table, short tableLen, unsigned int* valueLen) {
 		}
 		plg_DictExtenDestroy(pDictExten);
 	} else {
-		elog(log_error, "plg_JobRand.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobRand. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1746,7 +1821,9 @@ void plg_JobTableClear(void* table, short tableLen) {
 			elog(log_error, "plg_JobTableClear.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobTableClear.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobTableClear. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1777,7 +1854,9 @@ unsigned int plg_JobSAdd(void* table, short tableLen, void* key, short keyLen, v
 			elog(log_error, "plg_JobSAdd.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSAdd.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSAdd. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1801,7 +1880,9 @@ void plg_JobSRang(void* table, short tableLen, void* key, short keyLen, void* be
 	if (valueEntry != 0) {
 		plg_CacheTableSetRang(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, endValue, endValueLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSRang.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSRang. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1823,7 +1904,9 @@ void plg_JobSPoint(void* table, short tableLen, void* key, short keyLen, void* b
 	if (valueEntry != 0) {
 		plg_CacheTableSetPoint(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, direction, offset, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSRang.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSPoint. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1845,7 +1928,9 @@ void plg_JobSLimite(void* table, short tableLen, void* key, short keyLen, void* 
 	if (valueEntry != 0) {
 		plg_CacheTableSetLimite(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen, left, right, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSLimite.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSLimite. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1867,7 +1952,9 @@ unsigned int plg_JobSLength(void* table, short tableLen, void* key, short keyLen
 	if (valueEntry != 0) {
 		len = plg_CacheTableSetLength(dictGetVal(valueEntry), sdsTable, key, keyLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSLength.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSLength. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1892,7 +1979,9 @@ unsigned int plg_JobSIsKeyExist(void* table, short tableLen, void* key, short ke
 	if (valueEntry != 0) {
 		r = plg_CacheTableSetIsKeyExist(dictGetVal(valueEntry), sdsTable, key, keyLen, value, valueLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSIsKeyExist.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSIsKeyExist. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1917,7 +2006,9 @@ void plg_JobSMembers(void* table, short tableLen, void* key, short keyLen, void*
 	if (valueEntry != 0) {
 		plg_CacheTableSetMembers(dictGetVal(valueEntry), sdsTable, key, keyLen, pDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSMembers.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSMembers. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -1955,7 +2046,9 @@ void* plg_JobSRand(void* table, short tableLen, void* key, short keyLen, unsigne
 		}
 		plg_DictExtenDestroy(pDictExten);
 	} else {
-		elog(log_error, "plg_JobSRand.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSRand. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -1985,7 +2078,9 @@ void plg_JobSDel(void* table, short tableLen, void* key, short keyLen, void* pVa
 			elog(log_error, "plg_JobSDel.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSDel.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSDel. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2023,7 +2118,9 @@ void* plg_JobSPop(void* table, short tableLen, void* key, short keyLen, unsigned
 		}
 		plg_DictExtenDestroy(pDictExten);
 	} else {
-		elog(log_error, "plg_JobSPop.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSPop. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -2049,7 +2146,9 @@ unsigned int plg_JobSRangCount(void* table, short tableLen, void* key, short key
 	if (valueEntry != 0) {
 		r = plg_CacheTableSetRangCount(dictGetVal(valueEntry), sdsTable, key, keyLen, beginValue, beginValueLen, endValue, endValueLen, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSRangCount.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSRangCount. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 
@@ -2073,7 +2172,9 @@ void plg_JobSUion(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 	if (valueEntry != 0) {
 		plg_CacheTableSetUion(dictGetVal(valueEntry), sdsTable, pSetDictExten, pKeyDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSUion.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSUion. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2101,7 +2202,9 @@ void plg_JobSUionStore(void* table, short tableLen, void* pSetDictExten, void* k
 			elog(log_error, "plg_JobSUionStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSUionStore.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSUionStore. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2123,7 +2226,9 @@ void plg_JobSInter(void* table, short tableLen, void* pSetDictExten, void* pKeyD
 	if (valueEntry != 0) {
 		plg_CacheTableSetInter(dictGetVal(valueEntry), sdsTable, pSetDictExten, pKeyDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSInter.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSInter. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2152,7 +2257,9 @@ void plg_JobSInterStore(void* table, short tableLen, void* pSetDictExten, void* 
 			elog(log_error, "plg_JobSInterStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}	
 	} else {
-		elog(log_error, "plg_JobSInterStore.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSInterStore. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2174,7 +2281,9 @@ void plg_JobSDiff(void* table, short tableLen, void* pSetDictExten, void* pKeyDi
 	if (valueEntry != 0) {
 		plg_CacheTableSetDiff(dictGetVal(valueEntry), sdsTable, pSetDictExten, pKeyDictExten, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSDiff.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSDiff. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2203,7 +2312,9 @@ void plg_JobSDiffStore(void* table, short tableLen, void* pSetDictExten, void* k
 			elog(log_error, "plg_JobSDiffStore.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSDiffStore.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSDiffStore. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2232,7 +2343,9 @@ void plg_JobSMove(void* table, short tableLen, void* srcKey, short srcKeyLen, vo
 			elog(log_error, "plg_JobSMove.No permission in <%s> to table <%s>!", order, sdsTable);
 		}
 	} else {
-		elog(log_error, "plg_JobSMove.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSMove. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2255,7 +2368,9 @@ void plg_JobTableMembersWithJson(void* table, short tableLen, void* jsonRoot) {
 	if (valueEntry != 0) {
 		plg_CacheTableMembersWithJson(dictGetVal(valueEntry), sdsTable, jsonRoot, job_IsCacheAllowWrite(pJobHandle, dictGetKey(valueEntry)));
 	} else {
-		elog(log_error, "plg_JobSDiff.Cannot access table <%s>!", sdsTable);
+		short orderLen;
+		char* order = plg_JobCurrentOrder(&orderLen);
+		elog(log_error, "in order <%s>.plg_JobSDiff. Cannot access table <%s>!", order, sdsTable);
 	}
 	plg_sdsFree(sdsTable);
 }
@@ -2429,15 +2544,19 @@ unsigned int plg_JobGetOrderID() {
 		elog(log_error, "jobid exceeds the limit of MAXJOBID");
 	}
 
-	if (pJobHandle->orderID > MAXORDERID) {
+	if (pJobHandle->curretnOrderID > MAXORDERID) {
 		elog(log_error, "orderID exceeds the limit of MAXORDERID");
 	}
 
-	unsigned int orderID = pJobHandle->jobID;
-	orderID = orderID << 22;
-	orderID = orderID | pJobHandle->curretnOrderID;
+	if (pJobHandle->curretnOrderID == 0) {
+		return 0;
+	} else {
+		unsigned int orderID = pJobHandle->jobID;
+		orderID = orderID << 22;
+		orderID = orderID | pJobHandle->curretnOrderID;
 
-	return orderID;
+		return orderID;
+	}
 }
 
 unsigned int JobJobID(unsigned int orderID) {
@@ -2470,6 +2589,16 @@ unsigned int JobJobOrderID(unsigned int orderID) {
 	}
 
 	return jobOrderID;
+}
+
+unsigned int JobGetOrderIDFromJobID(unsigned int jobID) {
+
+	if (jobID > MAXJOBID) {
+		elog(log_error, "jobid exceeds the limit of MAXJOBID");
+	}
+	
+	unsigned int orderID = jobID << 22;
+	return orderID;
 }
 
 #undef NORET

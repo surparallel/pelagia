@@ -637,9 +637,9 @@ unsigned short plg_TableSetTableType(void* pvTableHandle, unsigned short tableTy
 
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
-	unsigned short oldType = pTableHandle->pTableInFile->tableType;
 
 	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
+	unsigned short oldType = pTableInFile->tableType;
 	pTableInFile->tableType = tableType;
 	return oldType;
 }
@@ -648,11 +648,11 @@ unsigned short plg_TableSetTableTypeIfByte(void* pvTableHandle, unsigned short t
 
 	PTableHandle pTableHandle = pvTableHandle;
 	PTableInFile pTableInFile;
-	unsigned short oldType = pTableHandle->pTableInFile->tableType;
-
 	pTableInFile = pTableHandle->pTableHandleCallBack->tableCopyOnWrite(pTableHandle, pTableHandle->nameaTable, pTableHandle->pTableInFile);
-	pTableInFile->tableType = tableType;
+
+	unsigned short oldType = pTableInFile->tableType;
 	if (oldType == TT_Byte || oldType == tableType) {
+		pTableInFile->tableType = tableType;
 		return tableType;
 	} else {
 		return oldType;
