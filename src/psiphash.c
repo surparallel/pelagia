@@ -36,7 +36,7 @@
       perform a text transformation in some temporary buffer, which is costly.
    5. Remove debugging code.
    6. Modified the original test.c file to be a stand-alone function testing
-      the function in the new form (returing an uint64_t) using just the
+      the function in the new form (returning an uint64_t) using just the
       relevant test vector.
  */
 #include <assert.h>
